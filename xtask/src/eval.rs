@@ -131,16 +131,17 @@ fn copy_dir(from: &Path, to: &Path) -> Result<()> {
     Ok(())
 }
 
-/// What a case starts from: this workspace's crates, gates and config, as a
-/// project made from the template has them -- without the plugin itself, its
-/// evals or its research, so the arm without the plugin cannot read the skills.
+/// What a case starts from: this workspace's crates, gates, config and docs
+/// skeleton, as a project made from the template has them -- without the
+/// plugin itself, its evals, or its research (the evidence note and the pinned
+/// sources, which include BeautifulRust's skill text): the arm without the
+/// plugin must not be able to read what the plugin teaches.
 fn base(root: &Path, work: &Path) -> Result<()> {
     const SKIP: &[&str] = &[
         "target",
         ".git",
         "skills",
         "evals",
-        "docs",
         ".claude-plugin",
         ".claude",
         ".direnv",
@@ -159,6 +160,34 @@ fn base(root: &Path, work: &Path) -> Result<()> {
         } else {
             fs::copy(e.path(), work.join(name.as_ref()))?;
         }
+    }
+    // The research skeleton stays; the plugin's own research goes.
+    let research = work.join("docs/research");
+    for dir in ["sources", "notes"] {
+        let d = research.join(dir);
+        if d.exists() {
+            for e in fs::read_dir(&d)? {
+                let p = e?.path();
+                let keep = p.file_name().is_some_and(|n| n == "TEMPLATE.md");
+                if !keep {
+                    fs::remove_file(&p)?;
+                }
+            }
+        }
+    }
+    fs::create_dir_all(research.join("sources"))?;
+    fs::write(
+        research.join("sources/MANIFEST.toml"),
+        "# Pinned research sources.\n",
+    )?;
+    let index = work.join("docs/README.md");
+    if index.exists() {
+        let text = fs::read_to_string(&index)?;
+        let kept: Vec<&str> = text
+            .lines()
+            .filter(|l| !l.contains("a-rust-code-evidence"))
+            .collect();
+        fs::write(&index, kept.join("\n") + "\n")?;
     }
     Ok(())
 }
