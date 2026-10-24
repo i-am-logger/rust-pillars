@@ -1,103 +1,106 @@
 # rust-code
 
-[![crates.io](https://img.shields.io/crates/v/rust-code?logo=rust&logoColor=white)](https://crates.io/crates/rust-code)
-[![Downloads](https://img.shields.io/crates/d/rust-code?logo=rust&logoColor=white)](https://crates.io/crates/rust-code)
-[![MSRV](https://img.shields.io/crates/msrv/rust-code?logo=rust&logoColor=white)](https://www.rust-lang.org)
 [![CI](https://img.shields.io/github/actions/workflow/status/i-am-logger/rust-code/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/i-am-logger/rust-code/actions/workflows/ci.yml)
-[![docs.rs](https://img.shields.io/docsrs/rust-code?logo=docsdotrs&logoColor=white)](https://docs.rs/rust-code)
-[![codecov](https://codecov.io/gh/i-am-logger/rust-code/branch/master/graph/badge.svg)](https://codecov.io/gh/i-am-logger/rust-code)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/i-am-logger/rust-code/badge)](https://scorecard.dev/viewer/?uri=github.com/i-am-logger/rust-code)
-
 [![Nix](https://img.shields.io/badge/Nix-2b2b2b?logo=nixos&logoColor=white)](https://nixos.org)
 [![devenv](https://img.shields.io/badge/devenv-2b2b2b?logo=nixos&logoColor=white)](https://devenv.sh)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/CC%20BY--NC--SA%204.0-2b2b2b?logo=creativecommons&logoColor=white)](LICENSE)
 
-> A Rust workspace built on the rust-code pillars: a domain type system, an
-> event-driven core, enforced layering, zero-copy, `no_std` and no `unsafe` --
-> each one a gate that fails the build, not a guideline.
+> A Claude Code plugin that teaches Claude to write Rust the way these
+> projects are built -- a domain type system that refuses primitives,
+> event-driven sans-IO cores, layered crates, zero-copy, `no_std`, no
+> `unsafe` -- and how to research, measure and test it. In the spirit of
+> [BeautifulRust](https://github.com/morganlinton/BeautifulRust), with one
+> difference that matters: every rule here is also a gate in
+> [rust-template](https://github.com/i-am-logger/rust-template) that fails
+> the build.
 
-## The pillars
+## What it is
 
-| # | Pillar | The rule | Its gate |
-|---|---|---|---|
-| 1 | Type system | Every quantity is a type; no raw primitive in a domain or core public API outside a named seam; no `bool` parameter or field; illegal programs do not compile | `cargo xtask budgets`; trybuild cases with passing twins |
-| 2 | Event-driven | The core takes events and queues effects for the host to poll: no callbacks, no clock, no I/O; effects do not depend on how input was split | `cargo xtask arch`; clippy bans; the `chunk_invariance_*` property |
-| 3 | Layering | Every crate has a role (`layers.toml`) that says what it may depend on; features are additive | `cargo xtask layers`; `cargo hack --each-feature` |
-| 4 | Zero-copy | Input is borrowed; no allocation per event; own, don't leak | clippy bans `Box::leak`/`mem::forget`; the allocation test |
-| 5 | `no_std` | Domain and core build with no std at all | `cargo xtask arch`; `test:bare` |
-| 6 | No `unsafe` | Forbidden workspace-wide; the only escape is a declared quarantine crate | the `forbid` lint; `cargo xtask arch` |
+Two halves, versioned separately:
 
-Every gate runs a positive control first -- a fixture it knows is wrong --
-and fails if it does not find the fault, so a scanner that matches nothing
-cannot read as a clean tree. `cargo xtask controls` (the last task of
-`devenv test`) goes further: it plants one violation per gate in a scratch
-copy and requires each gate to fail **for the planted reason**.
+- **This plugin** -- six skills, each a short `SKILL.md` with references
+  loaded on demand, plus evals that score the skills by building and gating
+  the code they produce.
+- **rust-template** -- the enforcement: workspace lints, `cargo xtask`
+  gates, devenv tasks that are CI. Projects are generated from it and enable
+  this plugin; this repository is itself one of them, and every gate applies
+  here too.
 
-### Tests that can fail, and how to measure
+## Install
 
-| Gate | What it holds |
-|---|---|
-| `cargo xtask tests` | no test skips itself into a pass; controls state their count (`assert_eq!`, not `n > K`); every `#[ignore]` is listed in `ignores.toml` with its reason |
-| `cargo xtask coverage` | every public function of domain and core is called by some test |
-| `test:mutants-diff` | every mutant of a changed line in domain or core is caught (cargo-mutants); line coverage is not a gate |
-| `test:unit` | the `qa` profile: release speed with overflow checks and `debug_assert!` on; proptest seed pinned |
-| `test:deny` | licenses, bans and sources of every dependency |
+Once the repository is published:
 
-| Instrument | What it does |
-|---|---|
-| `cargo xtask arms <rev> <rev>` | builds both revisions from `git archive` at one path and compares the machine code first: byte-identical is neutral, with no timing |
-| `cargo xtask bench --arm a=<bin> --arm b=<bin> --aa` | timed launches, order rotated, first round dropped, medians with ranges, an A/A arm; overlapping ranges are no result |
-| `RUST_CODE_STARTUP=1` | the driver prints a mark per startup stage, which `bench` tabulates |
+```text
+/plugin marketplace add i-am-logger/rust-code
+/plugin install rust-code@rust-code
+```
 
-Manual or scheduled: `qa:mutants` (every mutant), `qa:props` (20 000 cases,
-fresh seeds), `qa:advisories` (RustSec). Adopting the gates in an existing
-workspace: `cargo xtask init` (every budget 0) or `cargo xtask init
---ratchet` (today's counts, which may only shrink).
+A project made from rust-template enables it for everyone working in the
+project through its Claude Code project settings. Locally, before publishing:
+`claude --plugin-dir ~/Code/rust-code`.
 
-The reasoning behind each rule, with its evidence, lives in the
-[rust-code](https://github.com/i-am-logger/rust-code) plugin's skills.
+## The skills
 
-## Layout
-
-| path | role | what |
+| Skill | Load it when | Covers |
 |---|---|---|
-| `crates/rust-code-domain` | domain | the type system: quantities, typestate, the event vocabulary |
-| `crates/rust-code-core` | core | the machine: `handle(Event)`, effects polled |
-| `crates/rust-code` | bin | the driver: stdin, the clock, stdout |
-| `xtask` | tool | the gates |
+| `rust-domain` | modelling quantities, IDs, protocol vocabulary, lifecycles | refusing primitives, seams, proof types, typestate, brands, `compile_fail` twins |
+| `rust-architecture` | designing crates, a core, ownership, layout, `no_std`, SIMD, GPU hand-off | roles and layering, sans-IO, zero-copy and own-don't-leak, caches, no unsafe |
+| `rust-idioms` | everyday API, error, naming and doc decisions | BeautifulRust's idioms, kept or departed from, with reasons |
+| `rust-research` | deciding against a standard, citing sources, recording decisions | standard first, pinned sources, notes, the judge protocol, retractions |
+| `rust-measure` | claiming anything about speed, memory or startup | A/A arms, one build path, instruments, embedding at build time, CI counters |
+| `rust-qa` | writing or reviewing tests and gates | properties against a model, never-skip, exact floors, mutation testing, refuters |
+
+## The pillars and their gates
+
+| # | Pillar | Gate in rust-template |
+|---|---|---|
+| 1 | Type system: no raw primitive in a domain or core API outside a named seam | `cargo xtask budgets`, trybuild cases with twins |
+| 2 | Event-driven: events in, effects polled, no callbacks, no clock | `cargo xtask arch`, the `chunk_invariance_*` property |
+| 3 | Layering: every crate has a role and may depend only on what its role allows | `cargo xtask layers`, per-feature builds |
+| 4 | Zero-copy: borrowed input, no allocation per event, own don't leak | clippy `disallowed_methods`, the allocation test |
+| 5 | `no_std` for domain and core | `cargo xtask arch`, bare-metal builds |
+| 6 | No `unsafe`: forbidden, a declared quarantine crate the only escape | the `forbid` lint, `cargo xtask arch` |
+
+Every gate is seen failing for its reason: `cargo xtask controls` plants one
+violation per gate in a scratch copy, and the suite passes only if each gate
+names the planted fault.
+
+## Against BeautifulRust
+
+Kept, almost whole: the idioms (`rust-idioms`, adapted under BeautifulRust's
+MIT license with attribution). Departed from, with the reason written down:
+performance-first design for domain and core, payload-free errors in a
+`no_std` core, primitives refused rather than only `bool`, `unsafe`
+forbidden rather than justified. Added: the architecture and the method,
+and enforcement. The full comparison, with sources pinned by hash, is
+[the evidence note](docs/research/notes/a-rust-code-evidence.md).
+
+## Evals
+
+Two layers. `claude plugin eval` grades transcripts (did a skill fire, how
+was the work done). `cargo xtask eval` runs each case in `evals/` headless
+with and without the plugin, then builds, lints, tests and gates what was
+left on disk; each arm runs twice and a difference counts only if it is
+larger than the arm's own run-to-run spread. `cargo xtask eval --control`
+runs no model: it proves every task-specific check fails on the untouched
+base, so no case can grade nothing. Every other run is a paid model call,
+so evals are a manual task (`eval:run`).
 
 ## Development
 
 ```bash
-# Enter devenv shell
-direnv allow
-
-# Build / run the binary
-dev-build
-dev-run
-
-# Every gate, exactly as CI runs it
-dev-ci            # = devenv test
+direnv allow      # or: devenv shell
+dev-ci            # every gate, exactly as CI runs it (= devenv test)
 ```
-
-`dev-ci` is not an approximation of CI. `.github/workflows/ci.yml` runs
-`devenv test`, which runs the `tasks."test:*"` set defined in `devenv.nix`.
-Add a check by adding a task, never by adding a step to the workflow, and the
-two cannot drift apart.
-
-Formatting is `treefmt` across the whole tree (Rust, Nix, shell), wired
-identically into `dev-fmt`, `tasks."test:fmt"`, and the pre-commit hook.
 
 ## Releases
 
-Automated with [release-plz](https://release-plz.dev). Commits follow
-[Conventional Commits](https://www.conventionalcommits.org/); release-plz opens
-a `chore: release` PR that bumps the version and writes `CHANGELOG.md`, and
-**merging that PR is what authorises the publish to crates.io.** Versions are
-never edited by hand — release-plz reads its baseline from crates.io, so a
-manual bump or publish desynchronises it.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+Automated with [release-plz](https://release-plz.dev) from
+[Conventional Commits](https://www.conventionalcommits.org/): merging the
+`chore: release` PR tags the version and writes `CHANGELOG.md`. Nothing is
+published to crates.io -- the plugin ships as this repository. Bump
+`.claude-plugin/plugin.json`'s version with the release.
 
 ## Funding
 

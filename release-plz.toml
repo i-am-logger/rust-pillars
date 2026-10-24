@@ -4,6 +4,10 @@
 # https://release-plz.dev/docs/config
 
 [workspace]
+# The plugin repository releases its skills, not crates: its crates are the
+# template's examples, so nothing is published to crates.io. Releases are a
+# tag, a changelog and a GitHub release.
+publish = false
 # cargo-semver-checks before each release: a "patch" bump on a breaking API
 # change is rejected and the version escalated to satisfy semver.
 semver_check = true
