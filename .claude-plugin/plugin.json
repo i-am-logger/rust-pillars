@@ -23,7 +23,7 @@
     "gate_on_edit": {
       "type": "boolean",
       "title": "Run the gates after each Rust edit",
-      "description": "After Claude edits a .rs file in a project with rust-template's gates, run `cargo xtask budgets` and `cargo xtask arch` and show Claude what they find. Runs commands in your project, so it is off until you turn it on.",
+      "description": "After Claude edits a .rs file inside the open project, if it has rust-template's gates (layers.toml and xtask/), run `cargo xtask budgets` and `cargo xtask arch` without asking and show Claude what they find. This executes the project's own code: its xtask, build scripts, proc macros and cargo config (.cargo/config.toml, rust-toolchain.toml), which can run anything. Once on, it applies to every project you open. Do not enable it if you open repositories you do not trust. Off until you turn it on.",
       "default": false
     },
     "nudge": {
