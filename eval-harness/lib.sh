@@ -11,19 +11,12 @@
 PE_MODEL=claude-opus-5-5
 PE_JUDGE=haiku
 
-# The smoke tier: four cases picked for a fast iteration run (the analysis
-# of run 2: the cheapest cases that still separate the arms). Tagged here,
-# in the export's copy of each case, not in evals/<case>/ itself.
-PE_SMOKE="own-dont-leak embed-at-build-time layering-fix domain-refuse-primitives"
-
 # pe_tags NAME: the tags line the export gives case NAME: case-NAME, so any
 # set of cases can be picked with --tag (one --case keeps only one glob, and
-# a brace glob matches nothing: measured), and smoke for the smoke tier.
+# a brace glob matches nothing: measured). A tier is a case's own tag, in its
+# prompt.md (`tags: [smoke]`); the export only adds case-NAME to it.
 pe_tags() {
-  case " $PE_SMOKE " in
-  *" $1 "*) printf 'tags: [smoke, case-%s]\n' "$1" ;;
-  *) printf 'tags: [case-%s]\n' "$1" ;;
-  esac
+  printf 'tags: [case-%s]\n' "$1"
 }
 
 # pe_tags_merge NAME LINE: a case's own inline tags line (`tags: [a, b]`)

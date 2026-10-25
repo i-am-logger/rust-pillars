@@ -390,7 +390,7 @@ in
       exec = "sh eval-harness/plugin-eval.sh -j 4 --no-publish";
     };
 
-    # Smoke: the four cases tagged smoke (eval-harness/lib.sh), one run per
+    # Smoke: the cases whose prompt.md tags them smoke, one run per
     # arm, -j 8 -- one wave. For iterating; never reported as a result.
     "eval:smoke" = {
       exec = "sh eval-harness/plugin-eval.sh --tag smoke --runs 1 -j 8 --no-publish";

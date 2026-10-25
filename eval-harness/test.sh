@@ -168,8 +168,10 @@ k2=$(pe_vendor_key "$g" HEAD)
 same "the lockfile changes the vendor key" changed "$k2"
 
 # Tiers and the changed-cases selector.
-same "a smoke case's tags" "tags: [smoke, case-layering-fix]" "$(pe_tags layering-fix)"
-same "another case's tags" "tags: [case-no-std-port]" "$(pe_tags no-std-port)"
+same "the export adds only case-<name>; a tier is the case's own tag" \
+  "tags: [case-layering-fix]" "$(pe_tags layering-fix)"
+same "a case that tags itself smoke keeps it" "tags: [smoke, case-own-dont-leak]" \
+  "$(pe_tags_merge own-dont-leak 'tags: [smoke]')"
 same "a case's own tags are kept and ours added" "tags: [slow, case-no-std-port]" \
   "$(pe_tags_merge no-std-port 'tags: [slow]')"
 same "and not repeated" "tags: [smoke, case-own-dont-leak]" \
@@ -245,6 +247,11 @@ cp "$repo/evals/_scaffold/scaffold.sh" "$f/evals/_scaffold/"
 cp "$repo/evals/own-dont-leak/scaffold.sh" "$f/evals/c/"
 echo '{"name": "p"}' >"$f/.claude-plugin/plugin.json"
 printf -- '---\nname: c\n---\nDo it.\n' >"$f/evals/c/prompt.md"
+# A case that puts itself in the smoke tier, as evals/own-dont-leak does.
+mkdir -p "$f/evals/s/solution"
+cp "$repo/evals/own-dont-leak/scaffold.sh" "$f/evals/s/"
+printf -- '---\nname: s\ndescription: d\ntags: [smoke]\nruns: 3\n---\nDo it.\n' >"$f/evals/s/prompt.md"
+touch "$f/evals/s/solution/a.txt"
 printf '[workspace]\nmembers = ["crates/a"]\n' >"$f/Cargo.toml"
 echo '[package]' >"$f/crates/a/Cargo.toml"
 echo one >"$f/skills/s/SKILL.md"
@@ -298,6 +305,8 @@ fenv=$fbase/$fsha/root/evals/_scaffold/devenv.env
 same "the export tags its copy of each case" "tags: [case-c]" \
   "$(sed -n '2p' "$fbase/$fsha/root/evals/c/prompt.md" 2>/dev/null)"
 same "and leaves the case's own files alone" "name: c" "$(sed -n '2p' "$f/evals/c/prompt.md")"
+same "a case's own smoke tag gets case-<name> beside it, once" "tags: [smoke, case-s]" \
+  "$(grep '^tags:' "$fbase/$fsha/root/evals/s/prompt.md" 2>/dev/null)"
 same "the export's environment carries the lighter dev profile" yes \
   "$(grep -q '^export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0$' "$fenv" 2>/dev/null && echo yes)"
 # shellcheck disable=SC2016 # expanded by the inner shells

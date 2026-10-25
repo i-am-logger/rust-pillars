@@ -154,7 +154,7 @@ Running `claude plugin eval`, from the devenv shell (all real model calls):
 | what | command |
 |---|---|
 | full tier: every case, 3 runs, both arms | `devenv tasks run eval:full` |
-| smoke tier: 4 cases, 1 run, both arms, `-j 8` | `devenv tasks run eval:smoke` |
+| smoke tier: the cases tagged `smoke` in their `prompt.md`, 1 run, both arms, `-j 8` | `devenv tasks run eval:smoke` |
 | only what changed since a commit | `sh eval-harness/plugin-eval.sh --changed-since <rev> -j 4 --no-publish` |
 | plugin side only, against a stored baseline | `sh eval-harness/plugin-eval.sh --reuse-baseline <base.json> <out.json> -j 4 --no-publish` |
 | keep each run's full trace | `sh eval-harness/plugin-eval.sh --keep-state …` |
