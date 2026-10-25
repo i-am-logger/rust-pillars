@@ -32,7 +32,7 @@
 //! unsandboxed: the agent can run any command, write any file and reach the
 //! network as the runner, with the runner's Claude login. It is kept rather
 //! than narrowed to a tool allowlist, which would change what the agent can
-//! do and so every score against this harness's earlier runs. So the harness
+//! do, so a score would no longer mean what it meant before. So the harness
 //! refuses a model run unless `RUST_CODE_EVAL_UNSANDBOXED=1` is set: run one
 //! only on a tree you trust, ideally in a VM or container.
 //! `eval-harness/plugin-eval.sh` runs the same cases in `claude plugin
@@ -375,9 +375,9 @@ const UNSANDBOXED: &str = "RUST_CODE_EVAL_UNSANDBOXED";
 /// Whether a model run may start, given `$RUST_CODE_EVAL_UNSANDBOXED`.
 ///
 /// [`attempt`] runs `claude -p --permission-mode bypassPermissions` with no
-/// sandbox: kept so this harness's runs stay comparable with its earlier
-/// ones (a tool allowlist would change what the agent can do), so a model
-/// run starts only when its runner opts in by name.
+/// sandbox: kept because a tool allowlist would change what the agent can
+/// do, and so what a score means; instead a model run starts only when its
+/// runner opts in by name.
 fn unsandboxed(opt_in: Option<&OsStr>) -> Result<()> {
     ensure!(
         opt_in.is_some_and(|v| v == "1"),
