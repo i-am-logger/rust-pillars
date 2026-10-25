@@ -1,6 +1,7 @@
 ---
 name: rust-research
 description: "Use before deciding what a spec, a measurement or the owner should settle: choosing between designs, implementing a protocol or format, citing a source or another implementation, writing a research note, decision record or retraction, or asking a judge to pick an option."
+license: CC-BY-NC-SA-4.0
 ---
 
 # rust-research: standard first, evidence labelled, decisions reversible

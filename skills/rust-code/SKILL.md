@@ -1,6 +1,7 @@
 ---
 name: rust-code
 description: "Write robust, fast Rust on six enforced pillars. Use this skill whenever you write, review, refactor, debug, test or explain Rust code: new crates, modules, functions, types, traits, errors, async, unsafe or FFI, Cargo.toml, tests or docs. Trigger on any mention of Rust, cargo, crates, .rs files, the borrow checker, lifetimes, clippy or rustfmt, even when nobody asks for best practice."
+license: CC-BY-NC-SA-4.0
 ---
 
 # rust-code: Rust on six enforced pillars

@@ -1,6 +1,7 @@
 ---
 name: rust-qa
 description: "Use when writing, reviewing or refuting Rust tests and gates: a test or property, a model or oracle, fixtures and recordings, #[ignore] or platform-only tests, mutation testing, fuzz/Miri/loom/Kani, a planted-violation control, or a refuter's review of a change."
+license: CC-BY-NC-SA-4.0
 ---
 
 # rust-qa: tests that can fail, gates that prove it

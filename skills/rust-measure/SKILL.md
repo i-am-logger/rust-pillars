@@ -1,6 +1,7 @@
 ---
 name: rust-measure
 description: "Use when a Rust change claims to be faster, smaller or quicker to start, before keeping a hot-path change, or when writing a benchmark, A/B comparison, profile, startup timing or MEASUREMENTS.md row, or deciding to embed precomputed data in the binary."
+license: CC-BY-NC-SA-4.0
 ---
 
 # rust-measure

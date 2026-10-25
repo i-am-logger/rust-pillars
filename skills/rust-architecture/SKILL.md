@@ -1,6 +1,7 @@
 ---
 name: rust-architecture
 description: "Use when designing or reviewing Rust structure: crates and dependencies (layers.toml roles), a core state machine (events in, effects polled), who owns a buffer or how to avoid Box::leak, no_std, unsafe and quarantine crates, FFI and -sys crates, SIMD backends, cache-aware layout, CPU/GPU shared memory, or allocation outside the core."
+license: CC-BY-NC-SA-4.0
 ---
 
 # rust-architecture

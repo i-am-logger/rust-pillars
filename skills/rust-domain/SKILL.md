@@ -1,6 +1,7 @@
 ---
 name: rust-domain
 description: "Use when modelling values in a domain or core crate: a quantity, id, count, length, offset, timestamp or flag; an integer width, operator or conversion; a lifecycle (typestate); events and effects as types; replacing a bool; a compile_fail test; or a `cargo xtask budgets` primitive finding."
+license: CC-BY-NC-SA-4.0
 ---
 
 # rust-domain: refuse primitives

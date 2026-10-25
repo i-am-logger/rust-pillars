@@ -1,6 +1,7 @@
 ---
 name: rust-idioms
 description: "Use for everyday Rust idiom: naming, signatures and borrowing, standard traits, constructors and builders, visibility, error types and panics, lint suppressions, docs, imports, concurrency and async, refactoring someone else's code, and dependency hygiene -- before adding a public item or a dependency, writing threads, locks or async, or reviewing someone's code."
+license: CC-BY-NC-SA-4.0
 ---
 
 # rust-idioms
