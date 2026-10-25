@@ -50,13 +50,21 @@ jobs:
       # action as an input, not to the run steps: checkout below does not
       # persist it. A fork PR's token is read-only whatever this says.
       actions: write
-    # Skip on release-plz's own Release PR and on the release commit it merges:
-    # both touch only Cargo.toml versions and CHANGELOG.md, and the checks
-    # already passed on the underlying commits.
+    # Skip only on release-plz's own Release PR: it touches versions and
+    # CHANGELOG.md, and the checks passed on the commits it releases. Who
+    # opened the PR decides, never its title, which any author can set: the
+    # Actions bot, from a release-plz- branch of this repository (release-plz's
+    # default `pr_branch_prefix`). A PR opened with another token -- a GitHub
+    # App's, say -- has another login and is checked like any other.
+    #
+    # A push to master is never skipped. The release commit is checked like
+    # any other, and Release below runs only if it passed.
     if: |
       !(
-        (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'chore: release')) ||
-        (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release'))
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.user.login == 'github-actions[bot]' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        startsWith(github.head_ref, 'release-plz-')
       )
     steps:
       - name: Checkout code
@@ -165,13 +173,13 @@ jobs:
     timeout-minutes: 30
     # `!cancelled()`, not `always()`: this job publishes to an IMMUTABLE
     # registry, so running it from a cancelled workflow is the one thing that
-    # cannot be undone. `skipped` is accepted because devenv-checks skips on
-    # the release commit itself (see its `if`).
+    # cannot be undone. Only `success` counts: devenv-checks never skips on a
+    # push, so a skipped or failed check means nothing was proven.
     if: |
       !cancelled() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master' &&
-      (needs.devenv-checks.result == 'success' || needs.devenv-checks.result == 'skipped')
+      needs.devenv-checks.result == 'success'
     permissions:
       contents: write
       pull-requests: read
@@ -208,7 +216,7 @@ jobs:
       !cancelled() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master' &&
-      (needs.devenv-checks.result == 'success' || needs.devenv-checks.result == 'skipped') &&
+      needs.devenv-checks.result == 'success' &&
       needs.release-plz-release.result == 'success'
     permissions:
       contents: write
