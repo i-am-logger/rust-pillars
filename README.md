@@ -29,27 +29,55 @@ Two halves, versioned separately:
 
 ## Install
 
-Once the repository is published:
+**Claude Code**, from the marketplace this repository is:
 
-```text
+```bash
+claude plugin install rust-code --marketplace i-am-logger/rust-code
+# or, inside a session:
 /plugin marketplace add i-am-logger/rust-code
 /plugin install rust-code@rust-code
 ```
 
-A project made from rust-template enables it for everyone working in the
-project through its Claude Code project settings. Locally, before publishing:
+The repository is private for now: git on your machine must already be able to
+clone it (an SSH key in `ssh-agent`, or `gh auth login` then `gh auth
+setup-git`). A project made from rust-template enables the plugin for
+everyone in it through its Claude Code project settings. From a local checkout:
 `claude --plugin-dir ~/Code/rust-code`.
 
-## The skills
+**Opt-in gates while you work.** Install with `--config gate_on_edit=true`
+(or set the option later with `claude plugin configure rust-code`), and after
+every edit to a `.rs` file in a rust-template project the plugin runs
+`cargo xtask budgets` and `cargo xtask arch` and shows Claude what fails, so a
+violation is fixed in the same turn. Off by default: it runs commands in your
+project.
 
-| Skill | Load it when | Covers |
-|---|---|---|
-| `rust-domain` | modelling quantities, IDs, protocol vocabulary, lifecycles | refusing primitives, seams, proof types, typestate, brands, `compile_fail` twins |
-| `rust-architecture` | designing crates, a core, ownership, layout, `no_std`, SIMD, GPU hand-off | roles and layering, sans-IO, zero-copy and own-don't-leak, caches, no unsafe |
-| `rust-idioms` | everyday API, error, naming and doc decisions | BeautifulRust's idioms, kept or departed from, with reasons |
-| `rust-research` | deciding against a standard, citing sources, recording decisions | standard first, pinned sources, notes, the judge protocol, retractions |
-| `rust-measure` | claiming anything about speed, memory or startup | A/A arms, one build path, instruments, embedding at build time, CI counters |
-| `rust-qa` | writing or reviewing tests and gates | properties against a model, never-skip, exact floors, mutation testing, refuters |
+**claude.ai**: `devenv tasks run dist:package` builds
+`target/dist/rust-code-plugin.zip` (upload at Customize > Plugins) and one zip
+per skill under `target/dist/skills/` (upload at Customize > Skills). Every
+skill stands alone: no link leaves its folder, and its frontmatter uses only
+the keys claude.ai accepts (`test:plugin` holds both).
+
+## Use
+
+The `rust-code` skill fires on any Rust work and routes to the specialist the
+task needs; each specialist loads its references only when it is used. Call
+any of them directly:
+
+| Invoke | Fires on its own when |
+|---|---|
+| `/rust-code:rust-code` | any Rust work: writing, reviewing, debugging, testing, explaining |
+| `/rust-code:rust-domain` | modelling quantities, ids, lifecycles, events and effects as types |
+| `/rust-code:rust-architecture` | crates and dependencies, a core state machine, ownership, `no_std`, `unsafe`, SIMD, caches |
+| `/rust-code:rust-idioms` | naming, signatures, traits, errors, docs, concurrency, refactoring |
+| `/rust-code:rust-measure` | a claim about speed, size or startup; a benchmark; embedding data |
+| `/rust-code:rust-qa` | tests, properties, oracles, mutation testing, gates |
+| `/rust-code:rust-research` | choosing against a spec; citing a source; a decision record |
+
+| Command or agent | Does |
+|---|---|
+| `/rust-code:gate [gate]` | runs every gate (or one) and reports what fails, by pillar |
+| `/rust-code:adopt [--ratchet]` | brings the gates into an existing workspace: roles, then `cargo xtask init` |
+| `@agent-rust-code:refuter` | a closed-brief refuter: tries to show a change is wrong, returns its verdict as JSON |
 
 ## The pillars and their gates
 

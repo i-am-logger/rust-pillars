@@ -7,7 +7,9 @@
 //! without, and then every command in the case's `checks.toml` is run against
 //! what was left on disk.
 //!
-//! The copies live outside this repository (under the system temp dir), so a
+//! Each copy is built by the case's `scaffold.sh` -- the script `claude plugin
+//! eval --scaffold` runs too -- and lives outside this repository (under the
+//! system temp dir), so a
 //! run cannot reach the cases' checks with a relative path, and the arm with
 //! the plugin gets a copy of the plugin alone (its manifests and skills), not
 //! the repository. Checks reach the repository through `$EVAL_ROOT` and their
@@ -27,7 +29,7 @@
 //! other run is a real model call.
 //!
 //! Run it from the devenv shell: `cargo run --manifest-path
-//! evals/harness/Cargo.toml -- [--control] [--case NAME] [--runs N]
+//! eval-harness/Cargo.toml -- [--control] [--case NAME] [--runs N]
 //! [--model M]` (the `eval:run` task).
 
 use std::fmt::Write as _;
@@ -37,6 +39,8 @@ use std::process::{Child, Command, ExitCode, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail, ensure};
+
+mod plugin;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -96,6 +100,8 @@ enum Mode {
     Solution,
     /// The model, with and without the plugin.
     Model,
+    /// The plugin's own structure (`plugin.rs`); no case, no model.
+    Plugin,
 }
 
 #[derive(Debug)]
@@ -120,6 +126,7 @@ fn opts() -> Result<Opts> {
         match a.as_str() {
             "--control" => o.mode = Mode::Control,
             "--solution" => o.mode = Mode::Solution,
+            "--plugin" => o.mode = Mode::Plugin,
             "--case" => o.case = Some(val()?.clone()),
             "--runs" => o.runs = val()?.parse()?,
             "--model" => o.model = Some(val()?.clone()),
@@ -186,87 +193,42 @@ fn scratch() -> PathBuf {
     std::env::temp_dir().join("rust-code-eval")
 }
 
-/// What a case starts from: this workspace's crates, gates, config and docs
-/// skeleton, as a project made from the template has them -- without the
-/// plugin, its evals, or its research (the evidence note and the pinned
-/// sources, which include BeautifulRust's skill text).
-fn base(root: &Path, work: &Path) -> Result<()> {
-    const SKIP: &[&str] = &[
-        "target",
-        ".git",
-        "skills",
-        "evals",
-        ".claude-plugin",
-        ".claude",
-        ".direnv",
-        "README.md",
-    ];
-    fs::create_dir_all(work)?;
-    for e in fs::read_dir(root)? {
-        let e = e?;
-        let name = e.file_name();
-        let name = name.to_string_lossy();
-        if SKIP.contains(&name.as_ref()) || name.starts_with(".devenv") {
-            continue;
-        }
-        if e.file_type()?.is_dir() {
-            copy_dir(&e.path(), &work.join(name.as_ref()))?;
-        } else {
-            fs::copy(e.path(), work.join(name.as_ref()))?;
-        }
-    }
-    let research = work.join("docs/research");
-    for dir in ["sources", "notes"] {
-        let d = research.join(dir);
-        if d.exists() {
-            for e in fs::read_dir(&d)? {
-                let p = e?.path();
-                if p.file_name().is_none_or(|n| n != "TEMPLATE.md") {
-                    fs::remove_file(&p)?;
-                }
-            }
-        }
-    }
-    fs::create_dir_all(research.join("sources"))?;
-    fs::write(
-        research.join("sources/MANIFEST.toml"),
-        "# Pinned research sources.\n",
-    )?;
-    let index = work.join("docs/README.md");
-    if index.exists() {
-        let text = fs::read_to_string(&index)?;
-        let kept: Vec<&str> = text
-            .lines()
-            .filter(|l| !l.contains("a-rust-code-evidence"))
-            .collect();
-        fs::write(&index, kept.join("\n") + "\n")?;
-    }
-    Ok(())
-}
-
 /// A copy of the plugin alone, for the arm with the plugin.
 fn plugin_copy(root: &Path) -> Result<PathBuf> {
     let dir = scratch().join("plugin");
     if dir.exists() {
         fs::remove_dir_all(&dir)?;
     }
-    copy_dir(&root.join(".claude-plugin"), &dir.join(".claude-plugin"))?;
-    copy_dir(&root.join("skills"), &dir.join("skills"))?;
+    for part in [".claude-plugin", "skills", "commands", "agents", "hooks"] {
+        if root.join(part).is_dir() {
+            copy_dir(&root.join(part), &dir.join(part))?;
+        }
+    }
+    for file in ["LICENSE", "NOTICE.md"] {
+        if root.join(file).is_file() {
+            fs::copy(root.join(file), dir.join(file))?;
+        }
+    }
     Ok(dir)
 }
 
-/// A fresh working copy for one run: the base, then the case's fixture.
-fn fresh(root: &Path, case: &Path, slot: &str) -> Result<PathBuf> {
+/// A fresh working copy for one run, built by the case's own `scaffold.sh`
+/// (the same script `claude plugin eval --scaffold` runs): the base
+/// workspace, then the case's fixture.
+fn fresh(case: &Path, slot: &str) -> Result<PathBuf> {
     let name = case.file_name().and_then(|n| n.to_str()).unwrap_or("case");
     let work = scratch().join(name).join(slot);
     if work.exists() {
         fs::remove_dir_all(&work)?;
     }
-    base(root, &work)?;
-    let fixture = case.join("fixture");
-    if fixture.is_dir() {
-        copy_dir(&fixture, &work).context("copying the fixture")?;
-    }
+    fs::create_dir_all(&work)?;
+    let status = Command::new("sh")
+        .arg(case.join("scaffold.sh"))
+        .current_dir(&work)
+        .stdin(Stdio::null())
+        .status()
+        .context("running the case's scaffold.sh")?;
+    ensure!(status.success(), "{name}: scaffold.sh failed");
     Ok(work)
 }
 
@@ -302,7 +264,7 @@ fn run_check(root: &Path, case: &Path, work: &Path, c: &Check) -> Result<bool> {
 
 /// Every check on the untouched base must do what its `on_base` says.
 fn control(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
-    let work = fresh(root, case, "control")?;
+    let work = fresh(case, "control")?;
     let name = case.file_name().and_then(|n| n.to_str()).unwrap_or("case");
     let mut wrong = Vec::new();
     for c in &checks.check {
@@ -327,7 +289,7 @@ fn solution(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
             "{name}: no solution/ -- nothing shows its checks can be passed"
         )]);
     }
-    let work = fresh(root, case, "solution")?;
+    let work = fresh(case, "solution")?;
     copy_dir(&reference, &work)?;
     // A solution whose honest answer is a tool's output (a measurement, a
     // generated file) regenerates it here rather than committing build
@@ -360,15 +322,9 @@ fn solution(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
 }
 
 /// Runs the model once in a fresh working copy; returns the copy.
-fn attempt(
-    root: &Path,
-    case: &Path,
-    plugin: Option<&Path>,
-    slot: &str,
-    o: &Opts,
-) -> Result<PathBuf> {
+fn attempt(case: &Path, plugin: Option<&Path>, slot: &str, o: &Opts) -> Result<PathBuf> {
     let p = prompt(case)?;
-    let work = fresh(root, case, slot)?;
+    let work = fresh(case, slot)?;
     let transcript = fs::File::create(work.join(".eval-transcript.json"))?;
     let mut cmd = Command::new("claude");
     cmd.arg("-p")
@@ -497,7 +453,7 @@ fn run_models(root: &Path, cases: &[PathBuf], o: &Opts) -> Result<ExitCode> {
         for (i, arm) in [Arm::With, Arm::Without].into_iter().enumerate() {
             for run in 1..=o.runs {
                 let dir = (arm == Arm::With).then_some(plugin.as_path());
-                let work = attempt(root, case, dir, &format!("{}-{run}", arm.name()), o)?;
+                let work = attempt(case, dir, &format!("{}-{run}", arm.name()), o)?;
                 let (passed, failed) = score(root, case, &work, &checks)?;
                 let missed = if failed.is_empty() {
                     String::new()
@@ -528,13 +484,20 @@ fn run_models(root: &Path, cases: &[PathBuf], o: &Opts) -> Result<ExitCode> {
 }
 
 fn main() -> ExitCode {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let result = opts().and_then(|o| {
         let root = root.canonicalize().context("finding the repository root")?;
+        if o.mode == Mode::Plugin {
+            return Ok(if plugin::run(&root)? == 0 {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            });
+        }
         let cases = cases(&root, o.case.as_ref())?;
         match o.mode {
             Mode::Control | Mode::Solution => run_control(&root, &cases, o.mode),
-            Mode::Model => run_models(&root, &cases, &o),
+            Mode::Model | Mode::Plugin => run_models(&root, &cases, &o),
         }
     });
     match result {

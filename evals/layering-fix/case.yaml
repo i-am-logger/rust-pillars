@@ -1,0 +1,6 @@
+schema_version: "1.1"
+name: layering-fix
+# `claude plugin eval --scaffold` builds the working copy with scaffold.sh;
+# the prompt, runs and limits are in prompt.md.
+context:
+  scaffold_script: scaffold.sh

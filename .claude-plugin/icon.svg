@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="rust-code">
+  <rect width="128" height="128" rx="24" fill="#1f1d1b"/>
+  <g fill="none" stroke="#e8a15b" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M30 40 L52 64 L30 88"/>
+    <path d="M60 88 H98"/>
+  </g>
+  <g fill="#e8a15b">
+    <circle cx="74" cy="40" r="5"/><circle cx="90" cy="40" r="5"/><circle cx="106" cy="40" r="5"/>
+    <circle cx="74" cy="56" r="5"/><circle cx="90" cy="56" r="5"/><circle cx="106" cy="56" r="5"/>
+  </g>
+</svg>

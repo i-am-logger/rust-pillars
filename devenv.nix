@@ -261,7 +261,7 @@ in
         cargo test --workspace --all-features --doc --profile qa --quiet; b=$?
         [ "$a" -eq 0 ] && [ "$b" -eq 0 ]
       '';
-      after = [ "test:snippets" ];
+      after = [ "test:plugin" ];
     };
 
     "test:doc" = {
@@ -332,15 +332,49 @@ in
       after = [ "test:mutants-diff" ];
     };
 
+    # The plugin holds together on every machine and on claude.ai: skill names
+    # match folders, frontmatter is what claude.ai accepts, descriptions are
+    # quoted (YAML cuts an unquoted one at ` #`), files stay within their line
+    # limits, and no link leaves its skill (eval-harness/src/plugin.rs).
+    "test:plugin" = {
+      exec = "cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --plugin";
+      after = [ "test:snippets" ];
+    };
+
+    # claude.ai uploads, built from the committed tree (git archive), so nothing
+    # untracked can slip in: the whole plugin, and one zip per skill with the
+    # skill folder at the top, as Customize > Skills expects.
+    "dist:package" = {
+      exec = ''
+        set -e
+        rm -rf target/dist
+        mkdir -p target/dist/skills
+        git archive --format=zip -o target/dist/rust-code-plugin.zip HEAD \
+          .claude-plugin skills commands agents hooks LICENSE NOTICE.md README.md
+        for d in skills/*/; do
+          n=$(basename "$d")
+          git archive --format=zip --prefix="$n/" -o "target/dist/skills/$n.zip" "HEAD:skills/$n"
+        done
+        ls -l target/dist target/dist/skills
+      '';
+    };
+
+    # Claude Code's own manifest check (needs the claude CLI).
+    "qa:validate" = {
+      # Not --strict: the one warning is the repository's own CLAUDE.md, which
+      # is for working on rust-code, not context the plugin ships.
+      exec = "claude plugin validate .";
+    };
+
     # The plugin's evals, scored by building and gating what the model wrote
-    # (evals/harness). Every run is a real model call: manual only.
+    # (eval-harness/). Every run is a real model call: manual only.
     # `eval:control` runs no model: each check against the untouched base.
     "eval:run" = {
-      exec = "cargo run --quiet --manifest-path evals/harness/Cargo.toml --";
+      exec = "cargo run --quiet --manifest-path eval-harness/Cargo.toml --";
     };
 
     "eval:control" = {
-      exec = "cargo run --quiet --manifest-path evals/harness/Cargo.toml -- --control";
+      exec = "cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --control";
     };
 
     # Every mutant of domain and core, not only changed lines.
@@ -368,5 +402,5 @@ in
 
   # https://devenv.sh/tests/
   # Every gate must be named here: a task left out is a task CI never runs.
-  enterTest = lib.mkForce "devenv tasks run test:fmt test:sources test:clippy test:check test:arch test:layers test:budgets test:docs test:tests test:coverage test:snippets test:unit test:doc test:bare test:features test:deny test:mutants-diff test:controls";
+  enterTest = lib.mkForce "devenv tasks run test:fmt test:sources test:clippy test:check test:arch test:layers test:budgets test:docs test:tests test:coverage test:snippets test:plugin test:unit test:doc test:bare test:features test:deny test:mutants-diff test:controls";
 }

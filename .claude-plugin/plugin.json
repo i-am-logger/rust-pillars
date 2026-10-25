@@ -2,9 +2,29 @@
   "name": "rust-code",
   "version": "0.1.0",
   "description": "Rust in the style of BeautifulRust, built on six enforced pillars: a domain type system that refuses primitives, event-driven sans-IO cores, layered crates, zero-copy, no_std and no unsafe -- plus the research, measurement and QA method behind them. Pairs with rust-template, whose gates enforce every rule.",
-  "author": { "name": "i-am-logger" },
+  "author": {
+    "name": "i-am-logger"
+  },
   "homepage": "https://github.com/i-am-logger/rust-code",
   "repository": "https://github.com/i-am-logger/rust-code",
   "license": "CC-BY-NC-SA-4.0",
-  "keywords": ["rust", "skills", "type-system", "sans-io", "no-std", "zero-copy", "testing", "benchmarking"]
+  "icon": "./.claude-plugin/icon.svg",
+  "keywords": [
+    "rust",
+    "skills",
+    "type-system",
+    "sans-io",
+    "no-std",
+    "zero-copy",
+    "testing",
+    "benchmarking"
+  ],
+  "userConfig": {
+    "gate_on_edit": {
+      "type": "boolean",
+      "title": "Run the gates after each Rust edit",
+      "description": "After Claude edits a .rs file in a project with rust-template's gates, run `cargo xtask budgets` and `cargo xtask arch` and show Claude what they find. Runs commands in your project, so it is off until you turn it on.",
+      "default": false
+    }
+  }
 }

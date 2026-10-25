@@ -1,6 +1,6 @@
 ---
 name: rust-idioms
-description: Use when writing, reviewing or refactoring any Rust in the owner's projects and the question is everyday idiom rather than architecture. Covers naming, function signatures and borrowing, standard trait impls, constructors and builders, visibility and API evolution, error types and panics, lint suppressions, docs, imports and basic concurrency. Load it before writing a new public item, an error type, a `#[expect]`, a doc comment or a refactor of someone else's code, and whenever a reviewer asks "is this idiomatic?". It scopes each rule to the kind of code involved (domain, no_std core, std adapter/bin, library for others). It defers to rust-domain for quantity types and primitive refusal, to rust-architecture for layering, zero-copy and unsafe, and to rust-qa for tests.
+description: "Use for everyday Rust idiom: naming, signatures and borrowing, standard traits, constructors and builders, visibility, error types and panics, lint suppressions, docs, imports, concurrency and async, refactoring someone else's code, and dependency hygiene -- before adding a public item or a dependency, writing threads, locks or async, or reviewing someone's code."
 ---
 
 # rust-idioms
@@ -95,11 +95,23 @@ requirement"), the measuring rust-measure's.
 - Name magic numbers as consts (`const EFFECTS: usize = 1024;`). Why: the doc comment says where the number came from.
 - Log only in adapters and bins (`log`/`tracing`). DEPARTS from BeautifulRust's "log via `tracing`/`log`": core does not log, because logging is I/O. It counts, and the host logs the counts (`main.rs` warns with `refused()`).
 
-## Concurrency (adapters and bins only; core is single-threaded by design)
+## Concurrency and async — [concurrency.md](references/concurrency.md)
 
-- Prefer channels to shared state. Keep lock scopes short, never return a `MutexGuard`, and never hold one across `.await`. Why: each of these turns contention into deadlock. Gate: clippy `await_holding_lock`.
-- Public futures and shared types are `Send`. For a nameable type, assert it at compile time: `const _: () = { const fn s<T: Send>() {} s::<Foo>(); };`. For an `async fn`'s future, call `fn assert_send<T: Send>(_: &T) {}` on the future value in a test. Why: a lost `Send` breaks callers far away.
-- Move CPU-bound work to `spawn_blocking` or a thread. A library never spawns tasks and never assumes a runtime. Why: blocking an executor thread stalls every task on it, and the runtime is the application's choice.
+Adapters and bins only. The core has no threads, locks, futures or callbacks: it takes events, and the adapter decides when to call it (sans-IO). Gates: crate-local `clippy.toml` bans `std::thread::spawn` in domain and core; `layers.toml` keeps tokio out of core. DEPARTS from BeautifulRust's "take `impl Read` from the caller": a core takes neither `Read` nor `AsyncRead`, only bytes as events.
+
+- Give each task its own core value, or one owner task fed by a channel, before reaching for a lock. Why: what is owned needs no lock.
+- Write `async fn`; write `-> impl Future + Send` only in a public trait or when work must run before the first poll. Why: an `async fn` in a trait cannot promise `Send`. Gate: clippy `manual_async_fn`, rustc `async_fn_in_trait`.
+- Never hold a lock across `.await`. Why: a suspended holder blocks every task that wants the lock. Gate: clippy `await_holding_lock`.
+- Never keep an `Rc`, or a live `RefCell` borrow, over an `.await`. Why: the future becomes `!Send`, and the error shows up at a distant `spawn`. Gate: `await_holding_refcell_ref`, and a `Send` test.
+- Pin `Send` on public types and futures. For a type: `const _: () = { const fn s<T: Send>() {} s::<Foo>(); };`. For a future: `fn assert_send<T: Send>(_: &T) {}` in a test. Why: nothing else catches a lost `Send` until a caller spawns.
+- Put fields that must agree under one lock, in one struct. Why: two locks expose the half-updated state, and taking them in two orders deadlocks.
+- Never call a callback, closure or user `Drop` while holding a lock: copy out, unlock, then call. Why: the callee may take the same lock, and a std `Mutex` is not re-entrant.
+- Hold a lock for as few statements as you can, and never return a `MutexGuard`. Why: a guard that escapes is a lock scope nobody can see.
+- Break long CPU work with `yield_now().await`, or move it to `spawn_blocking` or a thread. Why: an executor thread runs one task at a time, so long work stalls all the others.
+- Make every channel bounded, then wait (backpressure) or `try_send` and count the refusal. Why: an unbounded queue turns a slow consumer into unseen memory growth. Gate: review.
+- In a looping `select!`, use only cancel-safe operations, or pin the future outside the loop. Why: the branch that loses is dropped, along with any partial progress. Document `# Cancel safety`.
+- Give every thread or task an owner that joins it: `thread::scope`, or a `JoinSet`. Never detach by dropping a `JoinHandle`. Why: a detached task's panic and error vanish.
+- Only the bin starts a runtime; adapters and libraries never spawn detached tasks or build a `Runtime`. Why: the runtime is the application's choice, and starting one inside another panics.
 
 ## Docs and naming — [docs-and-naming.md](references/docs-and-naming.md)
 
@@ -108,10 +120,24 @@ requirement"), the measuring rust-measure's.
 - Put `//!` on every crate and module, and `///` on every public item, starting with a one-line summary (review: no `missing_docs` gate). Examples use `?`. Use intra-doc links. Gate: `test:doc` (`RUSTDOCFLAGS='-D warnings'`) fails a broken link, and doctests run in `test:unit`.
 - Comments say why, not what. Design history goes in `docs/record.md` and `docs/decisions.md`, not in comments. Why: the code already says what, and history in comments goes stale unseen.
 
-## Refactoring someone else's code
+## Refactoring someone else's code — [refactoring.md](references/refactoring.md)
 
-- Pin current behaviour with tests first; they must be red on a planted change (rust-qa). Why: without them, "kept behaviour" is a claim.
-- Fix every smell you touch, but keep behaviour; turning a panic into an `Err` is welcome. Show signature diffs. Preserve quirks you do not understand and flag them, because a quirk may be a contract.
+- Pin current behaviour with tests first, asserting exact outputs; they must go red on a planted change (rust-qa). Why: without them, "behaviour kept" is a claim.
+- Fix each smell the request names: `&String`/`&Vec<T>` parameters (`ptr_arg`), `+` string building, check-then-`unwrap` (`unnecessary_unwrap`), `HashMap` order in output, `bool` parameters, `new` returning `Rc<RefCell<_>>`, errors without `Display`/`Error`, `#![deny(warnings)]`. Why: a half-cleaned module still has the smells the request named. Put the other smells in the hand-back as suggestions.
+- Keep the public surface unless the request asks for the change: drop no error variant and no derive, and do not change what a constructor takes. Why: callers you cannot see depend on each of these. A panic that becomes an `Err` is welcome; say so in the hand-back.
+- Keep quirks you cannot explain, pin each with a `quirk_` test, and flag it. Why: a quirk may be a contract.
+- Show every changed signature before and after, with its reason. Why: the reviewer checks call sites from the pair.
+
+## Dependencies — [dependencies.md](references/dependencies.md)
+
+- Treat every dependency as unmeasured code plus supply-chain exposure, `build.rs` and proc macros included. Check std first, then the role's `external` list (rust-architecture). Gate: `cargo xtask layers`.
+- Use caret ranges at the lowest version you need, never `"*"`, and `"="` only for lockstep crates. Why: Cargo can then unify one copy. Gate: `deny.toml` `wildcards = "deny"` (`test:deny`).
+- Declare versions once in `[workspace.dependencies]`, and members use `workspace = true`. Why: one place to bump, and no drift between members.
+- Commit `Cargo.lock` for binaries. Why: CI's build is then the shipped build.
+- Keep `test:deny` green (licenses, bans, sources), and run `qa:advisories` before a release (it needs the network). Why: a new licence or a git source is a reviewed decision.
+- Read `cargo tree --duplicates` after every bump, and remove unused dependencies (`cargo machete`). Why: duplicates only warn in `test:deny`, and nothing gates unused ones.
+- Set the edition and `rust-version` deliberately; with resolver 3, `rust-version` steers resolution (the Cargo Book). Raise either in its own commit.
+- No code before `main` (`ctor`-style crates) and no `#![feature]` on stable. Why: startup order is unspecified, and a nightly feature can vanish. Gate: the stable toolchain in `nix/rust.nix`.
 
 ## Out of scope here
 
