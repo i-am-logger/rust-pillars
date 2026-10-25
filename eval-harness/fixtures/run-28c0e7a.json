@@ -1,0 +1,6160 @@
+{
+ "schemaVersion": 1,
+ "claudeVersion": "2.1.303",
+ "startedAt": "2026-10-25T13:33:51.970Z",
+ "durationSeconds": 7335,
+ "costUsd": 42.7458137,
+ "partial": false,
+ "suite": {
+  "root": "/export/root",
+  "ablation": "with-without",
+  "threshold": 1,
+  "concurrency": 4,
+  "plugins": [
+   {
+    "name": "rust-code",
+    "version": "0.1.0",
+    "path": "/export/root"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "name": "domain-refuse-primitives",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-thermostat",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This file is the domain crate's new thermostat module. Judge it from its contents alone. If the file is missing or empty, every item fails.\n\n1. It defines a reading type, a setpoint type distinct from it, a public `enum Heat` with two variants (heat / don't heat), and a public decision function or method that takes a reading and a setpoint and returns `Heat`. The decision heats exactly when the reading is below the setpoint, and does not heat at or above it. It compares temperatures as signed values, not as raw bytes.\n2. No raw signed 16-bit value (or any other integer, or a `[u8; 2]` array) appears in a new public signature. That rules out a `pub fn`/method such as `new(i16)`, `of(i16)`, `get() -> i16` or `from_le_bytes([u8; 2])`, an `impl From<i16>` / `TryFrom<i16>` (or from any integer) for these types, and a `pub` field. The value enters only through a derive-only route such as `zerocopy::FromBytes`, which adds no hand-written primitive-carrying API. These are allowed and are not violations: a `pub(crate)` or private field, including one holding zerocopy's `I16`; methods the derives supply (`read_from_bytes(&[u8])`, `ref_from_bytes`); calling `.get()` on zerocopy's `I16` inside the module; and helper functions inside `#[cfg(test)]` that take `i16`.\n3. There is no `bool` parameter, no `bool` field, and the decision does not return `bool`. Booleans that come from comparisons or assertions in code or tests are fine.\n4. The file has no `#[allow(...)]`, `#![allow(...)]`, `#[expect(...)]` or `#![expect(...)]` suppression.\n5. Its tests pin the decision. Each of these cases is checked: a reading below the setpoint (heat), a reading exactly at the setpoint (don't heat), a reading above the setpoint (don't heat), and at least one negative reading.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/thermostat.rs"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "regex-binary-untouched",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      },
+      "pattern": "\\bHeat\\b",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-budget-domain",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "budgets.toml"
+      },
+      "pattern": "\\[crates\\.rust-code-domain\\]\\nseam = 8\\n#[^\\n]*\\nas_cast = 2\\n\\n\\[crates\\.rust-code-core\\]",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-budget-seams",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "budgets.toml"
+      },
+      "pattern": "names = \\[\"get\", \"of\", \"from_host\", \"threshold_ms\"\\]",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-core-untouched",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-core/src/lib.rs"
+      },
+      "pattern": "\\bHeat\\b",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-lib-exports-heat",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/lib.rs"
+      },
+      "pattern": "pub +use +[^;]*(\\bHeat\\b|::\\*)",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-lib-no-suppression",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/lib.rs"
+      },
+      "pattern": "#!?\\[(allow|expect)\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-domain",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "After its last edit to the code or tests, the agent ran the checks the task calls for, and each one succeeded:\n\n1. `cargo clippy --workspace --all-targets -- -D warnings` (or the same clippy run limited to the domain crate) finished with no warnings or errors.\n2. The tests ran (`cargo nextest run` or `cargo test`, for the workspace or the domain crate) and passed, the new thermostat tests among them.\n3. The repo's gates ran and passed: `cargo xtask budgets` and `cargo xtask coverage`, or `cargo xtask all`, which runs both.\n\n`devenv test` may be unavailable in this sandbox, so the plain `cargo` / `cargo xtask` equivalents above count in its place. A command that failed for a reason outside the code (no network, a missing tool) does not count as a pass, and a later successful run of the same check does. A check run only before the last edit does not count.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.6309775999999999,
+      "judgeCostUsd": 0.012664400000000006,
+      "durationSeconds": 488,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 18,
+      "costUsd": 0.5737375000000001,
+      "judgeCostUsd": 0.014056100000000002,
+      "durationSeconds": 214,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 29,
+      "costUsd": 0.7153738000000001,
+      "judgeCostUsd": 0.010376000000000003,
+      "durationSeconds": 286,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.8155564,
+      "judgeCostUsd": 0.012533200000000001,
+      "durationSeconds": 359,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 21,
+      "costUsd": 0.6392838,
+      "judgeCostUsd": 0.016227599999999995,
+      "durationSeconds": 292,
+      "startedAt": "2026-10-25T13:37:26.247Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.6219072,
+      "judgeCostUsd": 0.01962839999999999,
+      "durationSeconds": 231,
+      "startedAt": "2026-10-25T13:38:37.968Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.5833333333333334,
+    "passRate": 0,
+    "scoreWithout": 0.5,
+    "passRateWithout": 0,
+    "delta": 0.08333333333333337
+   }
+  },
+  {
+   "name": "embed-at-build-time",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-main",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is the driver of the `rust-code` binary. Before the task it loaded the stopword list from a cwd-relative file at startup, and an I/O error variant reported \"loading the stopword list\". The task was to embed the list at build time instead. Judge from this file alone.\n\n1. The I/O error for loading the stopword list from disk is gone: the error enum has no variant that wraps an `io::Error` from reading the list, and startup no longer maps a load failure into such an error (no `.map_err(Error::Stopwords)` or the like). A variant kept for a different, still-possible failure counts as repurposed and is fine; one that can no longer happen fails this item.\n2. Startup does not read the stopword asset from disk, by a relative or an absolute path. Embedding the asset in this file (`include_str!` and the like) is fine.\n3. The `stopwords` subcommand still exists and still prints how many words are in the list.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      }
+     }
+    },
+    {
+     "name": "code-stopwords",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is the stopword module of the `rust-code` binary. The task was to stop reading `crates/rust-code/assets/stopwords.txt` from disk at run time and embed it at build time instead, so the asset stays the one copy people edit and an edit to it reaches the next build. Judge from this file alone.\n\n1. The module does not read the list from disk at run time: no `fs::read_to_string`, `File::open`, `fs::read` or similar on the load path, whether by a relative path or an absolute one built at run time. A read inside a `#[cfg(test)]` test that compares the embed with the asset is fine.\n2. The list's text comes from a build-time embed of the asset file itself. Any of these counts: `include_str!`/`include_bytes!` of `assets/stopwords.txt` (a relative path or one built with `concat!(env!(\"CARGO_MANIFEST_DIR\"), ...)`), an `include!` of a build-script output in `OUT_DIR`, or text handed in by the caller (for example from `main.rs`), where this module embeds nothing itself. It FAILS if the words are pasted into Rust source as a hand-maintained array, string or `const` copy that would not change when the asset is edited.\n3. If the file holds a test of the embedded list, that test could fail for its reason: it checks the list's actual contents, such as known words from the asset, the exact count, or that comments are skipped. An assertion that holds whatever the file contains (such as `len() >= 0` or that loading does not panic) does not count. If the file adds no test, this item passes.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code/src/stopwords.rs"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "no-allow-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      },
+      "pattern": "#!?\\[(allow|expect)\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-allow-stopwords",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/stopwords.rs"
+      },
+      "pattern": "#!?\\[(allow|expect)\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-disk-read",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/stopwords.rs"
+      },
+      "pattern": "read_to_string|File::open|fs::read",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-measure",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge from the trace what the agent ran after its last code edit.\n\n1. After its last edit to the code, the agent ran the project's checks: a build, `cargo clippy` with `-D warnings`, the test suite (`cargo test` or `cargo nextest run`), and the `cargo xtask` gates (`cargo xtask all`, or the relevant gates such as `cargo xtask arch` / `cargo xtask docs`). Each of them succeeded on that final code. `devenv test` may be unavailable in the run's sandbox, so the plain cargo / `cargo xtask` equivalents count. A run that failed for a reason outside the code (no network, a missing tool) does not count; a later successful run of the same check does.\n2. After the change, the agent ran the built binary from a directory other than the repo root (or with the asset moved away) and saw `rust-code stopwords` print the word count, or saw piped text counted, without the \"loading the stopword list\" failure.\n3. The agent's final report states those results honestly: it does not claim a check passed that the trace shows failing or never ran.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 18,
+      "costUsd": 0.40222329999999995,
+      "judgeCostUsd": 0.03369349999999999,
+      "durationSeconds": 159,
+      "startedAt": "2026-10-25T13:39:50.639Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 20,
+      "costUsd": 0.44650030000000007,
+      "judgeCostUsd": 0.014235899999999996,
+      "durationSeconds": 175,
+      "startedAt": "2026-10-25T13:41:59.651Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.6666666666666666,
+      "passed": false,
+      "turns": 19,
+      "costUsd": 0.44327189999999994,
+      "judgeCostUsd": 0.020177699999999993,
+      "durationSeconds": 121,
+      "startedAt": "2026-10-25T13:42:18.120Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.6666666666666666,
+      "passed": false,
+      "turns": 13,
+      "costUsd": 0.2859499,
+      "judgeCostUsd": 0.010615299999999994,
+      "durationSeconds": 84,
+      "startedAt": "2026-10-25T13:42:29.173Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 16,
+      "costUsd": 0.3299620000000001,
+      "judgeCostUsd": 0.02024200000000001,
+      "durationSeconds": 155,
+      "startedAt": "2026-10-25T13:42:29.247Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.6666666666666666,
+      "passed": false,
+      "turns": 12,
+      "costUsd": 0.31010180000000004,
+      "judgeCostUsd": 0.011209799999999992,
+      "durationSeconds": 107,
+      "startedAt": "2026-10-25T13:43:53.553Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.8333333333333334,
+    "passRate": 0.3333333333333333,
+    "scoreWithout": 0.7222222222222222,
+    "passRateWithout": 0,
+    "delta": 0.11111111111111116
+   }
+  },
+  {
+   "name": "layering-fix",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-machine",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is the core's state machine after the fix. Judge it from this file alone.\n\n1. `Refusals` (what `Machine::refused()` returns) has a counter for effects dropped because the effect queue was full. Its name is free, but it is a counter the host can read (a `Tally`-like count), not a flag.\n2. When pushing an effect onto the queue reports it was dropped (`Queued::Dropped`), the machine increments that counter. Nothing else is done with the drop.\n3. `Refusals::total()` includes that counter along with the other refusals. The counter also appears in `Refusals`'s `Debug` output, whether `Debug` is derived or written by hand.\n4. The file has no `log::` calls and no other way of calling back into the host. Nothing like a logger trait, closure, function pointer or callback is stored in or handed to the machine. The drop is only state that the host polls.\n5. The file adds no `#[allow(...)]`, `#[expect(...)]`, `#![allow(...)]` or `#![expect(...)]` attribute.\n6. The `#[cfg(test)]` tests in this file include one that overflows a small queue and asserts the dropped counter's exact value. For example, a `Machine<2>` fed three lines reports exactly 1 dropped, and `total()` agrees. The file keeps its tests of refusal after the end, of clearing the queue, of a last line with no newline, and of the idle threshold.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-core/src/machine.rs"
+      }
+     }
+    },
+    {
+     "name": "core-no-log-dep",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-core/Cargo.toml"
+      },
+      "pattern": "^\\s*log\\b|dep:log",
+      "flags": "m",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "layers-core-external-empty",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "layers.toml"
+      },
+      "pattern": "\\[roles\\.core\\]\\n(?:#.*\\n)*may_depend_on = \\[\"domain\", \"quarantine\"\\]\\nexternal = \\[\\]\\n",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "layers-crates-unchanged",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "layers.toml"
+      },
+      "pattern": "\\[crates\\]\\nrust-code-domain = \"domain\"\\nrust-code-core = \"core\"\\nrust-code = \"bin\"\\nxtask = \"tool\"\\n\\n",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "machine-no-log",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-core/src/machine.rs"
+      },
+      "pattern": "\\blog::",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-architecture",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge only what the agent ran after its last code edit, and whether it succeeded.\n\n1. After its last edit to code or manifests, the agent ran `cargo xtask layers` (or `cargo xtask all`, which includes it) and it passed.\n2. After that last edit it also ran clippy with warnings denied (`cargo clippy --workspace --all-targets --all-features -- -D warnings` or equivalent) and the workspace tests (`cargo test` or `cargo nextest run`), and both passed. The tests run include a core test that overflows the effect queue and checks the dropped count reported through `refused()`. Running the binary on a large input does not count as that check: the binary slices its reads so the queue never overflows.\n\n`devenv test` may be unavailable in this sandbox, so the plain `cargo` / `cargo xtask` equivalents count. A command that failed for a reason outside the code (no network, a missing tool) does not count as a pass, but a later successful run of the same check does.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 24,
+      "costUsd": 0.5255464000000001,
+      "judgeCostUsd": 0.016262799999999994,
+      "durationSeconds": 179,
+      "startedAt": "2026-10-25T13:44:19.123Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 21,
+      "costUsd": 0.45897989999999994,
+      "judgeCostUsd": 0.03304170000000001,
+      "durationSeconds": 159,
+      "startedAt": "2026-10-25T13:44:54.681Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 21,
+      "costUsd": 0.46638250000000003,
+      "judgeCostUsd": 0.027075700000000008,
+      "durationSeconds": 148,
+      "startedAt": "2026-10-25T13:45:04.296Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.5057438,
+      "judgeCostUsd": 0.018167600000000034,
+      "durationSeconds": 143,
+      "startedAt": "2026-10-25T13:45:40.361Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 19,
+      "costUsd": 0.40484180000000003,
+      "judgeCostUsd": 0.01736879999999999,
+      "durationSeconds": 137,
+      "startedAt": "2026-10-25T13:47:18.606Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 20,
+      "costUsd": 0.4640524,
+      "judgeCostUsd": 0.014229400000000003,
+      "durationSeconds": 180,
+      "startedAt": "2026-10-25T13:47:32.508Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 1,
+    "passRate": 1,
+    "scoreWithout": 0.8333333333333334,
+    "passRateWithout": 0,
+    "delta": 0.16666666666666663
+   }
+  },
+  {
+   "name": "measure-a-change",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-measurements",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge only the new record this file adds for the default `--chunk` change (64 KiB against 4 KiB on a 1 MiB input); the file's opening prose (the rules about rows, A/A spread and overlap) was there before and earns nothing. Pass only if every point holds:\n\n1. The record says the two defaults were timed with the repo's own `cargo xtask bench` with an A/A arm (`--aa`), every arm fed the same 1 MiB input (e.g. `--stdin <file>`), not with an ad-hoc `time` loop or a single run.\n2. The record says how the two arms were made and that they differ only in the default chunk size (e.g. two release builds of the bin differing only in that default, each run on its own default, or identical wrappers on both arms; never a wrapper on one arm only). The difference is presented as measured, not inferred from reading the code.\n3. The record states a wall-time verdict for the 4 KiB arm against the 64 KiB arm in the bench's terms, and it is consistent with the numbers recorded: overlapping ranges are \"no result\", not faster or slower; a disjoint difference under the floor is not a win. Stage timings, if given, are not presented as the verdict. Every number is presented as measured; none is marked as an estimate, a guess or an expectation.\n4. The record names the host, the power state, the statistic and the number of repetitions, and the A/A spread, and names the commit or says there is none.\n5. The record says what happens to the default: it moves to 4 KiB only if the verdict is disjoint, faster and above the floor; otherwise the record says the default stays at 64 KiB.",
+      "focus": {
+       "source": "file",
+       "path": "MEASUREMENTS.md"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "record-4kib",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "MEASUREMENTS.md"
+      },
+      "pattern": "(^|[^0-9])(4 ?(KiB|KB|K)|4096)([^0-9]|$)",
+      "flags": "i",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "record-table",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "MEASUREMENTS.md"
+      },
+      "pattern": "^\\|.*\\|",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-measure",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "After its last edit to any source file (including restoring `crates/rust-code/src/main.rs` after building a temporary 4 KiB arm), the agent ran the workspace's checks and they succeeded: `cargo clippy --workspace --all-targets -- -D warnings`, the tests (`cargo nextest run` or `cargo test`), and the gates (`cargo xtask all`, or `devenv test`). `devenv test` may be unavailable in this sandbox, so the plain cargo / `cargo xtask` equivalents count. A command that failed for a reason outside the code (no network, a missing tool) does not count as run; a later successful run of it does.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 14,
+      "costUsd": 0.5473407,
+      "judgeCostUsd": 0.028987899999999983,
+      "durationSeconds": 218,
+      "startedAt": "2026-10-25T13:47:34.021Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 15,
+      "costUsd": 0.4911342000000001,
+      "judgeCostUsd": 0.015408599999999995,
+      "durationSeconds": 181,
+      "startedAt": "2026-10-25T13:48:03.395Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 17,
+      "costUsd": 0.6069902000000001,
+      "judgeCostUsd": 0.02432180000000006,
+      "durationSeconds": 206,
+      "startedAt": "2026-10-25T13:49:35.515Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 15,
+      "costUsd": 0.42129,
+      "judgeCostUsd": 0.01718160000000002,
+      "durationSeconds": 143,
+      "startedAt": "2026-10-25T13:50:32.072Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 14,
+      "costUsd": 0.39265410000000006,
+      "judgeCostUsd": 0.014929500000000095,
+      "durationSeconds": 142,
+      "startedAt": "2026-10-25T13:51:04.680Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 16,
+      "costUsd": 0.4287431000000002,
+      "judgeCostUsd": 0.012986500000000067,
+      "durationSeconds": 178,
+      "startedAt": "2026-10-25T13:51:11.675Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.75,
+    "passRate": 0,
+    "scoreWithout": 0.75,
+    "passRateWithout": 0,
+    "delta": 0
+   }
+  },
+  {
+   "name": "no-std-port",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-clippy",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This should be the crate-local `crates/rust-code-checksum/clippy.toml` of a domain crate. Clippy reads the clippy.toml nearest a crate's manifest, so a domain crate's copy must keep every ban of the workspace `clippy.toml` and add the sans-IO ones. Judge it from its contents alone; if the file is missing or empty, fail.\n\n1. It keeps the workspace settings and bans: `allow-unwrap-in-tests = true`, `allow-expect-in-tests = true`, `too-many-lines-threshold = 80` (not raised), and `disallowed-methods` entries for all ten of `std::boxed::Box::leak`, `std::vec::Vec::leak`, `std::string::String::leak`, `alloc::boxed::Box::leak`, `alloc::vec::Vec::leak`, `alloc::string::String::leak`, `std::mem::forget`, `std::mem::ManuallyDrop::new`, `core::mem::forget` and `core::mem::ManuallyDrop::new`.\n2. It adds the sans-IO bans the other domain crates carry: no thread spawning (`std::thread::spawn` in `disallowed-methods`), no clock (`std::time::Instant` and `std::time::SystemTime` in `disallowed-types`), and ideally no ambient randomness and no `std::thread::Thread`. More bans than these are fine.\n\nPass only if both items hold.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/clippy.toml"
+      }
+     }
+    },
+    {
+     "name": "code-lib",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is `crates/rust-code-checksum/src/lib.rs` after porting the Adler-32 crate to a no_std, sans-IO domain crate. Judge it from its contents alone.\n\n1. Its input is borrowed bytes fed to an incremental hasher: an `update`-style method taking a slice (or a newtype over one) that can be called any number of times, and a way to finish it into a checksum. There is no function that pulls bytes from a source, and no unconditional `extern crate alloc` or `extern crate std` (a `#[cfg(test)]` one is fine).\n2. The crate needs no allocator: its non-test code uses no `Vec`, `String`, `format!`, `Box` or `to_string` (a `#[cfg(test)]` module may use `std` and `Vec`).\n3. The Adler-32 arithmetic is still here and still correct: modulus 65521, `a` starting at 1 and `b` at 0, both reduced often enough that the `u32` sums cannot overflow on a long run of `0xff`, and the result `(b << 16) | a`.\n4. Nothing is silenced: no `#[allow(...)]` or `#[expect(...)]` attribute anywhere in the file.\n\nPass only if every item holds.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/src/lib.rs"
+      }
+     }
+    },
+    {
+     "name": "code-main",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is the binary's `crates/rust-code/src/main.rs` after the Adler-32 crate `rust-code-checksum` was ported to no_std and its I/O moved out. Judge it from its contents alone.\n\n1. The reading moved here: the `--checksum` path reads stdin itself, in chunks (a buffer it reads into repeatedly until end of input, not one `read_to_end` into a growing buffer handed over whole), feeds each slice it read to the crate's incremental hasher (`rust_code_checksum`'s type, not a reimplementation), and prints the finished checksum (through the crate's `Display`, or an explicit eight-digit lowercase hex format).\n2. It holds no Adler-32 arithmetic of its own: no running `a`/`b` sums, no reduction step. The crate does the checksumming.\n\nPass only if both items hold.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      }
+     }
+    },
+    {
+     "name": "code-tests",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is the crate's existing test file `crates/rust-code-checksum/tests/adler.rs` after the Adler-32 crate was ported to no_std and its reading moved into the binary. Judge it from its contents alone.\n\n1. No existing check was deleted or loosened: it still asserts the known values (the empty input is `0x0000_0001`, `a` is `0x0062_0062`, `abc` is `0x024d_0127`, `Wikipedia` is `0x11e6_0398`), that feeding `Wiki`, an empty piece and `pedia` equals feeding `Wikipedia` whole, that 100 000 bytes of `0xff` give `0x149a_302c`, that a checksum prints as and parses from `11e60398`, and that `11e6039`, `+1e60398` and `11e6039g` are refused. Refusals may be asserted more strictly (a specific error variant) but not more loosely; no test is `#[ignore]`d.\n2. It tests only the crate's I/O-free API: it calls no reading function of the crate (such as `read_all`) and no `std::io::Read` through the crate. The old reader test may be gone, since reading is now the binary's job.\n\nPass only if both items hold.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/tests/adler.rs"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "regex-budgets-seams-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "budgets.toml"
+      },
+      "pattern": "^\\[crates\\.rust-code-checksum\\]\\nseam = 3$",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-keeps-workspace-lints",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/Cargo.toml"
+      },
+      "pattern": "^\\[lints\\]\\s*\\nworkspace\\s*=\\s*true\\s*$",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-layers-role-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "layers.toml"
+      },
+      "pattern": "^rust-code-checksum = \"domain\"$",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-main-uses-crate-hasher",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      },
+      "pattern": "^(?![ \\t]*//).*(rust_code_checksum::read_all|65_?521|0x[fF]{3}1\\b)",
+      "flags": "m",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-no-default-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/Cargo.toml"
+      },
+      "pattern": "^\\s*default\\s*=\\s*\\[[^\\]]*\"(std|alloc)\"",
+      "flags": "m",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-no-io",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/src/lib.rs"
+      },
+      "pattern": "^(?![ \\t]*//).*(std::io|io::(Read|Stdin|stdin)|\\bread_all\\b)",
+      "flags": "m",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-no-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/src/lib.rs"
+      },
+      "pattern": "^\\s*#!\\[(cfg_attr\\([^\\n]*)?no_std\\b",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-typed-error",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-checksum/src/lib.rs"
+      },
+      "pattern": "->\\s*Result<[^\\n]*\\bString\\b",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-architecture",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge only what the agent ran, and when, in this trace of porting `crates/rust-code-checksum` to a no_std domain crate.\n\n1. After its last code edit the agent ran, and saw succeed: clippy over the workspace with `-D warnings`; the tests (`cargo test` or `cargo nextest run`), with the new split-versus-whole property or exhaustive test among those that ran and passed; the layering and budget gates (`cargo xtask arch` and `cargo xtask budgets`, or `cargo xtask all`); and a `--no-default-features` build of `rust-code-checksum` for a bare-metal `*-none` target (such as `x86_64-unknown-none` or `thumbv7em-none-eabihf`).\n2. After its last code edit the agent ran `rust-code --checksum` (for example `printf Wikipedia | cargo run -q -- --checksum`) and saw it print `11e60398`.\n\nA successful `devenv test` covers all of item 1, but it may be unavailable in this sandbox, so the plain `cargo` and `cargo xtask` equivalents count (`cargo xtask all` does not run clippy or the bare builds). A command that failed for a reason outside the code (no network, a missing tool or target) does not count as a success; a later successful run of it does. A check run only before the last code edit does not count.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 29,
+      "costUsd": 0.6560244000000002,
+      "judgeCostUsd": 0.017262800000000078,
+      "durationSeconds": 944,
+      "startedAt": "2026-10-25T13:52:55.146Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 39,
+      "costUsd": 0.9925782000000001,
+      "judgeCostUsd": 0.015760000000000107,
+      "durationSeconds": 782,
+      "startedAt": "2026-10-25T13:53:01.115Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 32,
+      "costUsd": 0.9010829,
+      "judgeCostUsd": 0.015330099999999958,
+      "durationSeconds": 1272,
+      "startedAt": "2026-10-25T13:53:26.634Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 35,
+      "costUsd": 0.8041459000000001,
+      "judgeCostUsd": 0.035121099999999905,
+      "durationSeconds": 1770,
+      "startedAt": "2026-10-25T13:54:09.745Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8461538461538461,
+      "passed": false,
+      "turns": 26,
+      "costUsd": 0.6437252000000001,
+      "judgeCostUsd": 0.025339799999999912,
+      "durationSeconds": 1050,
+      "startedAt": "2026-10-25T14:06:02.825Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 33,
+      "costUsd": 0.8796869,
+      "judgeCostUsd": 0.01903110000000008,
+      "durationSeconds": 948,
+      "startedAt": "2026-10-25T14:08:39.134Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.9487179487179488,
+    "passRate": 0.3333333333333333,
+    "scoreWithout": 0.8974358974358975,
+    "passRateWithout": 0,
+    "delta": 0.05128205128205132
+   }
+  },
+  {
+   "name": "no-unsafe-simd",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-lib",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge this file, the scan crate's `lib.rs`, on its contents alone.\n\n1. `first_newline` keeps the signature `pub fn first_newline(haystack: &[u8]) -> Option<usize>` (a `const fn` is fine) and is still a fast scan: it tests several bytes per step in safe code -- for example word-at-a-time SWAR over `u64`/`usize`/`u128` chunks, or a safe bulk API -- and uses a plain byte-by-byte loop only for a short tail. A body that is just `iter().position(..)` or a `for`/`while` loop over every byte fails. If this file only re-exports `first_newline` from a module of this same crate (`mod x; pub use x::first_newline;`), the body is not visible here: then judge only item 2.\n2. The file has no `unsafe` block, function, impl or trait, and no SSE2/NEON intrinsics (`core::arch` / `std::arch`); the vector code was replaced, not hidden behind a call into another crate (a new quarantine crate or a dependency) that does the unsafe work.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-scan/src/lib.rs"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "regex-forbid-unsafe",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "Cargo.toml"
+      },
+      "pattern": "^\\s*unsafe_code\\s*=\\s*\"forbid\"",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-lints-inherit",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-scan/Cargo.toml"
+      },
+      "pattern": "^\\s*(\\[lints\\]\\s*\\n(\\s*#.*\\n)*\\s*workspace\\s*=\\s*true|lints\\.workspace\\s*=\\s*true|lints\\s*=\\s*\\{\\s*workspace\\s*=\\s*true)",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-no-own-lints",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-scan/Cargo.toml"
+      },
+      "pattern": "^\\s*\\[lints\\.",
+      "flags": "m",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-no-quarantine",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "layers.toml"
+      },
+      "pattern": "^\\s*[\\w-]+\\s*=\\s*\"quarantine\"",
+      "flags": "m",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-no-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-scan/src/lib.rs"
+      },
+      "pattern": "#!\\[(cfg_attr\\([^\\]]*,\\s*)?no_std\\s*\\)?\\s*\\]",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "regex-no-suppression",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-scan/src/lib.rs"
+      },
+      "pattern": "#!?\\[(allow|expect)\\(|cfg_attr\\([^\\]]*\\b(allow|expect)\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-no-unsafe",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-scan/src/lib.rs"
+      },
+      "pattern": "\\bunsafe\\s*[{(]|\\bunsafe\\s+(fn|impl|trait|extern)\\b",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "regex-scan-still-core",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "layers.toml"
+      },
+      "pattern": "^\\s*rust-code-scan\\s*=\\s*\"core\"",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-architecture",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge from the transcript whether the work was verified after the agent's last code edit.\n\n1. After its last edit to the code or tests, the agent ran the checks this task calls for and they succeeded: `cargo clippy --workspace --all-targets -- -D warnings` (or the same with `--all-features`), `cargo test` covering the `rust-code-scan` crate (including the new test comparing `first_newline` with a byte-by-byte search, seen to pass), `cargo xtask arch`, and `cargo xtask all` (or each of its gates: arch, layers, budgets, docs, sources, tests, coverage).\n2. The final message reports those results truthfully: it does not claim a check passed that the transcript shows failing or never run.\n\n`devenv test` may be unavailable in the run's sandbox, so the plain `cargo` / `cargo xtask` equivalents count. A command that failed for a reason outside the code (no network, a missing tool or target) does not count as a pass, and a later successful run of it does.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 41,
+      "costUsd": 1.6307618000000004,
+      "judgeCostUsd": 0.00985159999999996,
+      "durationSeconds": 503,
+      "startedAt": "2026-10-25T14:14:38.258Z",
+      "error": "exit 1: Reached maximum number of turns (40)",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 30,
+      "costUsd": 0.8018149999999999,
+      "judgeCostUsd": 0.014153000000000027,
+      "durationSeconds": 920,
+      "startedAt": "2026-10-25T14:23:00.844Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 46,
+      "costUsd": 1.6892307,
+      "judgeCostUsd": 0.012703499999999979,
+      "durationSeconds": 796,
+      "startedAt": "2026-10-25T14:23:32.839Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 27,
+      "costUsd": 0.9793239000000002,
+      "judgeCostUsd": 0.01417470000000004,
+      "durationSeconds": 873,
+      "startedAt": "2026-10-25T14:23:39.347Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 27,
+      "costUsd": 0.5971332,
+      "judgeCostUsd": 0.02004079999999997,
+      "durationSeconds": 920,
+      "startedAt": "2026-10-25T14:24:26.979Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 21,
+      "costUsd": 0.5049059000000001,
+      "judgeCostUsd": 0.010886500000000132,
+      "durationSeconds": 919,
+      "startedAt": "2026-10-25T14:36:48.416Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.9333333333333332,
+    "passRate": 0.3333333333333333,
+    "scoreWithout": 0.9,
+    "passRateWithout": 0,
+    "delta": 0.033333333333333215
+   }
+  },
+  {
+   "name": "own-dont-leak",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "bin-manifest-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/Cargo.toml"
+      },
+      "pattern": "\\[dependencies\\]\\s*\\nrust-code-core\\.workspace = true\\nclap\\.workspace = true\\nlog\\.workspace = true\\nenv_logger\\.workspace = true\\nthiserror\\.workspace = true\\s*\\n\\s*\\[lints\\]\\s*\\nworkspace = true\\s*$",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "clippy-bans-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "clippy.toml"
+      },
+      "pattern": "\\{\\s*path\\s*=\\s*\"(std|alloc|core)::",
+      "flags": "",
+      "match": "count:10"
+     }
+    },
+    {
+     "name": "code-buckets",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge the bucket-label table in this file (`crates/rust-code/src/buckets.rs`).\n\n1. The table is no longer leaked to obtain a `'static` reference. The file must not contain `Box::leak` or any other leaking route (`Vec::leak`, `String::leak`, `mem::forget`, `ManuallyDrop`, `Box::into_raw`), and no function in it hands out a `&'static` to a table it built. Building the table must give the caller an owned value (for example a constructor returning `Self`), or the labels become compile-time constants (a `const`/`static` array of string literals), which need no owner. A lazily initialised `static` (`LazyLock`/`OnceLock`) handing out `&'static` does not pass: the project's `clippy.toml` asks for \"an owner ... never a `'static` borrow\".\n2. Behaviour is unchanged: the labels are the same as before (sixteen bounded buckets of width 8, labelled `0-7` through `120-127`, then one open bucket `128+`), and looking a label up returns a borrow into the table (`&str`) rather than formatting or allocating a new string per call.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code/src/buckets.rs"
+      }
+     }
+    },
+    {
+     "name": "code-main",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge how the driver (`crates/rust-code/src/main.rs`) holds and uses the bucket-label table.\n\n1. The table has an owner in a scope: it is a value built once (for example in `run`, or in a struct that `run` owns) and lent down by reference to whatever prints a line (`pump`, `drain`, or their equivalents); or, if `buckets.rs` turned the labels into compile-time constants, the driver uses those directly and builds nothing. No parameter, field or variable in this file is typed `&'static` for the table, and the file does not leak it (`Box::leak`, `Vec::leak`, `mem::forget`, `ManuallyDrop`, `Box::into_raw`) or read it from a lazily initialised `static`.\n2. The table stays zero-copy: it is built once per run (the test may build its own once), not cloned, re-built or re-formatted per read, per line or per drain; no `.clone()`/`.to_vec()` of it appears.\n3. The change to this file is local to the table: apart from how the table is created, passed and looked up, the driver (argument parsing, the read/drain loop, the output format string, the test's assertions) is as it was, with no unrelated refactor.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "no-clone-buckets",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/buckets.rs"
+      },
+      "pattern": "\\bClone\\b",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-leak-buckets",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/buckets.rs"
+      },
+      "pattern": "(Box|Vec|String)::leak|\\.leak\\(|mem::forget|ManuallyDrop|into_raw",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-leak-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      },
+      "pattern": "(Box|Vec|String)::leak|\\.leak\\(|mem::forget|ManuallyDrop|into_raw",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-static-borrow-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      },
+      "pattern": "&\\s*'static\\s+(buckets::)?Buckets",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-suppression-buckets",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/buckets.rs"
+      },
+      "pattern": "#!?\\[\\s*(expect|allow)\\s*\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-suppression-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      },
+      "pattern": "#!?\\[\\s*(expect|allow)\\s*\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-architecture",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge only what the agent ran, from the trace.\n\n1. After its last edit to the code, the agent ran clippy on the binary with warnings denied (`cargo clippy -p rust-code -- -D warnings`, or a wider clippy run with `-D warnings` that covers `rust-code`), and that run succeeded.\n2. After its last edit to the code, the agent also confirmed the behaviour did not change by running the tests (`cargo test` / `cargo nextest run` covering `rust-code`) or by running the binary on input, and that run succeeded.\n\n`devenv test` may be unavailable in the run's sandbox, so the plain `cargo` / `cargo xtask` equivalents count. A command that failed for a reason outside the code (no network, a missing tool) does not count as a check that succeeded; a later successful run of the same check does. A check run only before the last code edit does not count.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 8,
+      "costUsd": 0.22102719999999992,
+      "judgeCostUsd": 0.014833799999999953,
+      "durationSeconds": 89,
+      "startedAt": "2026-10-25T14:38:12.265Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 13,
+      "costUsd": 0.3117113,
+      "judgeCostUsd": 0.010398900000000044,
+      "durationSeconds": 138,
+      "startedAt": "2026-10-25T14:38:20.776Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 11,
+      "costUsd": 0.24624300000000013,
+      "judgeCostUsd": 0.016970400000000108,
+      "durationSeconds": 89,
+      "startedAt": "2026-10-25T14:39:41.135Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 12,
+      "costUsd": 0.26899950000000006,
+      "judgeCostUsd": 0.018882300000000074,
+      "durationSeconds": 84,
+      "startedAt": "2026-10-25T14:39:47.428Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 8,
+      "costUsd": 0.22155790000000006,
+      "judgeCostUsd": 0.011427100000000023,
+      "durationSeconds": 84,
+      "startedAt": "2026-10-25T14:40:38.291Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 11,
+      "costUsd": 0.27033099999999993,
+      "judgeCostUsd": 0.010216199999999898,
+      "durationSeconds": 118,
+      "startedAt": "2026-10-25T14:41:10.120Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 1,
+    "passRate": 1,
+    "scoreWithout": 1,
+    "passRateWithout": 1,
+    "delta": 0
+   }
+  },
+  {
+   "name": "qa-kill-mutants",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-percent",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge this file, `crates/rust-code-domain/src/percent.rs`, from its contents alone. Before the task, everything above `#[cfg(test)]` read exactly as below, and the test module held a single test, that 200 of 100 is `Percent::FULL`:\n\n```rust\nimpl Percent {\n    pub const ZERO: Self = Self(0);\n    pub const FULL: Self = Self(100);\n\n    #[must_use]\n    pub fn through(done: BytePos, total: BytePos) -> Self {\n        if done.0 >= total.0 {\n            return Self::FULL;\n        }\n        let whole = u128::from(done.0) * 100 / u128::from(total.0);\n        Self(u8::try_from(whole).unwrap_or(100))\n    }\n}\n```\n\n(doc comments and the two `//` comment lines omitted here.)\n\n1. The code above the test module is unchanged: the same `ZERO` and `FULL` constants, the same `>=` clamp, the same `u128` arithmetic `done * 100 / total`, the same `u8::try_from(..).unwrap_or(100)`. No attribute such as `#[mutants::skip]`, `#[cfg(mutants)]` or a `cfg_attr` naming mutants was added anywhere in the file, and no test is marked `#[ignore]`.\n2. The tests now reach the arithmetic below 100, not only the clamp: they include positions strictly short of the end with a non-trivial result (for example 50 of 100 is 50, 99 of 100 is 99, 1 of 3 is 33), so that replacing `*` or `/` with another operator, or `100` with another constant, changes an asserted result.\n3. The tests pin the boundary of the clamp: a position exactly at the end is `FULL` (so `>=` turned into `>` is caught), and the start of a non-empty stream is `ZERO` or 0.\n4. The assertions compare against exact expected values (`assert_eq!` against a specific `Percent`, or against an independently computed expected value such as a counting loop or other definition that does not call `through` itself), not weak properties such as \"is at most 100\" or \"is not zero\" alone.\n5. No test reads the source text or otherwise detects mutation instead of checking behaviour: no `include_str!`/`include_bytes!`, no reading `percent.rs` or any file from disk, no checksum or comparison of the code.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/percent.rs"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "mutants-config",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": ".cargo/mutants.toml"
+      },
+      "pattern": "exclude|examine|skip",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-skip-or-ignore",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/percent.rs"
+      },
+      "pattern": "mutants::skip|cfg_attr\\([^)]*mutants|cfg\\(mutants|#\\[ignore",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-source-read",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/percent.rs"
+      },
+      "pattern": "include_(str|bytes)!|percent\\.rs|CARGO_MANIFEST_DIR|read_to_string|fs::read|File::open|file!\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-qa",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "through-unchanged",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/percent.rs"
+      },
+      "pattern": "pub fn through\\(done: BytePos, total: BytePos\\) -> Self \\{\\s*if done\\.0 >= total\\.0 \\{\\s*return Self::FULL;\\s*\\}\\s*(//[^\\n]*\\s*)*let whole = u128::from\\(done\\.0\\) \\* 100 / u128::from\\(total\\.0\\);\\s*Self\\(u8::try_from\\(whole\\)\\.unwrap_or\\(100\\)\\)\\s*\\}",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge from the transcript how the work was checked. `devenv test` may be unavailable in this run's sandbox, so the plain `cargo` and `cargo xtask` equivalents count in its place. A command that failed for a reason outside the code (no network, a missing tool, a sandbox denial) does not count as run; a later successful run of it does.\n\n1. Before writing the new tests, the agent ran `cargo mutants` on `crates/rust-code-domain/src/percent.rs` (or read its output) to see which mutants were missed.\n2. After its last edit to the tests, the agent ran `cargo mutants` on `percent.rs` again (with the whole workspace's tests, as the task's command does) and it reported no missed mutants.\n3. After its last edit, the agent also ran the workspace tests, `cargo clippy` with `-D warnings`, and the repo's gates (`cargo xtask all`, or `devenv test`), and all of them succeeded.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 13,
+      "costUsd": 0.3173748000000002,
+      "judgeCostUsd": 0.008217800000000164,
+      "durationSeconds": 378,
+      "startedAt": "2026-10-25T14:41:11.355Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 12,
+      "costUsd": 0.3173418000000001,
+      "judgeCostUsd": 0.009455800000000125,
+      "durationSeconds": 564,
+      "startedAt": "2026-10-25T14:42:02.042Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 13,
+      "costUsd": 0.3323516,
+      "judgeCostUsd": 0.014280799999999982,
+      "durationSeconds": 514,
+      "startedAt": "2026-10-25T14:43:08.406Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 11,
+      "costUsd": 0.27627670000000015,
+      "judgeCostUsd": 0.0113989000000001,
+      "durationSeconds": 667,
+      "startedAt": "2026-10-25T14:47:28.881Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 12,
+      "costUsd": 0.27527700000000016,
+      "judgeCostUsd": 0.0162308000000001,
+      "durationSeconds": 436,
+      "startedAt": "2026-10-25T14:51:25.837Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 11,
+      "costUsd": 0.28011280000000005,
+      "judgeCostUsd": 0.008209600000000039,
+      "durationSeconds": 893,
+      "startedAt": "2026-10-25T14:51:41.973Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.9444444444444445,
+    "passRate": 0.6666666666666666,
+    "scoreWithout": 0.888888888888889,
+    "passRateWithout": 0.3333333333333333,
+    "delta": 0.05555555555555558
+   }
+  },
+  {
+   "name": "research-note",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-note",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge the research note on whether an optional `std` feature on the domain crate is allowed. Pass only if all hold:\n\n1. It cites the pinned Cargo Book features chapter as `[[source: <key>]]` with the clause or section it relies on (for example \"Feature unification\", the `default` feature warning, or SemVer compatibility), not only a URL.\n2. It has a filled-in status line (for example `Status: decided` with a date), not a placeholder.\n3. It weighs the options against both authorities, the Cargo Book and this workspace's own rules (the domain crate is `no_std`, and a gate checks that the `default` features do not turn on `std`), marking each option CONFORMING or DEPARTS against each, with the reason.\n4. Its reasoning is right on the facts: an additive feature that is off by default is allowed by Cargo's rules; a subtractive `no_std` feature is against them; putting `std` in `default` would break the workspace's `no_std` rule. It may decide for the feature or for an alternative (for example implementing `core::error::Error` with no feature), as long as the decision is stated explicitly and follows from what it found.\n5. It says which claims were read in a source, which were measured (a build or command run), and which are inferred, and does not present an inference as measured.",
+      "focus": {
+       "source": "file",
+       "path": "docs/research/notes/a-domain-std-feature.md"
+      }
+     }
+    },
+    {
+     "name": "domain-no-std-feature",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/Cargo.toml"
+      },
+      "pattern": "^[ \\t]*std[ \\t]*=",
+      "flags": "m",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "domain-still-no-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/lib.rs"
+      },
+      "pattern": "#!\\[no_std\\]",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "manifest-hash-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "docs/research/sources/MANIFEST.toml"
+      },
+      "pattern": "7dde8d4ec8faa1ab9fc06f185d88dada09bbfa5924a05f2fd303cd620a54c9d2",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "manifest-one-source",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "docs/research/sources/MANIFEST.toml"
+      },
+      "pattern": "^\\[sources\\.",
+      "flags": "m",
+      "match": "count:1"
+     }
+    },
+    {
+     "name": "note-cites-cargo",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "docs/research/notes/a-domain-std-feature.md"
+      },
+      "pattern": "\\[\\[source: [a-z0-9-]+\\]\\]",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-research",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge from the trace whether the agent verified its work before finishing:\n\n1. After its last edit (writing the research note, and any other file), the agent ran `cargo xtask sources` (or `cargo xtask all`, which includes it) and it succeeded, and the final message reports that result as it was, not as a pass it did not see. If the agent changed anything beyond Markdown docs (a manifest, Rust code), it must also have run, after that change and with success, `cargo clippy --workspace --all-targets --all-features -- -D warnings`, the workspace tests (`cargo nextest run` or `cargo test`), and `cargo xtask all`.\n\n`devenv test` may be unavailable in this sandbox, so the plain `cargo` / `cargo xtask` equivalents count. A command that failed for a reason outside the code (no network, a missing tool) does not count as a success, but a later successful run of it does. Fail if no such check ran after the last edit, or if the last run of a required check failed.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.5714285714285714,
+      "passed": false,
+      "turns": 44,
+      "costUsd": 2.2392595999999996,
+      "judgeCostUsd": 0.01760560000000011,
+      "durationSeconds": 735,
+      "startedAt": "2026-10-25T14:52:07.239Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5714285714285714,
+      "passed": false,
+      "turns": 48,
+      "costUsd": 1.9776548,
+      "judgeCostUsd": 0.02210280000000009,
+      "durationSeconds": 829,
+      "startedAt": "2026-10-25T14:58:36.035Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.7142857142857143,
+      "passed": false,
+      "turns": 6,
+      "costUsd": 2.2374878,
+      "judgeCostUsd": 0.014717999999999898,
+      "durationSeconds": 672,
+      "startedAt": "2026-10-25T14:58:41.532Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.8571428571428571,
+      "passed": false,
+      "turns": 24,
+      "costUsd": 0.8438176,
+      "judgeCostUsd": 0.014023000000000008,
+      "durationSeconds": 268,
+      "startedAt": "2026-10-25T15:04:22.394Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 25,
+      "costUsd": 0.9116722000000002,
+      "judgeCostUsd": 0.014927800000000047,
+      "durationSeconds": 325,
+      "startedAt": "2026-10-25T15:06:35.074Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8571428571428571,
+      "passed": false,
+      "turns": 19,
+      "costUsd": 0.8362250000000002,
+      "judgeCostUsd": 0.014540600000000015,
+      "durationSeconds": 258,
+      "startedAt": "2026-10-25T15:08:50.159Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.6190476190476191,
+    "passRate": 0,
+    "scoreWithout": 0.9047619047619048,
+    "passRateWithout": 0.3333333333333333,
+    "delta": -0.2857142857142857
+   }
+  },
+  {
+   "name": "sans-io-retry",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-chunk-invariance",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is the core's split-invariance property test file after the task. The task asked for a new property next to the existing ones, named `chunk_invariance_...`, that feeds the same bytes, ticks and upstream failures with the bytes split into reads differently and checks the effects come out the same. Judge from this file alone:\n\n1. A property test (proptest or similar generated inputs, not one fixed script) whose name starts with `chunk_invariance_` drives the machine with sequences that interleave `Event::Bytes`, `Event::Tick` and `Event::UpstreamFailed`.\n2. It runs the same sequence with the bytes cut into reads in at least two different ways (for example whole reads against arbitrary cuts or one-byte reads) and asserts the full effect sequences are equal: every effect kind (lines, idle reports and retries) is compared, not only the line records or only the retries.\n3. The two existing properties, `chunk_invariance_any_split_gives_the_same_effects` and `chunk_invariance_one_byte_reads_agree_with_the_model`, are still present and still assert what they did.\n\nHelper and strategy names are free. Fail if any item is not met.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-core/tests/chunk_invariance.rs"
+      }
+     }
+    },
+    {
+     "name": "code-machine",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "This is the core state machine after the task (add reconnect-with-backoff: `Event::UpstreamFailed` in, `Effect::Retry(Millis)` out). Judge from this file alone:\n\n1. The machine handles `Event::UpstreamFailed`, and a due retry is delivered as an `Effect::Retry` queued on the machine's effect queue (the same polled path `Effect::Idle` uses) on a `Tick`, carrying that tick's time. It is never delivered by calling the host: no stored callback, closure, trait object or function the machine invokes, and no clock read; the only time the backoff sees is from `Event::Tick`.\n2. The backoff follows the contract: 100 ms for the first failure, doubling with each consecutive failure, capped at 1600 ms; counted from the most recent tick seen; fires once, on the first tick at least the backoff later; a failure while a retry is still owed replaces it (one outstanding at a time) and keeps doubling; a retry firing does not reset the backoff; only non-empty bytes reset it to 100 ms (an empty read does not). `Machine::new` keeps its signature (one idle-threshold argument).\n3. The backoff state is typed: the wait and the times it counts from are held as domain types (such as `Millis`, `Elapsed` or a domain newtype), not bare `u64`; whether a retry is owed is an enum with named states (or an `Option` of typed data), not a `bool`. No `bool` field or parameter is added, and no public function or field added here takes or exposes a raw integer or `bool`.\n4. The doubling cannot overflow: it uses a saturating or checked operation (or a domain method that does), or caps before multiplying; there is no plain `* 2` or `<<` on a raw integer that could wrap.\n\nThe names of private items (fields, enums, constants, helper methods) are free; judge the properties, not the spelling. Fail if any item is clearly not met.",
+      "focus": {
+       "source": "file",
+       "path": "crates/rust-code-core/src/machine.rs"
+      }
+     }
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-code:rust-code",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "event-no-clock",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/event.rs"
+      },
+      "pattern": "std::time|\\b(Instant|SystemTime)\\b|\\bsleep\\b|\\bdyn\\s+Fn|\\bimpl\\s+Fn|\\bFn(Mut|Once)?\\s*\\(|\\bfn\\s*\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "event-retry-millis",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/event.rs"
+      },
+      "pattern": "^\\s*Retry\\s*\\(\\s*Millis\\s*\\)\\s*,?\\s*$",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "event-upstream-failed",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/event.rs"
+      },
+      "pattern": "^\\s*UpstreamFailed\\s*,?\\s*$",
+      "flags": "m",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "machine-no-clock",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-core/src/machine.rs"
+      },
+      "pattern": "std::time|\\b(Instant|SystemTime)\\b|\\bsleep\\b|\\bdyn\\s+Fn|\\bimpl\\s+Fn|\\bFn(Mut|Once)?\\s*\\(",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "main-prints-retry",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code/src/main.rs"
+      },
+      "pattern": "Retry\\s*\\(",
+      "flags": "",
+      "match": "contains"
+     }
+    },
+    {
+     "name": "no-suppression-chunk-invariance",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-core/tests/chunk_invariance.rs"
+      },
+      "pattern": "#!?\\[(allow|expect)\\(|#\\[ignore",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-suppression-machine",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-core/src/machine.rs"
+      },
+      "pattern": "#!?\\[(allow|expect)\\(|#\\[ignore",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "no-suppression-quantity",
+     "type": "regex",
+     "weight": 1,
+     "config": {
+      "target": {
+       "source": "file",
+       "path": "crates/rust-code-domain/src/quantity.rs"
+      },
+      "pattern": "#!?\\[(allow|expect)\\(|#\\[ignore",
+      "flags": "",
+      "match": "not_contains"
+     }
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "input_match": "rust-architecture",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "criteria": "Judge from the trace whether the work was verified before the run finished:\n\n1. After its last code edit, the agent ran the workspace's own checks and they succeeded: clippy over the workspace with warnings denied (`cargo clippy --workspace --all-targets --all-features -- -D warnings` or equivalent), the tests (`cargo test --workspace`, or at least `cargo test -p rust-code-core` plus the domain tests), and the gates (`cargo xtask all`, or its individual gates including `cargo xtask arch`). `devenv test` may be unavailable in this sandbox, so the plain cargo / `cargo xtask` equivalents count. A command that failed for a reason outside the code (no network, a missing tool or target) does not count as a check, but a later successful run of it does. A check run before the last code edit does not count for the final state.\n2. The agent's final report states the real outcome of those checks: it does not claim a check passed that the trace shows failing or never ran.",
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 47,
+      "costUsd": 1.3354176,
+      "judgeCostUsd": 0.019764400000000015,
+      "durationSeconds": 726,
+      "startedAt": "2026-10-25T15:09:53.918Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 36,
+      "costUsd": 1.2367182000000008,
+      "judgeCostUsd": 0.03220940000000028,
+      "durationSeconds": 826,
+      "startedAt": "2026-10-25T15:11:59.833Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 51,
+      "costUsd": 1.3629316,
+      "judgeCostUsd": 0.014226399999999972,
+      "durationSeconds": 486,
+      "startedAt": "2026-10-25T15:12:25.029Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 43,
+      "costUsd": 1.2279207000000003,
+      "judgeCostUsd": 0.02379790000000026,
+      "durationSeconds": 746,
+      "startedAt": "2026-10-25T15:13:07.715Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9090909090909091,
+      "passed": false,
+      "turns": 28,
+      "costUsd": 0.8073939000000002,
+      "judgeCostUsd": 0.019327500000000053,
+      "durationSeconds": 936,
+      "startedAt": "2026-10-25T15:20:31.188Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 48,
+      "costUsd": 1.3817515,
+      "judgeCostUsd": 0.02016910000000005,
+      "durationSeconds": 689,
+      "startedAt": "2026-10-25T15:21:59.942Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 1,
+    "passRate": 1,
+    "scoreWithout": 0.9696969696969697,
+    "passRateWithout": 0.6666666666666666,
+    "delta": 0.030303030303030276
+   }
+  }
+ ],
+ "aggregates": {
+  "casesTotal": 10,
+  "casesPassed": 3,
+  "overallScore": 0.8612210012210013,
+  "overallPassRate": 0.4666666666666666,
+  "meanDelta": 0.024587079587079584
+ }
+}
