@@ -5,8 +5,9 @@
 # POSIX sh; sourced, never run.
 
 # The model and judge every run pins, so a model rollout is never read as a
-# plugin change (docs: "Pin it in CI"). claude-opus-5-5 is what run 4 used by
-# default (every trace's model field); haiku is the judge default
+# plugin change (docs: "Pin it in CI"). claude-opus-5-5 is what the full run
+# at commit 28c0e7a (2026-10-25) used by default (every trace's model field);
+# haiku is the judge default
 # (`claude plugin eval --help`, claude 2.1.303), an alias the runner resolves.
 PE_MODEL=claude-opus-5-5
 PE_JUDGE=haiku

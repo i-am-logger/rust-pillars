@@ -390,7 +390,11 @@ in
     };
 
     # The plugin's evals, scored by building and gating what the model wrote
-    # (eval-harness/). Every run is a real model call: manual only.
+    # (eval-harness/). Every run is a real model call: manual only. It runs
+    # `claude` with bypassPermissions and no sandbox, so it refuses to start
+    # unless RUST_CODE_EVAL_UNSANDBOXED=1 is set in the environment
+    # (`RUST_CODE_EVAL_UNSANDBOXED=1 devenv tasks run eval:run`: a task sees
+    # the caller's environment, measured with a probe task).
     # `eval:control` runs no model: each check against the untouched base.
     "eval:run" = {
       exec = "cargo run --quiet --manifest-path eval-harness/Cargo.toml --";
@@ -406,7 +410,7 @@ in
     # the script itself: `sh eval-harness/plugin-eval.sh --case own-dont-leak`.
     # Full: every case, each case's runs, both arms; the numbers to report.
     # -j 4: 8 fixed-command sessions took 82-130 s at -j 8 and 97-124 s at
-    # -j 4: no gain its spread could separate (README, Evals).
+    # -j 4: no gain its spread could separate (eval-harness/README.md).
     "eval:full" = {
       exec = "sh eval-harness/plugin-eval.sh -j 4 --no-publish";
     };
