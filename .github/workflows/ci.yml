@@ -13,10 +13,11 @@ concurrency:
   # between them cannot be undone, so master runs queue instead.
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
+# Read-only by default. Each job asks for what it needs and no more: the jobs
+# that run the repository's code (and every dependency's build script) never
+# hold a token that can push.
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 
 # `devenv-checks` runs `devenv test`, the same command a developer runs locally,
 # so the workflow is a thin wrapper over the tasks."test:*" set in devenv.nix.
@@ -42,6 +43,13 @@ jobs:
       # downloads every run. Set here rather than in Cargo.toml so a local build
       # keeps its debugger.
       CARGO_PROFILE_DEV_DEBUG: "0"
+    permissions:
+      contents: read
+      # cache-nix-action's `purge:` deletes master's superseded nix caches
+      # through the Actions API, which needs this. The token goes to that
+      # action as an input, not to the run steps: checkout below does not
+      # persist it. A fork PR's token is read-only whatever this says.
+      actions: write
     # Skip on release-plz's own Release PR and on the release commit it merges:
     # both touch only Cargo.toml versions and CHANGELOG.md, and the checks
     # already passed on the underlying commits.
@@ -57,6 +65,9 @@ jobs:
           # test:mutants-diff mutates the lines changed since the merge base
           # with the default branch; a shallow clone has no merge base.
           fetch-depth: 0
+          # `devenv test` runs the repository's code and its dependencies'
+          # build scripts; none of them needs to reach the remote.
+          persist-credentials: false
 
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@v22
@@ -119,8 +130,12 @@ jobs:
     needs: [devenv-checks]
     timeout-minutes: 30
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: llvm-tools-preview
