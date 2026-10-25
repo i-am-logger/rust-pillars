@@ -42,6 +42,7 @@ use anyhow::{Context, Result, bail, ensure};
 
 mod merge;
 mod plugin;
+mod state;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -110,6 +111,9 @@ enum Mode {
     Merge,
     /// Each run's time and one grader's evidence (`merge.rs`).
     Evidence,
+    /// What each run of a `--keep-temp` suite left, kept; its directory
+    /// removed (`state.rs`).
+    Harvest,
 }
 
 #[derive(Debug)]
@@ -154,6 +158,12 @@ fn opts() -> Result<Opts> {
             "--evidence" => {
                 o.mode = Mode::Evidence;
                 for _ in 0..2 {
+                    o.files.push(PathBuf::from(val()?));
+                }
+            }
+            "--harvest" => {
+                o.mode = Mode::Harvest;
+                for _ in 0..3 {
                     o.files.push(PathBuf::from(val()?));
                 }
             }
@@ -532,8 +542,16 @@ fn main() -> ExitCode {
                 merge::run_evidence(file, &grader.to_string_lossy())?;
                 Ok(ExitCode::SUCCESS)
             }
-            (Mode::Rescore | Mode::Merge | Mode::Evidence, _) => {
-                bail!("--rescore takes one file, --merge three, --evidence a file and a grader")
+            (Mode::Harvest, [result, state_dir, export]) => {
+                let run_root = std::env::var_os("PE_RUN_ROOT")
+                    .map_or_else(|| PathBuf::from("/private/tmp"), PathBuf::from);
+                state::run_harvest(result, state_dir, export, &run_root)?;
+                Ok(ExitCode::SUCCESS)
+            }
+            (Mode::Rescore | Mode::Merge | Mode::Evidence | Mode::Harvest, _) => {
+                bail!(
+                    "--rescore takes one file, --merge three, --evidence a file and a grader, --harvest three"
+                )
             }
             (Mode::Control | Mode::Solution, _) => {
                 run_control(&root, &cases(&root, o.case.as_ref())?, o.mode)
