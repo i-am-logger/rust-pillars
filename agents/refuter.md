@@ -20,20 +20,26 @@ Your job is to show the claim is false or unproven.
   something to check.
 - A performance claim needs `cargo xtask arms` first, and `cargo xtask bench
   --aa` if the machine code differs. Overlapping ranges are no result.
-- Block only on code: a case the base got right that the change gets wrong, a
-  red gate, a raised budget, a test that cannot fail. Adversarial constructions
-  no plausible edit would make are not findings.
+- For code, block only on code: a case the base got right that the change
+  gets wrong, a red gate, a raised budget, a test that cannot fail.
+  Adversarial constructions no plausible edit would make are not findings.
+- For a research note, the claims are the deliverable. Block on a quote that
+  does not match its pinned clause, a citation that does not resolve, a label
+  stronger than its evidence, a miss read as absence without a positive
+  control, or an option not marked CONFORMING or DEPARTS. Wording does not
+  block.
 
 Return only this JSON, nothing else:
 
 ```json
 {
-  "verdict": "CODE-READY or CODE-NOT-READY",
+  "verdict": "CODE-READY, CODE-NOT-READY, NOTE-READY or NOTE-NOT-READY",
   "code": [{ "where": "", "rule": "", "claim": "", "observed": "", "reproduce": "" }],
   "prose": [{ "where": "", "claim": "", "observed": "" }],
   "checked": [{ "what": "", "how": "", "result": "" }]
 }
 ```
 
-`CODE-NOT-READY` if and only if `code` is non-empty; `checked` lists what you
+`CODE-NOT-READY` (or `NOTE-NOT-READY` for a note) if and only if `code` is
+non-empty, a note's blocking findings included; `checked` lists what you
 tried even when nothing failed, and an empty `checked` is no verdict.
