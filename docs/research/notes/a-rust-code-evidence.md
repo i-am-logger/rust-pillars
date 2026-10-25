@@ -77,8 +77,8 @@ evaluation cases graded by a model and tuned against themselves; nothing on
 - **Benchmarks and differential tests have their own role, `harness`.**
   They use everything and are used by nothing, so no shipped role fits them.
 - **The exact-floor rule flags only literals of 2 or more.** `n > 0` says
-  "not empty", a property rather than a count; `n > 40` over a fixed set of
-  fixtures is a count that lets fixtures vanish unnoticed.
+  "not empty", a property rather than a count; `n >= 50` over a fixed set of
+  60 fixtures is a count that lets 10 vanish unnoticed.
 
 ## What this repository's own gates found
 

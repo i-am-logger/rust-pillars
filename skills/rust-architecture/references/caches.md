@@ -186,8 +186,8 @@ pub const fn row_pitch(row: RowBytes, geo: CacheGeometry) -> Pitch {
 ## Bounded interning
 
 - Use power-of-two open addressing indexed by the *high* bits of a Fibonacci
-  hash: a multiplicative hash mixes into its high bits, and its low bits
-  repeat the low bits of the key, so keys that differ only higher up collide.
+  hash: the low bits of `k * C mod 2^w` depend only on the low bits of `k`,
+  so keys that differ only in their high bits collide there.
 - Inline the hit path. Put the miss path in a `#[cold] #[inline(never)]` fn.
 - Sweep tombstones before evicting.
 - Keep a write log so downstream consumers update incrementally.
