@@ -226,12 +226,11 @@ EOF
       echo "plugin-eval: could not capture the devenv environment" >&2
       exit 1
     }
-  # Eval runs only, never the project: a lighter dev profile (measured
-  # faster: 12.1 / 12.5 s against 14.9 / 15.5 s for build, nextest, clippy
-  # and two edit loops on prebuilt dependencies), and the per-session job cap
-  # the invocation hands every session as EVAL_JOB_CAP (lib.sh, pe_job_cap).
+  # Eval runs only: the per-session job cap the invocation hands every
+  # session as EVAL_JOB_CAP (lib.sh, pe_job_cap). The dev profile stays the
+  # project's own: a lighter one (line-tables-only, no incremental cache) was
+  # not shown faster in the sandbox, where its runs overlapped.
   cat >>"$export_dir/evals/_scaffold/devenv.env" <<'EOF'
-export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0
 if [ -n "${EVAL_JOB_CAP:-}" ]; then
   export CARGO_BUILD_JOBS="$EVAL_JOB_CAP" NEXTEST_TEST_THREADS="$EVAL_JOB_CAP" RUST_TEST_THREADS="$EVAL_JOB_CAP"
 fi

@@ -189,9 +189,12 @@ What makes a run fast, each with the probe that measured it
   `-j 4` (97, 122 and 124 s for the same 8 sessions), as `-j 8` showed no
   gain its spread could separate; these sessions are almost all tool time,
   where a real one is about half model time;
-- the eval-only environment builds with `line-tables-only` debug info and no
-  incremental cache (12.1 and 12.5 s against 14.9 and 15.5 s, measured
-  outside the sandbox; inside it the runs overlapped);
+- ~~the eval-only environment builds with `line-tables-only` debug info and
+  no incremental cache (12.1 and 12.5 s against 14.9 and 15.5 s, measured
+  outside the sandbox; inside it the runs overlapped)~~ withdrawn: the
+  outside numbers had no A/A arm and inside the sandbox the runs overlapped,
+  so it was never shown faster; the eval environment builds with the
+  project's own dev profile;
 - what a timed-out session leaves running is ended while the suite runs:
   the runner kills the session, not the commands it started;
 - the export's vendoring and prebuilt target are keyed on content, so a

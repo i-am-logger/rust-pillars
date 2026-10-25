@@ -307,8 +307,9 @@ same "the export tags its copy of each case" "tags: [case-c]" \
 same "and leaves the case's own files alone" "name: c" "$(sed -n '2p' "$f/evals/c/prompt.md")"
 same "a case's own smoke tag gets case-<name> beside it, once" "tags: [smoke, case-s]" \
   "$(grep '^tags:' "$fbase/$fsha/root/evals/s/prompt.md" 2>/dev/null)"
-same "the export's environment carries the lighter dev profile" yes \
-  "$(grep -q '^export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0$' "$fenv" 2>/dev/null && echo yes)"
+# No profile of its own: a lighter one was never shown faster in the sandbox.
+same "the export's environment keeps the project's dev profile" "" \
+  "$(grep -E 'CARGO_PROFILE_|CARGO_INCREMENTAL' "$fenv" 2>/dev/null)"
 # shellcheck disable=SC2016 # expanded by the inner shells
 same "and derives the job caps from the invocation's EVAL_JOB_CAP" "3 3 3" \
   "$(EVAL_JOB_CAP=3 sh -c '. "$1"; echo "$CARGO_BUILD_JOBS $NEXTEST_TEST_THREADS $RUST_TEST_THREADS"' sh "$fenv" 2>/dev/null)"
