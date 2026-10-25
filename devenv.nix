@@ -345,18 +345,37 @@ in
 
     # claude.ai uploads, built from the committed tree (git archive), so nothing
     # untracked can slip in: the whole plugin, and one zip per skill with the
-    # skill folder at the top, as Customize > Skills expects.
+    # skill folder at the top, as Customize > Skills expects. Every zip carries
+    # LICENSE and NOTICE.md, so a skill uploaded alone still states its terms;
+    # the per-skill zips take them from HEAD too (git archive's --add-file
+    # reads a file on disk, so it is given HEAD's copy), and the task fails
+    # if any zip lacks them.
     "dist:package" = {
       exec = ''
         set -e
         rm -rf target/dist
-        mkdir -p target/dist/skills
+        mkdir -p target/dist/skills target/dist/terms
+        git show HEAD:LICENSE >target/dist/terms/LICENSE
+        git show HEAD:NOTICE.md >target/dist/terms/NOTICE.md
         git archive --format=zip -o target/dist/rust-code-plugin.zip HEAD \
           .claude-plugin skills commands agents hooks LICENSE NOTICE.md README.md
         for d in skills/*/; do
           n=$(basename "$d")
-          git archive --format=zip --prefix="$n/" -o "target/dist/skills/$n.zip" "HEAD:skills/$n"
+          git archive --format=zip --prefix="$n/" \
+            --add-file=target/dist/terms/LICENSE --add-file=target/dist/terms/NOTICE.md \
+            -o "target/dist/skills/$n.zip" "HEAD:skills/$n"
         done
+        for z in target/dist/rust-code-plugin.zip target/dist/skills/*.zip; do
+          case $z in */skills/*) p=$(basename "$z" .zip)/ ;; *) p= ;; esac
+          ${pkgs.unzip}/bin/unzip -Z1 "$z" >target/dist/terms/list
+          for f in LICENSE NOTICE.md; do
+            grep -qxF "$p$f" target/dist/terms/list || {
+              echo "dist:package: $z has no $p$f" >&2
+              exit 1
+            }
+          done
+        done
+        rm -rf target/dist/terms
         ls -l target/dist target/dist/skills
       '';
     };
