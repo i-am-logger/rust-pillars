@@ -11,7 +11,8 @@ crate needs a thermostat vocabulary first.
 
 The temperature sensor reports tenths of a degree Celsius as a signed 16-bit
 integer, little-endian, two bytes per reading: 215 means 21.5 °C, -40 means
--4.0 °C. I need:
+-4.0 °C. The setpoint comes from the heater's stored settings, in the
+sensor's format: two bytes, little-endian tenths. I need:
 
 - a type for a temperature reading from that sensor,
 - a setpoint type (the temperature we want to hold),
