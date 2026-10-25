@@ -1,7 +1,6 @@
 ---
 name: rust-qa
 description: "Use when writing, reviewing or refuting Rust tests and gates: a test or property, a model or oracle, fixtures and recordings, #[ignore] or platform-only tests, mutation testing, fuzz/Miri/loom/Kani, a planted-violation control, or a refuter's review of a change."
-license: CC-BY-NC-SA-4.0
 ---
 
 # rust-qa: tests that can fail, gates that prove it
@@ -12,7 +11,7 @@ you need.
 
 Status labels refer to the companion `rust-template` at commit `a076f93`
 (branch `feat/pillars`): **shipped** = committed there; **planned** = in the
-rust-pillars plan only. Never cite a planned gate as passing. Evidence labels
+rust-code plan only. Never cite a planned gate as passing. Evidence labels
 (measured / by-reading / inferred / unmeasured) are rust-research's.
 
 ## Placement and taxonomy — [references/test-taxonomy.md](references/test-taxonomy.md)
@@ -49,7 +48,7 @@ rust-pillars plan only. Never cite a planned gate as passing. Evidence labels
 - Generate VALID inputs from an alphabet of atoms, not `any::<u8>()`. Why:
   random bytes mostly exercise the first rejection branch.
 - Check against an INDEPENDENT model (std, a spec table, a vendored
-  reference), never only code vs code. Worked lesson (measured: rust-pillars's
+  reference), never only code vs code. Worked lesson (measured: rust-code's
   own planted run on the template): a doubled position advance passed
   `chunk_invariance_any_split_gives_the_same_effects` (code vs code) and was
   caught by `chunk_invariance_one_byte_reads_agree_with_the_model` (vs std).

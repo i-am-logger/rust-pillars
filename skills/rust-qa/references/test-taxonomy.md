@@ -3,7 +3,7 @@
 Load this when deciding what kind of test to write and where it goes.
 
 Labels: **shipped** = committed in the companion `rust-template`
-(branch `feat/pillars`, commit `a076f93`); **planned** = in the rust-pillars
+(branch `feat/pillars`, commit `a076f93`); **planned** = in the rust-code
 plan only.
 
 ## 1. Where a test lives

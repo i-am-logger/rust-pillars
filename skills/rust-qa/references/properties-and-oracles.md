@@ -91,7 +91,7 @@ Rules:
 - A property of the form `f(split(x)) == f(x)` (code vs code) is necessary
   but not sufficient. Pair it with `f(x) == model(x)`.
 
-### The worked lesson (measured: rust-pillars's own planted run on rust-template)
+### The worked lesson (measured: rust-code's own planted run on rust-template)
 Plant: a doubled position advance (the position moves twice per byte in
 `Machine::bytes`).
 - `chunk_invariance_any_split_gives_the_same_effects` **passed**: the whole

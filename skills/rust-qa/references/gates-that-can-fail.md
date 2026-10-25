@@ -76,7 +76,7 @@ Representative cases (from `controls.rs`):
 | `std` used in the core | `cargo build -p <core> --no-default-features --target x86_64-unknown-none` | ``can't find crate for `std` `` |
 | a feature that does not build alone | `cargo hack check --each-feature` | ``cannot find type `PlantedMissing` `` |
 
-Before `controls` shipped, a one-off scratch suite (measured: rust-pillars's
+Before `controls` shipped, a one-off scratch suite (measured: rust-code's
 own planted run, 2026-10-24) found two things worth keeping as lessons:
 - The leak bans in `clippy.toml` were written under `std::` paths only; in
   the no_std domain and core a `std::` path names nothing, so clippy banned
