@@ -1,6 +1,7 @@
 ---
 name: embed-at-build-time
 description: Startup reads a data file from a cwd-relative path on every launch; embed it in the binary at build time so it runs from any directory, without letting the embedded copy drift from the asset.
+tags: [smoke]
 runs: 3
 max_turns: 40
 timeout_seconds: 900

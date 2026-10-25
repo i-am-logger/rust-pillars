@@ -1,6 +1,7 @@
 ---
 name: layering-fix
 description: The core crate picked up a `log` dependency and now reports dropped effects only as debug logging; restore the layering without losing what a host can tell, through `refused()`, about what the core dropped.
+tags: [smoke]
 runs: 3
 max_turns: 40
 timeout_seconds: 900

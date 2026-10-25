@@ -7,6 +7,20 @@
 # records. POSIX sh: the harness runs `sh .solve.sh`, with output discarded.
 set -eu
 
+# `claude plugin eval --graders` runs this from the scaffold, in a minimal
+# environment without devenv's SDK and compiler variables (rustc then asks
+# xcrun for an SDK and finds none). The case scaffold has just written the
+# captured devenv environment to the run's home, as the agent's shell loads
+# it; load it the same way. The harness (`eval:run --solution`) runs inside
+# devenv already, and its home has no such file.
+if [ -f "$HOME/.devenv.env" ]; then
+  __p=$PATH
+  # shellcheck disable=SC1091 # written per run by the scaffold
+  . "$HOME/.devenv.env"
+  export PATH="$PATH:$__p"
+  unset __p
+fi
+
 src=crates/rust-code/src/main.rs
 arms=$PWD/target/arms
 out=$PWD/target/bench
@@ -29,7 +43,9 @@ cp "$arms/main.rs.4k" "$src"
 cargo build -q --release -p rust-code
 cp target/release/rust-code "$arms/chunk4k"
 restore
-cmp "$src" "$EVAL_ROOT/$src"
+# Back to the bytes it started from. (Not `$EVAL_ROOT`: only the harness sets
+# it, and the --graders scaffold runs without it.)
+cmp "$src" "$arms/main.rs.base"
 
 # The arms really differ, and only where intended.
 "$arms/chunk64k" --help | grep -q 'default: 65536'
