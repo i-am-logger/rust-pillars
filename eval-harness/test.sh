@@ -48,8 +48,9 @@ same "never below one" 1 "$(pe_job_cap 4 8)"
 # The reaper: an orphan in one run directory is ended; a live session's
 # process in another, and anything in a run older than the marker, is not.
 runs=$scratch/runs
-mkdir -p "$runs/e-old/home/cwd" "$runs/e-gone/home/cwd"
+mkdir -p "$runs/e-old/home/cwd" "$runs/e-gone/home/cwd" "$runs/e-othergone/home/cwd"
 (cd "$runs/e-gone/home/cwd" && sh -c 'sleep 300 >/dev/null 2>&1 &')
+(cd "$runs/e-othergone/home/cwd" && sh -c 'sleep 305 >/dev/null 2>&1 &')
 sleep 1
 touch "$scratch/marker"
 sleep 1
@@ -58,18 +59,22 @@ mkdir -p "$runs/e-dead/home/cwd" "$runs/e-live/home/cwd"
 (cd "$runs/e-dead/home/cwd" && sh -c 'sleep 302 >/dev/null 2>&1 &')
 (cd "$runs/e-live/home/cwd" && exec sleep 303) &
 live=$!
-rm -rf "$runs/e-gone"
+rr=$(cd "$runs" && pwd -P)
+# An earlier poll saw e-gone as this invocation's; e-othergone it never saw.
+echo "$rr/e-gone" >"$scratch/marker.seen"
+rm -rf "$runs/e-gone" "$runs/e-othergone"
 sleep 1
 alive() { pgrep -f "sleep $1" >/dev/null && echo alive || echo gone; }
 same "an orphan exists before the reap" alive "$(alive 302)"
-pe_reap "$(cd "$runs" && pwd -P)" "$scratch/marker" >/dev/null
+pe_reap "$rr" "$scratch/marker" >/dev/null
 sleep 1
 same "the reaper ends an orphan of a dead session" gone "$(alive 302)"
-same "and one whose run directory the runner already removed" gone "$(alive 300)"
+same "and one of its own runs the runner already removed" gone "$(alive 300)"
+same "but not one of a removed run it never saw" alive "$(alive 305)"
 same "and leaves a live session's process" alive "$(alive 303)"
 same "and a run older than this invocation" alive "$(alive 301)"
 kill "$live" 2>/dev/null
-pkill -f 'sleep 30[01]' 2>/dev/null
+pkill -f 'sleep 30[015]' 2>/dev/null
 name=mine value=mine a=mine tab=mine
 pe_opt_value --json x --json y >/dev/null
 pe_has_opt --json --json y && pe_vendor_key "$repo" HEAD >/dev/null
@@ -170,6 +175,8 @@ mkdir -p "$f/.claude-plugin" "$f/eval-harness" "$f/evals/_scaffold" "$f/evals/c/
   "$f/evals/c/solution" "$f/docs/research/sources" "$f/docs/research/notes" "$f/skills/s" \
   "$f/crates/a" "$scratch/fakebin"
 cp "$here/plugin-eval.sh" "$here/lib.sh" "$f/eval-harness/"
+mkdir -p "$f/eval-harness/fixtures"
+echo '{"name": "regex-budget-domain"}' >"$f/eval-harness/fixtures/run.json"
 cp "$repo/evals/_scaffold/scaffold.sh" "$f/evals/_scaffold/"
 cp "$repo/evals/own-dont-leak/scaffold.sh" "$f/evals/c/"
 echo '{"name": "p"}' >"$f/.claude-plugin/plugin.json"
@@ -214,6 +221,8 @@ fakerun
 fbase=$(cd "$scratch/ftmp" && pwd -P)/rust-code-plugin-eval
 fsha=$(g2 rev-parse --short HEAD)
 same "the first export vendors once" 1 "$(grep -c . "$calls")"
+same "the harness's recorded results stay out of the export" "no" \
+  "$([ -e "$fbase/$fsha/root/eval-harness/fixtures" ] && echo yes || echo no)"
 same "the vendored dependencies live outside the export" "no" \
   "$([ -e "$fbase/$fsha/root/vendor" ] && echo yes || echo no)"
 same "they go to the store, and cargo is pointed at the store path" \

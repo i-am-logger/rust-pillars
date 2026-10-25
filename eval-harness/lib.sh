@@ -142,9 +142,9 @@ pe_cwds() {
 # runner kills a session's claude process but not the commands it started:
 # they live on, reparented to launchd (PPID 1), with their working directory
 # inside the run's directory RUNROOT/e-*/ (measured), taking cores from the
-# runs that follow. For each run directory newer than MARKER (so only this
-# invocation's runs) or already removed by the runner (so the session is
-# over), the processes whose cwd is inside it are grouped; their
+# runs that follow. For each run directory of this invocation -- newer than
+# MARKER, or seen so by an earlier call (MARKER.seen) and since removed by
+# the runner -- the processes whose cwd is inside it are grouped; their
 # roots are those whose parent is not among them. A live session's root is
 # its claude process, whose parent is the runner; a dead one's roots have
 # PPID 1. Only a directory with no live root is reaped: every process whose
@@ -164,11 +164,17 @@ pe_reap() {
   # One line per directory with a root: the directory, then "live" or "dead".
   awk '{ d[$1] = $3; pp[$1] = $2 } END { for (p in d) if (!(pp[p] in d) || d[pp[p]] != d[p])
          print d[p], (pp[p] == 1 ? "dead" : "live") }' "$2.procs" | sort -u >"$2.roots"
+  # This invocation's directories, remembered while they exist, so one the
+  # runner removed is still known as ours (lsof keeps naming a removed cwd).
   cut -d' ' -f1 "$2.roots" | sort -u | while read -r dir; do
-    # A directory the runner already removed belongs to a session that is
-    # over, whoever ran it (lsof still names it); one that is still there
-    # only when this invocation made it.
-    [ ! -e "$dir" ] || [ "$dir" -nt "$2" ] || continue
+    [ -e "$dir" ] && [ "$dir" -nt "$2" ] && echo "$dir"
+  done >>"$2.seen"
+  cut -d' ' -f1 "$2.roots" | sort -u | while read -r dir; do
+    if [ -e "$dir" ]; then
+      [ "$dir" -nt "$2" ] || continue
+    else
+      grep -qxF "$dir" "$2.seen" || continue
+    fi
     grep -qxF "$dir live" "$2.roots" && continue
     awk -v dir="$dir" '$3 == dir { print $1 }' "$2.procs" | while read -r pid; do
       kill -TERM "$pid" 2>/dev/null && echo "plugin-eval: ended $pid, left running in $dir"

@@ -192,6 +192,10 @@ if [ ! -f "$out/.ready" ]; then
   rm -rf "$export_dir"
   mkdir -p "$export_dir/.cargo"
   git archive HEAD | tar -x -C "$export_dir"
+  # The export is the plugin root, which the arm with the plugin can read
+  # by path (measured): the harness's recorded results, which name graders,
+  # stay out of it.
+  rm -rf "$export_dir/eval-harness/fixtures"
   vendor=$(vendor_store)
   cat >>"$export_dir/.cargo/config.toml" <<EOF
 
@@ -288,7 +292,7 @@ run_suite() {
   set -e
   kill "$reaper" 2>/dev/null || true
   pe_reap "$runroot" "$marker"
-  rm -f "$marker"
+  rm -f "$marker" "$marker.seen"
   return "$code"
 }
 
