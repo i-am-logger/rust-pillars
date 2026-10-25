@@ -31,6 +31,14 @@ iterating, `enterShell` lists the individual scripts (`dev-fmt`, `dev-lint`,
 workflow.** A step that exists only in CI is a step you cannot run locally, and
 that is exactly the divergence this setup exists to prevent.
 
+## Evals
+
+The evals are not part of `dev-ci`: every run makes real model calls on your
+Claude account. The Rust harness (`devenv tasks run eval:run`) runs `claude`
+with `--permission-mode bypassPermissions` and no sandbox, so run it only on a
+tree you trust -- not on a branch whose `evals/` you have not read. See
+[eval-harness/README.md](eval-harness/README.md).
+
 ## Commit messages
 
 [Conventional Commits](https://www.conventionalcommits.org/). release-plz reads
