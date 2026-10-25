@@ -177,7 +177,10 @@ runner changes of this release, the next full run must be a two-arm one.
 them after any other change. `--keep-state` keeps every run's full trace and
 start delay in the export's `state/`; the runner seals what it keeps (about
 1.4 GB a run), so the run directories stay, listed in `kept-dirs.txt`, unless
-`PE_UNSEAL=1` lets the script unseal, diff and remove exactly those.
+`PE_UNSEAL=1` lets the script unseal, diff and remove exactly those (off by
+default). The diff never follows a link the session left (it keeps the
+link's target as text) and never opens a FIFO, socket or device (listed in
+`skipped.txt`).
 
 What makes a run fast, each with the probe that measured it
 (`--probe`, haiku, on an 18-core machine under other load):

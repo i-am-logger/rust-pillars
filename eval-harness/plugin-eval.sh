@@ -502,8 +502,9 @@ EOF
 fi
 
 # A suite run. Its own options, taken out before the runner's:
-#   --keep-state            keep each run's trace and changes (state.rs), then
-#                           remove the run directories the result names
+#   --keep-state            keep each run's trace (state.rs); with PE_UNSEAL=1
+#                           (off by default) also its changes, then remove the
+#                           run directories the result names
 #   --changed-since REV     only the cases REV..HEAD changed (lib.sh,
 #                           pe_changed_cases); all of them after any other change
 #   --reuse-baseline B.json OUT.json

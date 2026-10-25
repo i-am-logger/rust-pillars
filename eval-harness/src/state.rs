@@ -11,18 +11,27 @@
 //! This keeps, per run listed in the result, the full trace and the seconds
 //! from the run's start to its first trace event, which need no change to
 //! the sealed directory. With `unseal` it also gives the owner back the
-//! rights on that one directory (`chmod -R u+rwX`), keeps the working copy's
-//! changes against a fresh scaffold of its case (build output left out), and
-//! removes the directory -- only a directory the result names, under the run
-//! root, named `e-*`, holding `out/trace.jsonl`. Without `unseal` the kept
-//! directories are listed in `kept-dirs.txt` and left in place.
+//! rights on that one directory (`u+rwX`, as `chmod -R` would), keeps the
+//! working copy's changes against a fresh scaffold of its case (build output
+//! left out), and removes the directory -- only a directory the result
+//! names, under the run root, named `e-*`, holding `out/trace.jsonl`.
+//! Without `unseal` the kept directories are listed in `kept-dirs.txt` and
+//! left in place.
+//!
+//! Everything in the working copy was written by the plugin under test, so
+//! none of it is followed or opened blindly: a symbolic link is kept as its
+//! target's name (a link to `~/.ssh/<key>` must not bring the key into the
+//! kept changes), and a FIFO, socket or device -- which can hang a reader --
+//! or a second name of a file (a hard link) is never read, only listed in
+//! `skipped.txt`. Both trees are first copied that way into plain mirrors,
+//! and `diff` only ever sees those.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result};
 use serde_json::Value;
 
 /// The run directory a trace path belongs to, if it is one this may touch.
@@ -41,21 +50,120 @@ fn run_dir(trace: &Path, run_root: &Path) -> Option<PathBuf> {
     ok.then(|| dir.to_path_buf())
 }
 
+/// Whether `dir/rel` is a directory reached through directories only, no
+/// component of it a symbolic link the session could have planted.
+fn plain_dir(dir: &Path, rel: &Path) -> bool {
+    let mut p = dir.to_path_buf();
+    rel.components().all(|c| {
+        p.push(c);
+        fs::symlink_metadata(&p).is_ok_and(|m| m.is_dir())
+    })
+}
+
 /// The working copy inside a run directory whose rights are back: the live
 /// layout's `home/cwd`, or the one under `sealed/`.
 fn working_copy(dir: &Path) -> Option<PathBuf> {
-    [dir.join("home/cwd"), dir.join("sealed/home/cwd")]
+    ["home/cwd", "sealed/home/cwd"]
         .into_iter()
-        .find(|p| p.is_dir())
+        .find(|rel| plain_dir(dir, Path::new(rel)))
+        .map(|rel| dir.join(rel))
         .or_else(|| {
+            if !plain_dir(dir, Path::new("sealed")) {
+                return None;
+            }
             fs::read_dir(dir.join("sealed"))
                 .ok()?
                 .flatten()
                 .find_map(|e| {
-                    let p = e.path().join("cwd");
-                    p.is_dir().then_some(p)
+                    let rel = Path::new("sealed").join(e.file_name()).join("cwd");
+                    plain_dir(dir, &rel).then(|| dir.join(rel))
                 })
         })
+}
+
+/// Gives the owner back `u+rwX` on `path` and everything below it, as
+/// `chmod -R u+rwX` would, never through a symbolic link.
+fn open_up(path: &Path) -> Result<()> {
+    use std::os::unix::fs::PermissionsExt as _;
+    let meta = fs::symlink_metadata(path)?;
+    let mode = meta.permissions().mode();
+    if meta.is_dir() {
+        fs::set_permissions(path, fs::Permissions::from_mode(mode | 0o700))?;
+        for entry in fs::read_dir(path)? {
+            open_up(&entry?.path())?;
+        }
+    } else if meta.is_file() {
+        let x = if mode & 0o111 == 0 { 0 } else { 0o100 };
+        fs::set_permissions(path, fs::Permissions::from_mode(mode | 0o600 | x))?;
+    }
+    Ok(())
+}
+
+/// The kind of a file that is neither a directory, a regular file nor a
+/// symbolic link.
+fn special_kind(meta: &fs::Metadata) -> &'static str {
+    use std::os::unix::fs::FileTypeExt as _;
+    let t = meta.file_type();
+    if t.is_fifo() {
+        "fifo"
+    } else if t.is_socket() {
+        "socket"
+    } else if t.is_char_device() {
+        "character device"
+    } else if t.is_block_device() {
+        "block device"
+    } else {
+        "unknown file type"
+    }
+}
+
+/// `src` copied into `dst` (which must not exist) the safe way: directories
+/// and regular files as they are, each symbolic link as a file holding
+/// `symlink -> <target>`, and nothing else -- FIFOs, sockets, devices and
+/// hard-linked files are appended to `skipped` (relative to `top`) instead.
+/// `target` and `.devenv.env` are left out, as the diff leaves them out.
+fn mirror(src: &Path, dst: &Path, top: &Path, skipped: &mut String) -> Result<()> {
+    use std::os::unix::fs::MetadataExt as _;
+    fs::create_dir(dst)?;
+    let mut entries: Vec<_> = fs::read_dir(src)?.collect::<std::io::Result<_>>()?;
+    entries.sort_by_key(fs::DirEntry::file_name);
+    for entry in entries {
+        let name = entry.file_name();
+        if name == "target" || name == ".devenv.env" {
+            continue;
+        }
+        let (from, to) = (entry.path(), dst.join(&name));
+        let rel = from
+            .strip_prefix(top)
+            .unwrap_or(&from)
+            .display()
+            .to_string();
+        let meta = fs::symlink_metadata(&from)?;
+        if meta.file_type().is_symlink() {
+            fs::write(
+                &to,
+                format!("symlink -> {}\n", fs::read_link(&from)?.display()),
+            )?;
+        } else if meta.is_dir() {
+            mirror(&from, &to, top, skipped)?;
+        } else if !meta.is_file() {
+            writeln!(skipped, "{rel}\t{}", special_kind(&meta))?;
+        } else if meta.nlink() > 1 {
+            writeln!(skipped, "{rel}\thard link ({} names)", meta.nlink())?;
+        } else {
+            // Opened only after lstat said regular file, and kept only if
+            // the open file is that same file: one swapped for a link or a
+            // FIFO in between is not read.
+            let mut file = fs::File::open(&from)?;
+            let opened = file.metadata()?;
+            if opened.is_file() && opened.dev() == meta.dev() && opened.ino() == meta.ino() {
+                std::io::copy(&mut file, &mut fs::File::create(&to)?)?;
+            } else {
+                writeln!(skipped, "{rel}\tchanged while read")?;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Seconds from `startedAt` to the first timestamped event of the trace.
@@ -115,18 +223,23 @@ fn fresh_start(export: &Path, case: &str, scratch: &Path) -> Option<PathBuf> {
 /// once the changes are kept: a run whose working copy or case cannot be
 /// found keeps its directory (false).
 fn unseal_and_remove(dir: &Path, dest: &Path, export: &Path, case: &str) -> Result<bool> {
-    let status = Command::new("chmod")
-        .args(["-R", "u+rwX"])
-        .arg(dir)
-        .status()?;
-    ensure!(status.success(), "chmod -R u+rwX {} failed", dir.display());
+    open_up(dir).with_context(|| format!("giving back the rights on {}", dir.display()))?;
     let scratch = dest.join(".start");
+    let (before, after) = (dest.join(".before"), dest.join(".after"));
     let mut kept = false;
     if let (Some(start), Some(cwd)) = (fresh_start(export, case, &scratch), working_copy(dir)) {
+        let mut skipped = String::new();
+        let mut ignored = String::new();
+        mirror(&start, &before, &start, &mut ignored)?;
+        mirror(&cwd, &after, &cwd, &mut skipped)?;
+        if !skipped.is_empty() {
+            fs::write(dest.join("skipped.txt"), &skipped)?;
+        }
         let diff = Command::new("diff")
             .args(["-ruN", "-x", "target", "-x", ".devenv.env"])
-            .arg(&start)
-            .arg(&cwd)
+            .arg(&before)
+            .arg(&after)
+            .stdin(Stdio::null())
             .output()?;
         // diff exits 0 (the same) or 1 (different); 2 is trouble.
         if diff.status.code().is_some_and(|c| c < 2) {
@@ -134,8 +247,10 @@ fn unseal_and_remove(dir: &Path, dest: &Path, export: &Path, case: &str) -> Resu
             kept = true;
         }
     }
-    if scratch.exists() {
-        fs::remove_dir_all(&scratch)?;
+    for d in [&scratch, &before, &after] {
+        if d.exists() {
+            fs::remove_dir_all(d)?;
+        }
     }
     if kept {
         fs::remove_dir_all(dir).with_context(|| format!("removing {}", dir.display()))?;
@@ -242,13 +357,15 @@ mod tests {
     }
 
     /// A run directory as the runner keeps it: read-only, the home under a
-    /// mode-000 `sealed/`.
-    fn sealed_run(runs: &Path, name: &str) -> PathBuf {
+    /// mode-000 `sealed/`, after `plant` put what it likes in the working
+    /// copy, as the session under test could.
+    fn sealed_run_with(runs: &Path, name: &str, plant: impl Fn(&Path)) -> PathBuf {
         let run = runs.join(name);
         let cwd = run.join("sealed/home/cwd");
         fs::create_dir_all(run.join("out")).unwrap();
         fs::create_dir_all(cwd.join("target")).unwrap();
         fs::write(cwd.join("a.txt"), "after\n").unwrap();
+        plant(&cwd);
         fs::write(cwd.join("target/big"), "build output").unwrap();
         let trace = run.join("out/trace.jsonl");
         fs::write(
@@ -262,10 +379,18 @@ mod tests {
     }
 
     fn setup(name: &str) -> (PathBuf, PathBuf, PathBuf, PathBuf, PathBuf) {
+        setup_with(name, |_, _| {})
+    }
+
+    /// `setup`, with `plant(working copy, test root)` run before sealing.
+    fn setup_with(
+        name: &str,
+        plant: impl Fn(&Path, &Path),
+    ) -> (PathBuf, PathBuf, PathBuf, PathBuf, PathBuf) {
         let root = tmp(name);
         let runs = root.join("runs");
         fs::create_dir_all(&runs).unwrap();
-        let trace = sealed_run(&runs, "e-abc123");
+        let trace = sealed_run_with(&runs, "e-abc123", |cwd| plant(cwd, &root));
         // An export whose case c scaffolds a.txt as "before".
         let export = root.join("export");
         fs::create_dir_all(export.join("evals/c")).unwrap();
@@ -305,6 +430,64 @@ mod tests {
         assert!(state.join("c/with-0/trace.jsonl").is_file());
         let tsv = fs::read_to_string(state.join("runs.tsv")).unwrap();
         assert!(tsv.contains("c\twith\t0\t9\t7\t"), "{tsv}");
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// What the session wrote is not trusted: a link to a secret outside
+    /// the run, file or directory, must not bring the secret into the kept
+    /// changes; the link is kept as its target's name.
+    #[test]
+    fn the_harvest_never_follows_a_link_the_session_planted() {
+        let (root, _runs, export, result, _) = setup_with("links", |cwd, root| {
+            fs::write(root.join("secret.txt"), "TOPSECRET-FILE\n").unwrap();
+            fs::create_dir_all(root.join("secretdir")).unwrap();
+            fs::write(root.join("secretdir/key"), "TOPSECRET-DIR\n").unwrap();
+            std::os::unix::fs::symlink(root.join("secret.txt"), cwd.join("leak")).unwrap();
+            std::os::unix::fs::symlink(root.join("secretdir"), cwd.join("leakdir")).unwrap();
+        });
+        let state = root.join("state");
+        run_harvest(&result, &state, &export, &root.join("runs"), true).unwrap();
+        let diff = fs::read_to_string(state.join("c/with-0/changes.diff")).unwrap();
+        assert!(!diff.contains("TOPSECRET"), "a link was followed: {diff}");
+        assert!(
+            diff.contains(&format!("symlink -> {}", root.join("secret.txt").display())),
+            "the link is kept as its target: {diff}"
+        );
+        assert!(root.join("secret.txt").is_file() && root.join("secretdir/key").is_file());
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// A FIFO (or a device, or a socket) is never opened: reading one can
+    /// hang the harvest for good. It is listed instead.
+    #[test]
+    fn the_harvest_never_reads_a_fifo_and_lists_it() {
+        let (root, runs, export, result, _) = setup_with("fifo", |cwd, _| {
+            let ok = Command::new("mkfifo")
+                .arg(cwd.join("pipe"))
+                .status()
+                .unwrap()
+                .success();
+            assert!(ok, "mkfifo");
+        });
+        let state = root.join("state");
+        let (tx, rx) = std::sync::mpsc::channel();
+        let (r, s, e, n) = (result.clone(), state.clone(), export.clone(), runs.clone());
+        std::thread::spawn(move || {
+            let _ = tx.send(run_harvest(&r, &s, &e, &n, true).map_err(|e| e.to_string()));
+        });
+        let Ok(done) = rx.recv_timeout(std::time::Duration::from_secs(30)) else {
+            // Free the reader that hangs on it (the old diff), then fail.
+            let pipe = runs.join("e-abc123/sealed/home/cwd/pipe");
+            drop(fs::OpenOptions::new().write(true).open(pipe));
+            panic!("the harvest hung on a FIFO");
+        };
+        done.unwrap();
+        let skipped = fs::read_to_string(state.join("c/with-0/skipped.txt")).unwrap_or_default();
+        assert!(
+            skipped.contains("pipe") && skipped.contains("fifo"),
+            "{skipped}"
+        );
+        assert!(state.join("c/with-0/changes.diff").is_file());
         fs::remove_dir_all(&root).unwrap();
     }
 
