@@ -14,11 +14,11 @@ PE_JUDGE=haiku
 # pe_has_opt NAME ARGS...: whether ARGS pass option NAME (as `NAME v` or
 # `NAME=v`).
 pe_has_opt() {
-  name=$1
+  _pe_name=$1
   shift
-  for a in "$@"; do
-    case $a in
-    "$name" | "$name"=*) return 0 ;;
+  for _pe_a in "$@"; do
+    case $_pe_a in
+    "$_pe_name" | "$_pe_name"=*) return 0 ;;
     esac
   done
   return 1
@@ -27,17 +27,17 @@ pe_has_opt() {
 # pe_opt_value NAME DEFAULT ARGS...: the value ARGS give option NAME, or
 # DEFAULT. The last one wins, as in the runner.
 pe_opt_value() {
-  name=$1
-  value=$2
+  _pe_name=$1
+  _pe_value=$2
   shift 2
   while [ $# -gt 0 ]; do
     case $1 in
-    "$name"=*) value=${1#*=} ;;
-    "$name") [ $# -gt 1 ] && value=$2 ;;
+    "$_pe_name"=*) _pe_value=${1#*=} ;;
+    "$_pe_name") [ $# -gt 1 ] && _pe_value=$2 ;;
     esac
     shift
   done
-  printf '%s\n' "$value"
+  printf '%s\n' "$_pe_value"
 }
 
 # pe_pin_args ARGS...: the pins ARGS do not already set, one word per line,
@@ -66,11 +66,11 @@ PE_VENDOR_FORMAT=1
 # .solve.sh and the scaffold itself. Not the commit: a commit that changes
 # none of them reuses the vendoring.
 pe_vendor_key() {
-  tab=$(printf '\t')
+  _pe_tab=$(printf '\t')
   {
     echo "vendor-format $PE_VENDOR_FORMAT"
     git -C "$1" ls-tree -r "$2" |
-      grep -E "$tab"'(\.cargo/config\.toml|evals/_scaffold/scaffold\.sh|evals/[^/]+/solution/\.solve\.sh|(.*/)?Cargo\.(toml|lock))$' |
-      grep -v "${tab}eval-harness/"
+      grep -E "$_pe_tab"'(\.cargo/config\.toml|evals/_scaffold/scaffold\.sh|evals/[^/]+/solution/\.solve\.sh|(.*/)?Cargo\.(toml|lock))$' |
+      grep -v "${_pe_tab}eval-harness/"
   } | pe_sha256 | cut -c1-16
 }

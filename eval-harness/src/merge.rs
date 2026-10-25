@@ -335,6 +335,45 @@ pub fn run_merge(with: &Path, baseline: &Path, out: &Path) -> Result<()> {
     Ok(())
 }
 
+/// `--evidence <result.json> <grader>`: each run's time, error and the
+/// evidence one grader kept (a file grader keeps the whole file), as
+/// plugin-eval.sh's `--probe` prints it.
+pub fn run_evidence(path: &Path, grader: &str) -> Result<()> {
+    let doc: Value = serde_json::from_str(&fs::read_to_string(path)?)
+        .with_context(|| format!("reading {}", path.display()))?;
+    println!(
+        "{}: {} s wall, ${:.4}",
+        path.display(),
+        doc["durationSeconds"],
+        doc["costUsd"].as_f64().unwrap_or(0.0)
+    );
+    for case in doc["cases"].as_array().into_iter().flatten() {
+        for (arm, runs) in case["arms"].as_object().into_iter().flatten() {
+            for (i, run) in runs.as_array().into_iter().flatten().enumerate() {
+                println!(
+                    "== {} {arm}/{i}: {} s, {} turns, error {}, trace {}",
+                    case["name"].as_str().unwrap_or("?"),
+                    run["durationSeconds"],
+                    run["turns"],
+                    run["error"],
+                    run["tracePath"].as_str().unwrap_or("-")
+                );
+                let g = run["graders"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find(|g| g["name"] == grader);
+                match g.map(|g| &g["evidence"]) {
+                    Some(Value::String(s)) => println!("{s}"),
+                    Some(v) if !v.is_null() => println!("{v}"),
+                    _ => println!("(no evidence from grader `{grader}`)"),
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 /// The runner's summary table, from a two-arm result.
 pub fn table(doc: &Value) -> String {
     let mut s = String::from("| case | with | w/out | delta |\n|---|---|---|---|\n");

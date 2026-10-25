@@ -38,6 +38,10 @@ same "an option value is not an option" \
 same "-j's value, the last one" "8" "$(pe_opt_value -j 1 -j 4 --runs 1 -j 8)"
 same "-j's default" "1" "$(pe_opt_value -j 1 --runs 1)"
 same "--opt=value" "3" "$(pe_opt_value --runs 1 --runs=3)"
+name=mine value=mine a=mine tab=mine
+pe_opt_value --json x --json y >/dev/null
+pe_has_opt --json --json y && pe_vendor_key "$repo" HEAD >/dev/null
+same "the functions leave the caller's variables alone" "mine mine mine mine" "$name $value $a $tab"
 
 # The vendoring's content key, over a repository of its own.
 g=$scratch/keyrepo
@@ -71,11 +75,26 @@ mkdir -p "$r/.claude-plugin" "$r/evals/c" "$r/crates/a" "$r/docs/research/source
 touch "$r/.claude-plugin/plugin.json" "$r/evals/c/prompt.md" "$r/crates/a/lib.rs" \
   "$r/docs/README.md" "$r/vendor/dep/lib.rs" "$r/probe-env/env/prompt.md" \
   "$r/graders-start/c/prompt.md" "$r/skills/s/SKILL.md"
+echo docs >"$r/docs/README.md"
 mkdir "$scratch/work" "$scratch/home"
 (cd "$scratch/work" && HOME=$scratch/home sh "$repo/evals/_scaffold/scaffold.sh" "$r/evals/c")
+same "the scaffold runs to the end" 0 "$?"
 same "the scaffold copies the workspace" yes "$([ -f "$scratch/work/crates/a/lib.rs" ] && echo yes)"
 same "the scaffold leaves out vendor/, probe-*/, graders-*/ and the plugin" "" \
   "$(cd "$scratch/work" && ls -d vendor probe-env graders-start skills evals 2>/dev/null)"
+
+# In an export, the shared vendored dependencies are cloned into the copy.
+mkdir -p "$scratch/shared/serde-1.0.0" "$r/.cargo" "$r/evals/_scaffold" "$scratch/work2" "$scratch/home2"
+touch "$scratch/shared/serde-1.0.0/lib.rs"
+echo "$scratch/shared" >"$r/evals/_scaffold/vendor-dir"
+printf '[source.vendored-sources]\ndirectory = "__VENDOR__"\n' >"$r/.cargo/config.toml"
+(cd "$scratch/work2" && HOME=$scratch/home2 sh "$repo/evals/_scaffold/scaffold.sh" "$r/evals/c")
+w2=$(cd "$scratch/work2" && pwd)
+same "the scaffold clones the vendored dependencies" yes \
+  "$([ -f "$w2/vendor/serde-1.0.0/lib.rs" ] && echo yes)"
+same "and points cargo at the clone" "directory = \"$w2/vendor\"" \
+  "$(grep '^directory' "$w2/.cargo/config.toml")"
+rm "$r/evals/_scaffold/vendor-dir" "$r/.cargo/config.toml"
 
 # --- plugin-eval.sh, building exports ---------------------------------------
 
@@ -125,8 +144,10 @@ fsha=$(g2 rev-parse --short HEAD)
 same "the first export vendors once" 1 "$(grep -c . "$calls")"
 same "the vendored dependencies live outside the export" "no" \
   "$([ -e "$fbase/$fsha/root/vendor" ] && echo yes || echo no)"
-same "cargo is pointed at them by absolute path" \
-  "directory = \"$fbase/vendor-$(pe_vendor_key "$f" HEAD)\"" \
+same "the export names them for the scaffold to clone" \
+  "$(cd "$fbase/vendor-$(pe_vendor_key "$f" HEAD)" && pwd -P)" \
+  "$(cat "$fbase/$fsha/root/evals/_scaffold/vendor-dir" 2>/dev/null)"
+same "and leaves the clone's path to the scaffold" 'directory = "__VENDOR__"' \
   "$(grep '^directory = ' "$fbase/$fsha/root/.cargo/config.toml" 2>/dev/null)"
 echo two >"$f/skills/s/SKILL.md" && fcommit skills
 fakerun

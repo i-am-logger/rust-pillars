@@ -108,6 +108,8 @@ enum Mode {
     Rescore,
     /// A with-arm-only result beside a baseline's without arm (`merge.rs`).
     Merge,
+    /// Each run's time and one grader's evidence (`merge.rs`).
+    Evidence,
 }
 
 #[derive(Debug)]
@@ -146,6 +148,12 @@ fn opts() -> Result<Opts> {
             "--merge" => {
                 o.mode = Mode::Merge;
                 for _ in 0..3 {
+                    o.files.push(PathBuf::from(val()?));
+                }
+            }
+            "--evidence" => {
+                o.mode = Mode::Evidence;
+                for _ in 0..2 {
                     o.files.push(PathBuf::from(val()?));
                 }
             }
@@ -520,7 +528,13 @@ fn main() -> ExitCode {
                 merge::run_merge(with, baseline, out)?;
                 Ok(ExitCode::SUCCESS)
             }
-            (Mode::Rescore | Mode::Merge, _) => bail!("--rescore takes one file, --merge three"),
+            (Mode::Evidence, [file, grader]) => {
+                merge::run_evidence(file, &grader.to_string_lossy())?;
+                Ok(ExitCode::SUCCESS)
+            }
+            (Mode::Rescore | Mode::Merge | Mode::Evidence, _) => {
+                bail!("--rescore takes one file, --merge three, --evidence a file and a grader")
+            }
             (Mode::Control | Mode::Solution, _) => {
                 run_control(&root, &cases(&root, o.case.as_ref())?, o.mode)
             }

@@ -82,16 +82,18 @@ if [ ! -f "$out/.ready" ]; then
   mkdir -p "$export_dir/.cargo"
   git archive HEAD | tar -x -C "$export_dir"
   share_dir "$(basename "$vendor")" vendor_into
-  cat >>"$export_dir/.cargo/config.toml" <<EOF
+  # The sandbox cannot read $vendor (measured: "Operation not permitted"),
+  # so the scaffold clones it into each working copy and fills __VENDOR__.
+  (cd "$vendor" && pwd -P) >"$export_dir/evals/_scaffold/vendor-dir"
+  cat >>"$export_dir/.cargo/config.toml" <<'EOF'
 
 # Eval runs only: the sandbox has no network, so every dependency the cases
-# can need is vendored, outside the working copy, and cargo never asks the
-# registry.
+# can need is vendored, and cargo never asks the registry.
 [source.crates-io]
 replace-with = "vendored-sources"
 
 [source.vendored-sources]
-directory = "$vendor"
+directory = "__VENDOR__"
 
 [net]
 offline = true
@@ -150,6 +152,51 @@ if [ "${1:-}" = --graders ]; then
       $(pe_pin_args --model haiku "$@") || true
   done
   echo "reports: $out/graders-solution.html $out/graders-start.html"
+  exit 0
+fi
+
+if [ "${1:-}" = --probe ]; then
+  # --probe NAME CMDFILE [runner options]: one fixed command, the same in
+  # every run, in a working copy of $PE_PROBE_CASE (default own-dont-leak),
+  # run by a haiku session told to run it and nothing else. The command's
+  # own timing and output land in probe.out, which a file grader keeps
+  # whole in the result; `--keep-temp` keeps the trace too.
+  [ $# -ge 3 ] || {
+    echo "usage: plugin-eval.sh --probe NAME CMDFILE [runner options]" >&2
+    exit 2
+  }
+  name=$2
+  cmdfile=$(cd "$(dirname "$3")" && pwd)/$(basename "$3")
+  shift 3
+  suite=$export_dir/probe-$name
+  d=$suite/$name
+  rm -rf "$suite"
+  mkdir -p "$d/graders"
+  cp "$cmdfile" "$d/probe.cmd"
+  printf -- '---\nname: %s\nruns: 1\nmax_turns: 4\ntimeout_seconds: %s\n---\n\nRun exactly this one Bash command, with a 900000 ms timeout, and then reply with the single word done:\n\nsh probe.sh >probe.out 2>&1\n' \
+    "$name" "${PE_PROBE_TIMEOUT:-900}" >"$d/prompt.md"
+  printf 'schema_version: "1.1"\nname: %s\ncontext:\n  scaffold_script: scaffold.sh\n' "$name" >"$d/case.yaml"
+  printf -- '---\ntype: llm\nfocus:\n  source: file\n  path: probe.out\n---\n\nPASS if the file is not empty.\n' >"$d/graders/out.md"
+  cat >"$d/probe.sh" <<'EOF'
+now() { perl -MTime::HiRes=time -e 'printf "%.1f", time'; }
+t0=$(now)
+(. ./probe.cmd)
+code=$?
+echo "PROBE_EXIT=$code PROBE_SECONDS=$(perl -e "printf q(%.1f), $(now) - $t0")"
+EOF
+  # shellcheck disable=SC2016 # $here and $0 belong to the generated script
+  printf '#!/bin/sh\nset -e\nhere=$(cd "$(dirname "$0")" && pwd)\nsh "$here/../../evals/%s/scaffold.sh"\ncp "$here/probe.cmd" "$here/probe.sh" .\n' \
+    "${PE_PROBE_CASE:-own-dont-leak}" >"$d/scaffold.sh"
+  json=$out/probe-$name.json
+  pe_has_opt --json "$@" && json=$(pe_opt_value --json "$json" "$@")
+  cd "$export_dir"
+  # shellcheck disable=SC2046 # the pins are single words
+  claude plugin eval . --eval-dir "probe-$name" --scaffold --trust-plugin --allow-tools Bash \
+    --ablation none --model haiku --no-publish --threshold 0 --json "$json" "$@" \
+    $(pe_pin_args --model haiku "$@") || true
+  # From the repository: the export's cargo config points at the vendored
+  # dependencies, which hold the cases' crates, not the harness's.
+  (cd "$repo" && cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --evidence "$json" out)
   exit 0
 fi
 

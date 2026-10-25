@@ -55,3 +55,29 @@ if [ -f "$env_file" ] && [ ! -e "$HOME/.zshenv" ]; then
   # shellcheck disable=SC2016 # expanded by the agent's shell, not here
   printf '__p=$PATH\n. "$HOME/.devenv.env"\nexport PATH="$PATH:$__p"\nunset __p\n' >"$HOME/.zshenv"
 fi
+
+# clone FROM TO: TO as a copy of directory FROM, sharing its blocks where the
+# file system can (APFS clonefile, then a reflink), else a plain copy; mtimes
+# kept, so cargo sees prebuilt output as fresh.
+clone() {
+  cp -c -pR "$1/." "$2" 2>/dev/null && return 0
+  rm -rf "$2"
+  cp --reflink=auto -pR "$1/." "$2" 2>/dev/null && return 0
+  rm -rf "$2"
+  cp -pR "$1/." "$2"
+}
+
+# Only in an eval export: the vendored dependencies (eval-harness/plugin-eval.sh
+# names their shared directory in vendor-dir). The sandbox cannot read that
+# directory, so each working copy gets its own clone, and cargo is pointed
+# at it.
+vendor_file=$root/evals/_scaffold/vendor-dir
+if [ -f "$vendor_file" ]; then
+  case $(cat "$root/evals/_scaffold/vendor-place" 2>/dev/null || echo work) in
+  home) vendor=$HOME/vendor ;;
+  *) vendor=$(pwd)/vendor ;;
+  esac
+  clone "$(cat "$vendor_file")" "$vendor"
+  sed "s|__VENDOR__|$vendor|" .cargo/config.toml >.cargo/config.toml.new
+  mv .cargo/config.toml.new .cargo/config.toml
+fi
