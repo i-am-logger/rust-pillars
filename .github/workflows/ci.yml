@@ -60,7 +60,7 @@ jobs:
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # test:mutants-diff mutates the lines changed since the merge base
           # with the default branch; a shallow clone has no merge base.
@@ -70,7 +70,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
             extra-substituters = https://nix-community.cachix.org https://cache.nixos.org https://devenv.cachix.org
@@ -78,7 +78,7 @@ jobs:
 
       # The nix store: devenv, the rust toolchain, and every build input.
       - name: Restore and save Nix store
-        uses: nix-community/cache-nix-action@v7
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', 'devenv.lock') }}
           # No lock hash in the prefix, so a lockfile bump still restores the
@@ -109,7 +109,7 @@ jobs:
 
       # ~/.cargo and ./target.
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           # cmd-format runs rust-cache's `rustc -vV` and `cargo metadata` probes
           # through devenv, so the key tracks the toolchain that actually
@@ -133,18 +133,22 @@ jobs:
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
+      # rustup ships on the runner image. dtolnay/rust-toolchain publishes no
+      # versioned release to pin to a commit, so the toolchain comes from
+      # rustup directly rather than from a branch-tracking action.
+      - name: Install the stable toolchain
+        run: rustup toolchain install stable --profile minimal --component llvm-tools-preview && rustup default stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
-          components: llvm-tools-preview
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-llvm-cov
+          tool: cargo-llvm-cov
       - name: Generate coverage
         run: cargo llvm-cov --lcov --output-path lcov.info
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
@@ -175,13 +179,14 @@ jobs:
       releases_created: ${{ steps.release-plz.outputs.releases_created }}
       releases: ${{ steps.release-plz.outputs.releases }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # release-plz diffs against the previous tag, so it needs full history.
           fetch-depth: 0
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: release-plz/action@v0.5.131
+      - name: Install the stable toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
         id: release-plz
         with:
           command: release
@@ -212,12 +217,13 @@ jobs:
       group: release-plz-pr-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: release-plz/action@v0.5.131
+      - name: Install the stable toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
         id: release-plz
         with:
           command: release-pr

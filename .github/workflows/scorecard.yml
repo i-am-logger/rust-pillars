@@ -10,10 +10,10 @@ name: Scorecard supply-chain security
 # reflected promptly, and on branch_protection_rule so that check specifically
 # updates the moment the ruleset changes.
 #
-# Every action this workflow itself calls is SHA-pinned (not tag-pinned, unlike
-# the rest of this repo's workflows) because Scorecard's own "Pinned-Dependencies"
-# check penalizes float-tag actions — this workflow would otherwise score itself
-# down on the exact dimension it exists to measure.
+# Every action is pinned to a commit SHA with its exact release in a comment,
+# as in ci.yml: a tag can be moved to other code, a commit cannot. Dependabot
+# (.github/dependabot.yml) proposes the bumps. Scorecard's own
+# "Pinned-Dependencies" check scores float-tag actions down, too.
 #
 # A solo-maintainer repo will not score highly on branch-protection /
 # required-review / SAST / fuzzing dimensions immediately — that is an honest
@@ -68,6 +68,6 @@ jobs:
           retention-days: 5
 
       - name: Upload to code-scanning
-        uses: github/codeql-action/upload-sarif@02c5e83432fe5497fd85b873b6c9f16a8578e1d9 # v3
+        uses: github/codeql-action/upload-sarif@9b3254085494b55a0f7c4c2b3d2d52cc712ce370 # v4.39.1
         with:
           sarif_file: results.sarif
