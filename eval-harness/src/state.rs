@@ -45,9 +45,31 @@ fn run_dir(trace: &Path, run_root: &Path) -> Option<PathBuf> {
     let ok = name.starts_with("e-")
         && name.len() > 2
         && parent == run_root.canonicalize().ok()?
-        && trace.is_file()
+        && plain_dir(dir, Path::new("out"))
+        && fs::symlink_metadata(dir).is_ok_and(|m| m.is_dir())
+        && fs::symlink_metadata(trace).is_ok_and(|m| m.is_file())
         && (dir.join("home").exists() || dir.join("sealed").exists());
     ok.then(|| dir.to_path_buf())
+}
+
+/// The contents of `path` if it is a regular file with one name, read only
+/// if the file opened is the one lstat saw: never through a link, never a
+/// FIFO or device.
+fn read_regular(path: &Path) -> Option<String> {
+    use std::io::Read as _;
+    use std::os::unix::fs::MetadataExt as _;
+    let meta = fs::symlink_metadata(path).ok()?;
+    if !meta.is_file() || meta.nlink() > 1 {
+        return None;
+    }
+    let mut file = fs::File::open(path).ok()?;
+    let opened = file.metadata().ok()?;
+    if !(opened.is_file() && opened.dev() == meta.dev() && opened.ino() == meta.ino()) {
+        return None;
+    }
+    let mut text = String::new();
+    file.read_to_string(&mut text).ok()?;
+    Some(text)
 }
 
 /// Whether `dir/rel` is a directory reached through directories only, no
@@ -290,7 +312,7 @@ pub fn run_harvest(
                 };
                 let dest = state.join(name).join(format!("{arm}-{i}"));
                 fs::create_dir_all(&dest)?;
-                let text = fs::read_to_string(&trace).unwrap_or_default();
+                let text = read_regular(&trace).unwrap_or_default();
                 fs::write(dest.join("trace.jsonl"), &text)?;
                 let delay = run["startedAt"]
                     .as_str()
@@ -454,6 +476,33 @@ mod tests {
             "the link is kept as its target: {diff}"
         );
         assert!(root.join("secret.txt").is_file() && root.join("secretdir/key").is_file());
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    /// The trace itself is a path in a directory the session may have
+    /// written: a link there to a secret must not be read either.
+    #[test]
+    fn the_harvest_never_reads_a_trace_that_is_a_link() {
+        use std::os::unix::fs::PermissionsExt as _;
+        let (root, runs, export, result, _) = setup("tracelink");
+        fs::write(root.join("secret.txt"), "TOPSECRET-TRACE\n").unwrap();
+        let run = runs.join("e-abc123");
+        fs::set_permissions(&run, fs::Permissions::from_mode(0o700)).unwrap();
+        fs::remove_file(run.join("out/trace.jsonl")).unwrap();
+        std::os::unix::fs::symlink(root.join("secret.txt"), run.join("out/trace.jsonl")).unwrap();
+        let state = root.join("state");
+        run_harvest(&result, &state, &export, &runs, false).unwrap();
+        let kept = state.join("c/with-0/trace.jsonl");
+        assert!(
+            !fs::read_to_string(&kept)
+                .unwrap_or_default()
+                .contains("TOPSECRET"),
+            "the linked trace was read"
+        );
+        let _ = Command::new("chmod")
+            .args(["-R", "u+rwX"])
+            .arg(&root)
+            .status();
         fs::remove_dir_all(&root).unwrap();
     }
 
