@@ -175,9 +175,9 @@ dev-ci            # every gate, exactly as CI runs it (= devenv test)
 One version for the repository: the workspace version in `Cargo.toml`, which
 `.claude-plugin/plugin.json` must match (a check fails when they differ).
 [release-plz](https://release-plz.dev) opens a `chore: release` PR from
-[Conventional Commits](https://www.conventionalcommits.org/); merging it tags
-`vX.Y.Z` from the `rust-code` package, writes [CHANGELOG.md](CHANGELOG.md) and
-creates a GitHub release. Nothing is published to crates.io -- the plugin
+[Conventional Commits](https://www.conventionalcommits.org/) that bumps the
+version and writes [CHANGELOG.md](CHANGELOG.md); merging it tags `vX.Y.Z` from
+the `rust-code` package and creates a GitHub release. Nothing is published to crates.io -- the plugin
 ships as this repository. [CONTRIBUTING.md](CONTRIBUTING.md#releases) has the
 details.
 
