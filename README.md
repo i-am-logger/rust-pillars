@@ -6,66 +6,75 @@
 [![devenv](https://img.shields.io/badge/devenv-2b2b2b?logo=nixos&logoColor=white)](https://devenv.sh)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/CC%20BY--NC--SA%204.0-2b2b2b?logo=creativecommons&logoColor=white)](LICENSE)
 
-> A Claude Code plugin that teaches Claude to write Rust the way these
-> projects are built -- a domain type system that refuses primitives,
-> event-driven sans-IO cores, layered crates, zero-copy, `no_std`, no
-> `unsafe` -- and how to research, measure and test it. In the spirit of
-> [BeautifulRust](https://github.com/morganlinton/BeautifulRust), with one
-> difference that matters: every rule here is also a gate in
-> [rust-template](https://github.com/i-am-logger/rust-template) that fails
-> the build.
+> A Claude Code plugin that teaches Claude to write Rust on six enforced
+> pillars -- a domain type system that refuses primitives, event-driven
+> sans-IO cores, layered crates, zero-copy, `no_std`, no `unsafe` -- and how
+> to research, measure and test that code. Every rule is also a gate that
+> fails the build: the gates run in this repository, and a new project gets
+> them from the
+> [`feat/pillars` branch of rust-template](https://github.com/i-am-logger/rust-template/tree/feat/pillars).
+> The idioms are adapted from
+> [BeautifulRust](https://github.com/morganlinton/BeautifulRust) under its MIT
+> license.
 
 ## What it is
 
 Two halves, versioned separately:
 
-- **This plugin** -- six skills, each a short `SKILL.md` with references
-  loaded on demand, plus evals that score the skills by building and gating
-  the code they produce.
+- **This plugin** -- an entry skill and six specialist skills, each a short
+  `SKILL.md` with references loaded on demand, two commands, a refuter
+  agent, and evals that score the skills by building and gating the code they
+  produce.
 - **rust-template** -- the enforcement: workspace lints, `cargo xtask`
-  gates, devenv tasks that are CI. Projects are generated from it and enable
-  this plugin; this repository is itself one of them, and every gate applies
-  here too.
+  gates, devenv tasks that are CI. The gates are on its
+  [`feat/pillars` branch](https://github.com/i-am-logger/rust-template/tree/feat/pillars)
+  today, not on its `master`. A project made from that branch enables this
+  plugin for everyone in it through its Claude Code project settings. This
+  repository carries the same gates (`xtask/`), and every gate applies here
+  too.
 
 ## Install
 
 **Claude Code**, from the marketplace this repository is:
 
 ```bash
-claude plugin install rust-code --marketplace i-am-logger/rust-code
+claude plugin marketplace add i-am-logger/rust-code
+claude plugin install rust-code@rust-code
 # or, inside a session:
 /plugin marketplace add i-am-logger/rust-code
 /plugin install rust-code@rust-code
 ```
 
-The repository is private for now: git on your machine must already be able to
-clone it (an SSH key in `ssh-agent`, or `gh auth login` then `gh auth
-setup-git`). A project made from rust-template enables the plugin for
-everyone in it through its Claude Code project settings. From a local checkout:
-`claude --plugin-dir ~/Code/rust-code`.
+From a local checkout: `claude --plugin-dir /path/to/rust-code`.
 
 **Loading the skills.** A skill's description leaves loading to the model,
-and on small tasks it skips it: measured with Sonnet, writing a whole crate
-loaded no skill. So the plugin adds one line to any prompt about Rust (it
-mentions Rust, cargo, a crate, a `.rs` file, the borrow checker, lifetimes,
-clippy or rustfmt, or the project has a `Cargo.toml`) telling Claude to load
-the entry skill; with it, the same task loaded `rust-code:rust-code` first.
-A one-line question it can answer outright may still be answered without the
-skills. The hook runs nothing in your project; turn it off with
-`--config nudge=false`.
+and on small tasks it skips it: with Sonnet, one run per condition (evidence
+of the direction, not a rate), writing a whole crate loaded no skill. So the
+plugin adds one line to any prompt about Rust (it mentions Rust, cargo, a
+crate, a `.rs` file, the borrow checker, lifetimes, clippy or rustfmt, or the
+project has a `Cargo.toml`) telling Claude to load the entry skill; with it,
+the same task loaded `rust-code:rust-code` first. A one-line question it can
+answer outright may still be answered without the skills. The hook reads the
+prompt and checks for a `Cargo.toml`; it runs nothing in your project. Turn
+it off with `--config nudge=false`.
 
 **Opt-in gates while you work.** Install with `--config gate_on_edit=true`
 (or set the option later with `claude plugin configure rust-code`), and after
-every edit to a `.rs` file in a rust-template project the plugin runs
-`cargo xtask budgets` and `cargo xtask arch` and shows Claude what fails, so a
-violation is fixed in the same turn. Off by default: it runs commands in your
-project.
+every edit to a `.rs` file the plugin looks upward from that file for a
+`layers.toml` beside an `xtask/` directory, runs `cargo xtask budgets` and
+`cargo xtask arch` there, and shows Claude what fails, so a violation is
+fixed in the same turn. It is off by default because the hook executes the
+open project's own code -- its xtask, build scripts, proc macros and cargo
+configuration -- with no permission prompt. An install is user-scoped by
+default, so once the option is on it applies in every project you open
+(inferred): do not turn it on if you open repositories you do not trust.
 
-**claude.ai**: `devenv tasks run dist:package` builds
-`target/dist/rust-code-plugin.zip` (upload at Customize > Plugins) and one zip
-per skill under `target/dist/skills/` (upload at Customize > Skills). Every
-skill stands alone: no link leaves its folder, and its frontmatter uses only
-the keys claude.ai accepts (`test:plugin` holds both).
+**claude.ai**: upload the whole plugin as a zip at Customize > Plugins, or
+any one skill as a zip at Customize > Skills. `devenv tasks run dist:package`
+builds them: `target/dist/rust-code-plugin.zip` and one zip per skill under
+`target/dist/skills/`. Every skill stands alone: no link leaves its folder,
+and its frontmatter uses only the keys claude.ai accepts (`test:plugin` holds
+both).
 
 ## Use
 
@@ -89,9 +98,16 @@ any of them directly:
 | `/rust-code:adopt [--ratchet]` | brings the gates into an existing workspace: roles, then `cargo xtask init` |
 | `@agent-rust-code:refuter` | a closed-brief refuter: tries to show a change is wrong, returns its verdict as JSON |
 
+Both commands run the open project's code (`devenv test`, `cargo xtask`) and
+pre-approve shell commands while they run; [SECURITY.md](SECURITY.md) lists
+each grant.
+
 ## The pillars and their gates
 
-| # | Pillar | Gate in rust-template |
+The gates are `cargo xtask` commands in this repository and on rust-template's
+[`feat/pillars` branch](https://github.com/i-am-logger/rust-template/tree/feat/pillars).
+
+| # | Pillar | Gate |
 |---|---|---|
 | 1 | Type system: no raw primitive in a domain or core API outside a named seam | `cargo xtask budgets`, trybuild cases with twins |
 | 2 | Event-driven: events in, effects polled, no callbacks, no clock | `cargo xtask arch`, the `chunk_invariance_*` property |
@@ -104,9 +120,10 @@ Every gate is seen failing for its reason: `cargo xtask controls` plants one
 violation per gate in a scratch copy, and the suite passes only if each gate
 names the planted fault.
 
-## Against BeautifulRust
+## Compared with BeautifulRust
 
-Everything BeautifulRust does as a plugin, rust-code does too, and then:
+Both are Claude Code plugins for writing Rust. Side by side, against the
+BeautifulRust copy pinned at commit 6b3a96c:
 
 | | BeautifulRust | rust-code |
 |---|---|---|
@@ -114,12 +131,12 @@ Everything BeautifulRust does as a plugin, rust-code does too, and then:
 | Install from a marketplace, invoke by slash command | yes | yes |
 | claude.ai upload | a zipped skill folder | the whole plugin, or any one skill on its own (`dist:package`) |
 | Evals under `claude plugin eval` | 3 cases, graded by a model | 10 cases with scaffolds and transcript graders, **plus** executable checks that build, lint, test and gate what was written, each case proven to fail on an untouched project and pass with a reference solution |
-| Rules enforced | none: prose | every rule is a gate in rust-template, and every gate is seen failing for its reason |
-| Getting loaded | its description only | its descriptions, plus a nudge on any Rust prompt (measured: it turned a crate-writing task that loaded no skill into one that loaded the entry skill first) |
+| Rules enforced | none: prose | every rule is a gate, here and on rust-template's `feat/pillars` branch, and every gate is seen failing for its reason |
+| Getting loaded | its description only | its descriptions, plus a nudge on any Rust prompt (one run per condition: it turned a crate-writing task that loaded no skill into one that loaded the entry skill first) |
 | In-session enforcement | none | opt-in hook runs the gates after each `.rs` edit |
 | Commands, agents | none | `/rust-code:gate`, `/rust-code:adopt`, a refuter agent |
 | Code in the skills | examples | every Rust block compiles and runs (`cargo xtask snippets`) |
-| Context cost | ~150 tokens always-on, ~7.3k every time it fires (estimated from its 504-line SKILL.md at ~4 bytes a token) | ~950 always-on (measured, `claude plugin details`); ~1.6k for the entry skill, plus only the specialist a task needs (~4-7k) |
+| Context cost | ~160 tokens always-on, ~7.3k every time it fires (unmeasured: bytes / 4 over the pinned SKILL.md's 650-byte frontmatter and 504-line body) | ~980 always-on; ~1.6k for the entry skill, plus only the specialist a task needs (~3.9k-7.1k) (`claude plugin details` estimates, claude 2.1.303) |
 
 It costs more context up front -- one description per skill and command --
 and less when it works, because no task loads all of it. The idioms are
