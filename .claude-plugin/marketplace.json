@@ -8,7 +8,8 @@
     {
       "name": "rust-code",
       "source": ".",
-      "description": "Six Rust skills -- domain types, architecture, idioms, research, measurement, QA -- enforced by rust-template's gates."
+      "description": "Six Rust skills -- domain types, architecture, idioms, research, measurement, QA -- enforced by rust-template's gates.",
+      "license": "CC-BY-NC-SA-4.0"
     }
   ]
 }
