@@ -45,6 +45,28 @@ same "the runner's default concurrency" 1 "$(pe_jobs --runs 3)"
 same "18 cores, -j 4" 4 "$(pe_job_cap 18 4)"
 same "18 cores, -j 8" 2 "$(pe_job_cap 18 8)"
 same "never below one" 1 "$(pe_job_cap 4 8)"
+# The reaper: an orphan in one run directory is ended; a live session's
+# process in another, and anything in a run older than the marker, is not.
+runs=$scratch/runs
+mkdir -p "$runs/e-old/home/cwd"
+sleep 1
+touch "$scratch/marker"
+sleep 1
+mkdir -p "$runs/e-dead/home/cwd" "$runs/e-live/home/cwd"
+(cd "$runs/e-old/home/cwd" && sh -c 'sleep 301 >/dev/null 2>&1 &')
+(cd "$runs/e-dead/home/cwd" && sh -c 'sleep 302 >/dev/null 2>&1 &')
+(cd "$runs/e-live/home/cwd" && exec sleep 303) &
+live=$!
+sleep 1
+alive() { pgrep -f "sleep $1" >/dev/null && echo alive || echo gone; }
+same "an orphan exists before the reap" alive "$(alive 302)"
+pe_reap "$(cd "$runs" && pwd -P)" "$scratch/marker" >/dev/null
+sleep 1
+same "the reaper ends an orphan of a dead session" gone "$(alive 302)"
+same "and leaves a live session's process" alive "$(alive 303)"
+same "and a run older than this invocation" alive "$(alive 301)"
+kill "$live" 2>/dev/null
+pkill -f 'sleep 301' 2>/dev/null
 name=mine value=mine a=mine tab=mine
 pe_opt_value --json x --json y >/dev/null
 pe_has_opt --json --json y && pe_vendor_key "$repo" HEAD >/dev/null
@@ -72,6 +94,20 @@ echo two >"$g/Cargo.lock" && commit lock
 k2=$(pe_vendor_key "$g" HEAD)
 [ "$k2" != "$(pe_vendor_key "$g" HEAD~1)" ] && k2=changed
 same "the lockfile changes the vendor key" changed "$k2"
+
+# Tiers and the changed-cases selector.
+same "a smoke case's tags" "tags: [smoke, case-layering-fix]" "$(pe_tags layering-fix)"
+same "another case's tags" "tags: [case-no-std-port]" "$(pe_tags no-std-port)"
+mkdir -p "$g/evals/d" && echo one >"$g/evals/d/prompt.md" && commit addcase
+k=$(git -C "$g" rev-parse HEAD)
+echo four >"$g/evals/c/fixture/crates/b/Cargo.toml" && echo two >"$g/evals/d/prompt.md" && commit cases
+same "changes inside case directories pick those cases" "c d" "$(words "$(pe_changed_cases "$g" "$k")")"
+echo three >"$g/skills/s/SKILL.md" && commit skill
+same "a skill change picks every case" all "$(pe_changed_cases "$g" "$k")"
+k=$(git -C "$g" rev-parse HEAD)
+mkdir -p "$g/evals/_scaffold" && echo x >"$g/evals/_scaffold/scaffold.sh" && commit scaffold
+same "a scaffold change picks every case" all "$(pe_changed_cases "$g" "$k")"
+same "nothing changed picks nothing" "" "$(pe_changed_cases "$g" HEAD)"
 
 # --- scaffold.sh -----------------------------------------------------------
 
@@ -181,8 +217,8 @@ fenv=$fbase/$fsha/root/evals/_scaffold/devenv.env
 same "the export's environment carries the lighter dev profile" yes \
   "$(grep -q '^export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0$' "$fenv" 2>/dev/null && echo yes)"
 # shellcheck disable=SC2016 # expanded by the inner shells
-same "and derives the job caps from the invocation's EVAL_JOB_CAP" "3 3 3 /" \
-  "$(EVAL_JOB_CAP=3 sh -c '. "$1"; echo "$CARGO_BUILD_JOBS $NEXTEST_TEST_THREADS $RUST_TEST_THREADS /${CARGO_TARGET_DIR:-}"' sh "$fenv" 2>/dev/null)"
+same "and derives the job caps from the invocation's EVAL_JOB_CAP" "3 3 3" \
+  "$(EVAL_JOB_CAP=3 sh -c '. "$1"; echo "$CARGO_BUILD_JOBS $NEXTEST_TEST_THREADS $RUST_TEST_THREADS"' sh "$fenv" 2>/dev/null)"
 # shellcheck disable=SC2016 # expanded by the inner shell
 same "and sets no cap without one" "/" \
   "$(env -u EVAL_JOB_CAP sh -c '. "$1"; echo "${CARGO_BUILD_JOBS:-}/"' sh "$fenv" 2>/dev/null)"
@@ -199,37 +235,76 @@ same "a Cargo.toml change vendors again" 2 "$(grep -c . "$calls")"
 
 # --- plugin-eval.sh, end to end -------------------------------------------
 
-# A stand-in claude: prints its working directory's name and its arguments.
-mkdir -p "$scratch/bin"
+# A stand-in claude: prints its working directory's name, the job cap and
+# its arguments; for a suite run it also leaves a command running in a run
+# directory, as a timed-out session does.
+mkdir -p "$scratch/bin" "$scratch/runs2"
 cat >"$scratch/bin/claude" <<'EOF'
 #!/bin/sh
+[ "$1" = --version ] && { echo "9.9.9 (Claude Code)"; exit 0; }
 printf 'cwd=%s\n' "$(basename "$PWD")"
 printf 'cap=%s\n' "${EVAL_JOB_CAP:-}"
 printf 'arg=%s\n' "$@"
+if [ -n "${LEAVE_ORPHAN:-}" ]; then
+  mkdir -p "$PE_RUN_ROOT/e-run1/home/cwd"
+  (cd "$PE_RUN_ROOT/e-run1/home/cwd" && sh -c 'sleep 304 >/dev/null 2>&1 &')
+fi
 EOF
 chmod +x "$scratch/bin/claude"
 
 # An export that is already built, so the script goes straight to the run.
 sha=$(git -C "$repo" rev-parse --short HEAD)
-mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root"
-touch "$scratch/tmp/rust-code-plugin-eval/$sha/.ready"
+mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/own-dont-leak" \
+  "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/layering-fix" \
+  "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/_scaffold"
+touch "$scratch/tmp/rust-code-plugin-eval/$sha/.ready" "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/_scaffold/devenv.env"
+echo basekey >"$scratch/tmp/rust-code-plugin-eval/$sha/base-key"
 mkdir -p "$scratch/vendored"
 echo "$scratch/vendored" >"$scratch/tmp/rust-code-plugin-eval/vendor-$(pe_vendor_key "$repo" HEAD).store"
 
-# run ARGS...: plugin-eval.sh's runner arguments for ARGS, space-separated.
+# pe ARGS...: plugin-eval.sh against that export, the stand-in claude and a
+# run root of the test's own.
+pe() {
+  TMPDIR=$scratch/tmp PE_RUN_ROOT=$(cd "$scratch/runs2" && pwd -P) PATH="$scratch/bin:$PATH" \
+    sh "$here/plugin-eval.sh" "$@" 2>/dev/null
+}
+# run ARGS...: the runner's arguments for ARGS, space-separated, with the
+# result directory the script picks shown as DIR.
 run() {
-  TMPDIR=$scratch/tmp PATH="$scratch/bin:$PATH" sh "$here/plugin-eval.sh" "$@" 2>/dev/null |
-    sed -n 's/^arg=//p' | tr '\n' ' ' | sed 's/ $//'
+  pe "$@" | sed -n 's/^arg=//p' | tr '\n' ' ' | sed -e 's/ $//' -e 's|--output-dir [^ ]*|--output-dir DIR|'
 }
 
 same "a suite run pins the model and the judge" \
-  "plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write -j 4 --no-publish --model claude-opus-5-5 --judge-model haiku" \
+  "plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write -j 4 --no-publish --model claude-opus-5-5 --judge-model haiku --output-dir DIR" \
   "$(run -j 4 --no-publish)"
 same "a suite run keeps the caller's model" \
-  "plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write --model haiku --judge-model haiku" \
+  "plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write --model haiku --judge-model haiku --output-dir DIR" \
   "$(run --model haiku)"
 same "a suite run hands its sessions the job cap for its -j" "$(pe_job_cap "$(pe_ncpu)" 4)" \
-  "$(TMPDIR=$scratch/tmp PATH="$scratch/bin:$PATH" sh "$here/plugin-eval.sh" -j 4 2>/dev/null | sed -n 's/^cap=//p')"
+  "$(pe -j 4 | sed -n 's/^cap=//p')"
+
+# Keys beside the result, for a later --reuse-baseline.
+pe -j 4 --json "$scratch/r1.json" >/dev/null
+pe -j 4 --json "$scratch/r2.json" >/dev/null
+pe -j 8 --json "$scratch/r3.json" >/dev/null
+same "a run writes a key per case beside its result" "layering-fix own-dont-leak" \
+  "$(cut -d' ' -f1 "$scratch/r1.keys" 2>/dev/null | sort | tr '\n' ' ' | sed 's/ $//')"
+same "the same run gets the same keys" "$(cat "$scratch/r1.keys" 2>/dev/null)" "$(cat "$scratch/r2.keys" 2>/dev/null)"
+same "another -j gets other keys" yes \
+  "$([ -s "$scratch/r3.keys" ] && ! cmp -s "$scratch/r1.keys" "$scratch/r3.keys" && echo yes)"
+same "--reuse-baseline runs the arm with the plugin only" yes \
+  "$(run --reuse-baseline "$scratch/r1.json" "$scratch/m.json" -j 4 | grep -q -- '--ablation none --json .*-with.json' && echo yes)"
+same "--reuse-baseline needs a baseline with keys" "" \
+  "$(run --reuse-baseline "$scratch/nokeys.json" "$scratch/m.json")"
+same "--keep-state keeps the run directories for the harvest" yes \
+  "$(run --keep-state -j 2 | grep -q -- '--keep-temp' && echo yes)"
+
+# What a timed-out session leaves running is ended when the suite is over.
+LEAVE_ORPHAN=1 pe -j 1 >/dev/null
+sleep 1
+same "a suite run ends what a dead session left running" gone \
+  "$(pgrep -f 'sleep 304' >/dev/null && echo alive || echo gone)"
+pkill -f 'sleep 304' 2>/dev/null
 
 if [ "$failed" -ne 0 ]; then
   echo "$failed check(s) failed"

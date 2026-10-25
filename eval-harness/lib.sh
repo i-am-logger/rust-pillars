@@ -11,6 +11,37 @@
 PE_MODEL=claude-opus-5-5
 PE_JUDGE=haiku
 
+# The smoke tier: four cases picked for a fast iteration run (the analysis
+# of run 2: the cheapest cases that still separate the arms). Tagged here,
+# in the export's copy of each case, not in evals/<case>/ itself.
+PE_SMOKE="own-dont-leak embed-at-build-time layering-fix domain-refuse-primitives"
+
+# pe_tags NAME: the tags line the export gives case NAME: case-NAME, so any
+# set of cases can be picked with --tag (one --case keeps only one glob, and
+# a brace glob matches nothing: measured), and smoke for the smoke tier.
+pe_tags() {
+  case " $PE_SMOKE " in
+  *" $1 "*) printf 'tags: [smoke, case-%s]\n' "$1" ;;
+  *) printf 'tags: [case-%s]\n' "$1" ;;
+  esac
+}
+
+# pe_changed_cases REPO REV: the cases to run after the changes REV..HEAD,
+# one per line, or `all`. A case is picked when its own files under
+# evals/<case>/ changed; any other change picks every case, since every
+# other path in the export can reach a run: the scaffold copies the
+# workspace, the scripts build it, and the arm with the plugin can read any
+# file of the plugin root (measured: README.md and eval-harness/lib.sh).
+pe_changed_cases() {
+  git -C "$1" diff --name-only "$2" HEAD >"${TMPDIR:-/tmp}/pe-changed.$$" || return 1
+  if grep -qv '^evals/[^/_][^/]*/' "${TMPDIR:-/tmp}/pe-changed.$$"; then
+    echo all
+  else
+    sed -n 's|^evals/\([^/]*\)/.*|\1|p' "${TMPDIR:-/tmp}/pe-changed.$$" | sort -u
+  fi
+  rm -f "${TMPDIR:-/tmp}/pe-changed.$$"
+}
+
 # pe_has_opt NAME ARGS...: whether ARGS pass option NAME (as `NAME v` or
 # `NAME=v`).
 pe_has_opt() {
@@ -76,6 +107,41 @@ pe_job_cap() {
   _pe_value=$(($1 / $2))
   [ "$_pe_value" -ge 1 ] || _pe_value=1
   printf '%s\n' "$_pe_value"
+}
+
+# pe_reap RUNROOT MARKER: ends what timed-out sessions left running. The
+# runner kills a session's claude process but not the commands it started:
+# they live on, reparented to launchd (PPID 1), with their working directory
+# inside the run's directory RUNROOT/e-*/ (measured), taking cores from the
+# runs that follow. For each run directory newer than MARKER (so only this
+# invocation's runs), the processes whose cwd is inside it are grouped; their
+# roots are those whose parent is not among them. A live session's root is
+# its claude process, whose parent is the runner; a dead one's roots have
+# PPID 1. Only a directory with no live root is reaped: every process whose
+# cwd is inside it gets SIGTERM (its TMPDIR is inside it too, so a
+# cargo-mutants copy is found). Prints what it ended.
+pe_reap() {
+  lsof -a -d cwd -u "$(id -u)" -Fpn 2>/dev/null |
+    awk -v root="$1/e-" '
+      /^p/ { pid = substr($0, 2) }
+      /^n/ { path = substr($0, 2)
+             if (index(path, root) == 1) {
+               rest = substr(path, length(root) + 1); sub(/\/.*/, "", rest)
+               print pid, root rest } }' >"$2.cwd"
+  [ -s "$2.cwd" ] || return 0
+  ps -A -o pid=,ppid= >"$2.ps"
+  awk 'NR == FNR { dir[$1] = $2; next } ($1 in dir) { print $1, $2, dir[$1] }' "$2.cwd" "$2.ps" >"$2.procs"
+  # One line per directory with a root: the directory, then "live" or "dead".
+  awk '{ d[$1] = $3; pp[$1] = $2 } END { for (p in d) if (!(pp[p] in d) || d[pp[p]] != d[p])
+         print d[p], (pp[p] == 1 ? "dead" : "live") }' "$2.procs" | sort -u >"$2.roots"
+  cut -d' ' -f1 "$2.roots" | sort -u | while read -r dir; do
+    [ "$dir" -nt "$2" ] || continue
+    grep -qxF "$dir live" "$2.roots" && continue
+    awk -v dir="$dir" '$3 == dir { print $1 }' "$2.procs" | while read -r pid; do
+      kill -TERM "$pid" 2>/dev/null && echo "plugin-eval: ended $pid, left running in $dir"
+    done
+  done
+  rm -f "$2.cwd" "$2.ps" "$2.procs" "$2.roots"
 }
 
 # pe_sha256: the SHA-256 of stdin, in hex.

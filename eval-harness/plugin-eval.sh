@@ -104,6 +104,7 @@ vendor_store() {
 # in_agent_env DIR CMD...: CMD in DIR/home/cwd (a scaffolded working copy)
 # with the environment an agent's shell gets there: nothing of the caller's,
 # the captured devenv.env the scaffold wrote, then the system PATH.
+# shellcheck disable=SC2329 # called by prebuild_into, through share_dir
 in_agent_env() {
   _home=$1
   shift
@@ -129,8 +130,10 @@ content_key() {
 # prebuild_into DIR: DIR/target, the base workspace built with the commands
 # the gates and the agents run, in the agent's environment -- the same
 # toolchain, RUSTFLAGS and profile, so cargo's fingerprints match and every
-# dependency is fresh in a working copy that clones it (measured: 58 of 62
-# units fresh). A failing command is logged, not fatal: what it built stays.
+# dependency is fresh in a working copy that clones it (measured in the
+# sandbox: build 61 fresh of 62, clippy 96 of 96). A failing command is
+# logged, not fatal: what it built stays.
+# shellcheck disable=SC2329 # called through share_dir
 prebuild_into() {
   w=$(mktemp -d "$base/.prebuild-work.XXXXXX")
   base_workspace "$w"
@@ -209,12 +212,79 @@ EOF
   # working copy's files and the environment above.
   kw=$(mktemp -d "$base/.key-work.XXXXXX")
   base_workspace "$kw"
-  tkey=$( (content_key "$kw/home/cwd" && pe_sha256 <"$export_dir/evals/_scaffold/devenv.env") | pe_sha256 | cut -c1-16)
+  content_key "$kw/home/cwd" >"$out/base-key"
   rm -rf "$kw"
+  tkey=$( (cat "$out/base-key" && pe_sha256 <"$export_dir/evals/_scaffold/devenv.env") | pe_sha256 | cut -c1-16)
   share_dir "target-$tkey" prebuild_into
   echo "$base/target-$tkey/target" >"$export_dir/evals/_scaffold/target-dir"
+  # Tags in the export's copy of each case (lib.sh, pe_tags), so --tag can
+  # pick a tier or any set of cases. A case that has tags of its own keeps
+  # them, untouched.
+  for c in "$export_dir"/evals/*/; do
+    n=$(basename "$c")
+    [ -f "$c/prompt.md" ] && [ "$(sed -n '1p' "$c/prompt.md")" = --- ] || continue
+    sed -n '2,/^---$/p' "$c/prompt.md" | grep -q '^tags:' && continue
+    { sed -n '1p' "$c/prompt.md" && pe_tags "$n" && sed '1d' "$c/prompt.md"; } >"$c/prompt.md.new"
+    mv "$c/prompt.md.new" "$c/prompt.md"
+  done
   touch "$out/.ready"
 fi
+
+# run_suite ARGS...: the runner on the export with ARGS, ending what timed-out
+# sessions leave running (lib.sh, pe_reap) every 15 s while it runs and once
+# after. Returns the runner's exit code.
+runroot=${PE_RUN_ROOT:-/private/tmp}
+run_suite() {
+  marker=$(mktemp "$base/.started.XXXXXX")
+  (
+    while kill -0 "$$" 2>/dev/null; do
+      sleep 15
+      pe_reap "$runroot" "$marker"
+    done
+  ) &
+  reaper=$!
+  set +e
+  (cd "$export_dir" && claude plugin eval . "$@")
+  code=$?
+  set -e
+  kill "$reaper" 2>/dev/null || true
+  pe_reap "$runroot" "$marker"
+  rm -f "$marker"
+  return "$code"
+}
+
+# write_keys FILE ARGS...: FILE holds `<case> <key>` per case: a key over
+# everything a run of that case without the plugin depends on -- the base
+# working copy and the vendored dependencies (base-key), the captured
+# environment, the scripts that build the run, the case's own files, the
+# model, the judge, the claude version, and the concurrency and job cap (a
+# timed-out run is still graded, and contention decides timeouts: run 4's
+# only timed-out sans-io-retry run without the plugin scored 0.91, its two
+# others 1.0). merge.rs reuses a without arm only under an equal key.
+write_keys() {
+  f=$1
+  shift
+  for k in "$out/base-key" "$export_dir/evals/_scaffold/devenv.env"; do
+    [ -f "$k" ] || {
+      echo "plugin-eval: $k is missing; delete $out and run again" >&2
+      exit 1
+    }
+  done
+  common=$(
+    {
+      cat "$out/base-key"
+      pe_sha256 <"$export_dir/evals/_scaffold/devenv.env"
+      git -C "$repo" rev-parse HEAD:evals/_scaffold HEAD:eval-harness/plugin-eval.sh HEAD:eval-harness/lib.sh
+      echo "model $(pe_opt_value --model "" "$@") judge $(pe_opt_value --judge-model "" "$@")"
+      echo "claude $(claude --version 2>/dev/null | head -1) jobs $(pe_jobs "$@") cap $EVAL_JOB_CAP"
+    } | pe_sha256
+  )
+  for c in "$export_dir"/evals/*/; do
+    n=$(basename "$c")
+    [ "$n" = _scaffold ] && continue
+    printf '%s %s\n' "$n" "$(printf '%s %s' "$common" "$(git -C "$repo" rev-parse "HEAD:evals/$n")" | pe_sha256 | cut -c1-16)"
+  done >"$f"
+}
 
 if [ "${1:-}" = --graders ]; then
   shift
@@ -241,11 +311,10 @@ if [ "${1:-}" = --graders ]; then
       printf '#!/bin/sh\nset -e\nhere=$(cd "$(dirname "$0")" && pwd)\nsh "$here/../../evals/%s/scaffold.sh"\n%s\n' "$n" "$overlay" >"$d/scaffold.sh"
     done
   done
-  cd "$export_dir"
   for state in solution start; do
     echo "== graders on the $state state"
     # shellcheck disable=SC2046 # the pins are single words
-    claude plugin eval . --eval-dir "graders-$state" --scaffold --trust-plugin \
+    run_suite --eval-dir "graders-$state" --scaffold --trust-plugin \
       --ablation none --model haiku --no-publish --threshold 0 \
       --json "$out/graders-$state.json" --report "$out/graders-$state.html" "$@" \
       $(pe_pin_args --model haiku "$@") || true
@@ -288,9 +357,8 @@ EOF
     "${PE_PROBE_CASE:-own-dont-leak}" >"$d/scaffold.sh"
   json=$out/probe-$name.json
   pe_has_opt --json "$@" && json=$(pe_opt_value --json "$json" "$@")
-  cd "$export_dir"
   # shellcheck disable=SC2046 # the pins are single words
-  claude plugin eval . --eval-dir "probe-$name" --scaffold --trust-plugin --allow-tools Bash \
+  run_suite --eval-dir "probe-$name" --scaffold --trust-plugin --allow-tools Bash \
     --ablation "${PE_PROBE_ABLATION:-none}" --model haiku --no-publish --threshold 0 --json "$json" "$@" \
     $(pe_pin_args --model haiku "$@") || true
   # From the repository: the export's cargo config points at the vendored
@@ -299,8 +367,97 @@ EOF
   exit 0
 fi
 
+# A suite run. Its own options, taken out before the runner's:
+#   --keep-state            keep each run's trace and changes (state.rs), then
+#                           remove the run directories the result names
+#   --changed-since REV     only the cases REV..HEAD changed (lib.sh,
+#                           pe_changed_cases); all of them after any other change
+#   --reuse-baseline B.json OUT.json
+#                           run the arm with the plugin only and merge it with
+#                           B's arm without (merge.rs), where every case's key
+#                           matches; write OUT.json
+usage() {
+  echo "usage: plugin-eval.sh [--keep-state] [--changed-since REV] [--reuse-baseline BASELINE.json OUT.json] [runner options]" >&2
+  exit 2
+}
+keep_state=""
+baseline=""
+merged=""
+while :; do
+  case ${1:-} in
+  --keep-state)
+    keep_state=yes
+    shift
+    ;;
+  --changed-since)
+    [ $# -ge 2 ] || usage
+    picked=$(pe_changed_cases "$repo" "$2")
+    shift 2
+    if [ -z "$picked" ]; then
+      echo "plugin-eval: no case changed; nothing to run"
+      exit 0
+    fi
+    echo "plugin-eval: cases: $(echo "$picked" | tr '\n' ' ')"
+    if [ "$picked" != all ]; then
+      for n in $picked; do
+        [ -d "$export_dir/evals/$n" ] && set -- "$@" --tag "case-$n"
+      done
+    fi
+    ;;
+  --reuse-baseline)
+    [ $# -ge 3 ] || usage
+    baseline=$(cd "$(dirname "$2")" && pwd)/$(basename "$2")
+    merged=$(cd "$(dirname "$3")" && pwd)/$(basename "$3")
+    shift 3
+    [ -f "${baseline%.json}.keys" ] || {
+      echo "plugin-eval: ${baseline%.json}.keys is missing: only a run of this script can be a baseline" >&2
+      exit 2
+    }
+    ;;
+  *) break ;;
+  esac
+done
+if [ -n "$baseline" ] && { pe_has_opt --json "$@" || pe_has_opt --ablation "$@"; }; then
+  echo "plugin-eval: --reuse-baseline sets --json and --ablation itself" >&2
+  exit 2
+fi
+
 # Both models pinned unless the caller pins them (lib.sh says why).
 # shellcheck disable=SC2046 # the pins are single words
 set -- "$@" $(pe_pin_args "$@")
-cd "$export_dir"
-exec claude plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write "$@"
+
+# Where the result goes, so its keys (and any kept state) can sit beside it.
+stamp=$(date -u +%Y-%m-%dT%H-%M-%SZ)
+if [ -n "$baseline" ]; then
+  result=$out/results/$stamp-with.json
+  mkdir -p "$out/results"
+  set -- "$@" --ablation none --json "$result"
+elif pe_has_opt --json "$@"; then
+  result=$(pe_opt_value --json "" "$@")
+elif pe_has_opt --output-dir "$@"; then
+  result=$(pe_opt_value --output-dir "" "$@")/aggregate-result.json
+else
+  set -- "$@" --output-dir "$out/results/$stamp"
+  result=$out/results/$stamp/aggregate-result.json
+fi
+[ -n "$keep_state" ] && set -- "$@" --keep-temp
+mkdir -p "$(dirname "$result")"
+write_keys "${result%.json}.keys" "$@"
+
+# An interrupted runner still writes its partial result (docs: exit 130,
+# 143); wait for it, so kept state is collected either way.
+trap ':' INT TERM
+code=0
+run_suite --scaffold --trust-plugin --allow-tools Bash Edit Write "$@" || code=$?
+trap - INT TERM
+if [ -n "$keep_state" ] && [ -f "$result" ]; then
+  (cd "$repo" && PE_RUN_ROOT=$runroot cargo run --quiet --manifest-path eval-harness/Cargo.toml -- \
+    --harvest "$result" "$out/state/$stamp" "$export_dir") || code=1
+fi
+if [ -n "$baseline" ]; then
+  (cd "$repo" && cargo run --quiet --manifest-path eval-harness/Cargo.toml -- \
+    --merge "$result" "$baseline" "$merged") || code=1
+  cp "${result%.json}.keys" "${merged%.json}.keys"
+fi
+echo "plugin-eval: result $result (keys ${result%.json}.keys)"
+exit "$code"
