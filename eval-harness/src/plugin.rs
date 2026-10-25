@@ -7,6 +7,12 @@
 //!   description silently;
 //! * SKILL.md stays under 180 lines and each reference under 300, so a skill
 //!   loads in parts;
+//! * every SKILL.md states its `license:`, so a skill uploaded alone still
+//!   carries its terms;
+//! * no command or skill pre-approves a bare `Bash`, `Edit` or `Write` in
+//!   its `allowed-tools`: a grant is scoped (`Bash(cargo test:*)`), and an
+//!   unscoped one lets text the model reads in a project steer any command
+//!   or write while it runs;
 //! * every relative link resolves inside its own skill's folder, so a skill
 //!   uploaded alone still works;
 //! * the manifest and the marketplace entry agree on the plugin's name.
@@ -25,18 +31,95 @@ const KEYS: &[&str] = &[
     "metadata",
     "allowed-tools",
 ];
+/// Tools that must never be pre-approved without a scope.
+const UNSCOPED: &[&str] = &["Bash", "Edit", "Write"];
 const SKILL_LINES: usize = 180;
 const REFERENCE_LINES: usize = 300;
 const DESCRIPTION_CHARS: usize = 1024;
 
+/// The `---` frontmatter of a Markdown file, if it has one.
+fn front(text: &str) -> Option<&str> {
+    text.strip_prefix("---\n")
+        .and_then(|r| r.split_once("\n---\n"))
+        .map(|(f, _)| f)
+}
+
+/// The entries of `allowed-tools` in a frontmatter: an inline value split on
+/// the commas outside parentheses (`Bash(a, b:*)` is one entry), a flow list
+/// (`[a, b]`), or a block list (`- a` lines below the key); quotes trimmed.
+fn allowed_tools(front: &str) -> Vec<String> {
+    let mut lines = front.lines();
+    let mut out = Vec::new();
+    while let Some(line) = lines.next() {
+        let Some(value) = line.strip_prefix("allowed-tools:") else {
+            continue;
+        };
+        let value = value.trim();
+        let value = value
+            .strip_prefix('[')
+            .and_then(|v| v.strip_suffix(']'))
+            .unwrap_or(value);
+        if value.is_empty() {
+            for item in lines.by_ref() {
+                let Some(entry) = item.trim_start().strip_prefix("- ") else {
+                    break;
+                };
+                out.push(entry.to_string());
+            }
+        } else {
+            let mut depth = 0usize;
+            let mut start = 0;
+            for (i, c) in value.char_indices() {
+                match c {
+                    '(' => depth += 1,
+                    ')' => depth = depth.saturating_sub(1),
+                    ',' if depth == 0 => {
+                        out.push(value[start..i].to_string());
+                        start = i + 1;
+                    }
+                    _ => {}
+                }
+            }
+            out.push(value[start..].to_string());
+        }
+    }
+    out.iter()
+        .map(|e| e.trim().trim_matches(|c| c == '"' || c == '\'').to_string())
+        .filter(|e| !e.is_empty())
+        .collect()
+}
+
+/// Problems in a frontmatter's `allowed-tools`: each unscoped grant of a tool
+/// that runs commands or writes files.
+fn grants(front: &str) -> Vec<String> {
+    allowed_tools(front)
+        .into_iter()
+        .filter(|t| UNSCOPED.contains(&t.as_str()))
+        .map(|t| {
+            format!(
+                "allowed-tools pre-approves a bare `{t}`; scope it (as in `Bash(cargo test:*)` or `Edit(docs/**)`) or leave it out, so it prompts"
+            )
+        })
+        .collect()
+}
+
+/// Problems in one command file.
+fn command(path: &Path) -> Result<Vec<String>> {
+    let text = fs::read_to_string(path).with_context(|| format!("reading {}", path.display()))?;
+    let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+    Ok(match front(&text) {
+        None => vec![],
+        Some(f) => grants(f)
+            .into_iter()
+            .map(|p| format!("commands/{name}: {p}"))
+            .collect(),
+    })
+}
+
 /// Problems in one SKILL.md's frontmatter.
 fn frontmatter(dir_name: &str, text: &str) -> Vec<String> {
     let mut out = Vec::new();
-    let Some(front) = text
-        .strip_prefix("---\n")
-        .and_then(|r| r.split_once("\n---\n"))
-        .map(|(f, _)| f)
-    else {
+    let Some(front) = front(text) else {
         return vec!["has no `---` frontmatter".into()];
     };
     for line in front
@@ -74,6 +157,13 @@ fn frontmatter(dir_name: &str, text: &str) -> Vec<String> {
     if !front.lines().any(|l| l.starts_with("description:")) {
         out.push("has no description".into());
     }
+    if !front.lines().any(|l| {
+        l.strip_prefix("license:")
+            .is_some_and(|v| !v.trim().is_empty())
+    }) {
+        out.push("has no `license:`; a skill uploaded alone must state its terms".into());
+    }
+    out.extend(grants(front));
     out
 }
 
@@ -172,11 +262,34 @@ fn manifest(root: &Path) -> Result<Vec<String>> {
 /// The positive control: each check must fire on a fixture built to fail it.
 fn control() -> Result<()> {
     let bad = "---\nname: other\ndescription: marks a test #[ignore]\nuser-invocable: true\n---\n";
+    // Wrong name, unquoted description, unknown key, no licence.
     let found = frontmatter("mine", bad);
     anyhow::ensure!(
-        found.len() == 3,
+        found.len() == 4,
         "positive control failed: the frontmatter check found {found:?}"
     );
+    let good = "---\nname: mine\ndescription: \"x\"\nlicense: CC-BY-NC-SA-4.0\n---\n";
+    anyhow::ensure!(
+        frontmatter("mine", good).is_empty(),
+        "positive control failed: a good frontmatter has findings"
+    );
+    // One finding per bare grant, in each form; scoped grants pass.
+    for (front, bare) in [
+        ("allowed-tools: Bash, Read, Bash(cargo test:*)", 1),
+        ("allowed-tools: Bash(a, b:*), Edit, \"Write\"", 2),
+        ("allowed-tools: [Read, Write]", 1),
+        (
+            "allowed-tools:\n  - Edit\n  - Bash(cargo xtask:*)\nother: x",
+            1,
+        ),
+        ("allowed-tools: Bash(devenv test:*), Read, Grep, Glob", 0),
+    ] {
+        let found = grants(front);
+        anyhow::ensure!(
+            found.len() == bare,
+            "positive control failed: allowed-tools `{front}` gave {found:?}"
+        );
+    }
     anyhow::ensure!(
         links("see [x](../other/SKILL.md) and [y](https://a.b)") == ["../other/SKILL.md"],
         "positive control failed: link scanner"
@@ -197,11 +310,24 @@ pub(crate) fn run(root: &Path) -> Result<usize> {
         skills += 1;
         problems.extend(skill(d)?);
     }
+    let mut commands = 0;
+    let dir = root.join("commands");
+    if dir.is_dir() {
+        let mut files: Vec<_> = fs::read_dir(&dir)?
+            .filter_map(|e| e.ok().map(|e| e.path()))
+            .filter(|p| p.extension().is_some_and(|x| x == "md"))
+            .collect();
+        files.sort();
+        for f in &files {
+            commands += 1;
+            problems.extend(command(f)?);
+        }
+    }
     for p in &problems {
         eprintln!("[plugin] {p}");
     }
     eprintln!(
-        "[plugin] checked {skills} skills: {}",
+        "[plugin] checked {skills} skills, {commands} commands: {}",
         if problems.is_empty() {
             "ok".to_string()
         } else {
