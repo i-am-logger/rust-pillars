@@ -7,4 +7,4 @@
 - [ ] `dev-ci` passes locally (see [CONTRIBUTING.md](../CONTRIBUTING.md)) — it runs the same nix-defined suite as CI
 - [ ] Commit messages follow [Conventional Commits](https://www.conventionalcommits.org/), so release-plz computes the right version bump
 - [ ] Any new check was added as a `tasks."test:*"` entry in `devenv.nix`, not as a workflow-only step
-- [ ] No hand-edited version numbers — release-plz owns `Cargo.toml`'s version and `CHANGELOG.md`
+- [ ] No version change outside a `chore: release` PR — the workspace version in `Cargo.toml` and `.claude-plugin/plugin.json` move together there, with `CHANGELOG.md`
