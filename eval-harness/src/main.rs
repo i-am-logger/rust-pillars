@@ -28,10 +28,21 @@
 //! to regenerate what a tool would leave instead of committing it. Every
 //! other run is a real model call.
 //!
-//! Run it from the devenv shell: `cargo run --manifest-path
-//! eval-harness/Cargo.toml -- [--control] [--case NAME] [--runs N]
-//! [--model M]` (the `eval:run` task).
+//! A model run starts `claude -p --permission-mode bypassPermissions`,
+//! unsandboxed: the agent can run any command, write any file and reach the
+//! network as the runner, with the runner's Claude login. It is kept rather
+//! than narrowed to a tool allowlist, which would change what the agent can
+//! do and so every score against this harness's earlier runs. So the harness
+//! refuses a model run unless `RUST_CODE_EVAL_UNSANDBOXED=1` is set: run one
+//! only on a tree you trust, ideally in a VM or container.
+//! `eval-harness/plugin-eval.sh` runs the same cases in `claude plugin
+//! eval`'s sandbox.
+//!
+//! Run it from the devenv shell: `[RUST_CODE_EVAL_UNSANDBOXED=1] cargo run
+//! --manifest-path eval-harness/Cargo.toml -- [--control] [--case NAME]
+//! [--runs N] [--model M]` (the `eval:run` task).
 
+use std::ffi::OsStr;
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -358,6 +369,28 @@ fn solution(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
     Ok(wrong)
 }
 
+/// The variable a model run needs set to `1`: see [`unsandboxed`].
+const UNSANDBOXED: &str = "RUST_CODE_EVAL_UNSANDBOXED";
+
+/// Whether a model run may start, given `$RUST_CODE_EVAL_UNSANDBOXED`.
+///
+/// [`attempt`] runs `claude -p --permission-mode bypassPermissions` with no
+/// sandbox: kept so this harness's runs stay comparable with its earlier
+/// ones (a tool allowlist would change what the agent can do), so a model
+/// run starts only when its runner opts in by name.
+fn unsandboxed(opt_in: Option<&OsStr>) -> Result<()> {
+    ensure!(
+        opt_in.is_some_and(|v| v == "1"),
+        "a model run starts `claude -p --permission-mode bypassPermissions` with no sandbox: \
+         each session can run any command, write any file and reach the network as you, with \
+         your Claude login, in a copy built by the case's scaffold.sh. Run it only on a tree \
+         you trust, ideally in a VM or container, and set {UNSANDBOXED}=1 to go on. \
+         `--control`, `--solution` and `--plugin` call no model and need nothing set; \
+         eval-harness/plugin-eval.sh runs the same cases under `claude plugin eval`'s sandbox"
+    );
+    Ok(())
+}
+
 /// Runs the model once in a fresh working copy; returns the copy.
 fn attempt(case: &Path, plugin: Option<&Path>, slot: &str, o: &Opts) -> Result<PathBuf> {
     let p = prompt(case)?;
@@ -557,7 +590,10 @@ fn main() -> ExitCode {
             (Mode::Control | Mode::Solution, _) => {
                 run_control(&root, &cases(&root, o.case.as_ref())?, o.mode)
             }
-            (Mode::Model, _) => run_models(&root, &cases(&root, o.case.as_ref())?, &o),
+            (Mode::Model, _) => {
+                unsandboxed(std::env::var_os(UNSANDBOXED).as_deref())?;
+                run_models(&root, &cases(&root, o.case.as_ref())?, &o)
+            }
         }
     });
     match result {
@@ -587,6 +623,18 @@ mod tests {
             String::from_utf8_lossy(&out.stdout),
             String::from_utf8_lossy(&out.stderr)
         );
+    }
+
+    /// A model run bypasses every permission, unsandboxed, so it starts only
+    /// when asked for by name, and the refusal says why.
+    #[test]
+    fn a_model_run_needs_the_opt_in() {
+        for refused in [None, Some(OsStr::new("")), Some(OsStr::new("0"))] {
+            let why = format!("{:#}", unsandboxed(refused).unwrap_err());
+            assert!(why.contains("bypassPermissions"), "{why}");
+            assert!(why.contains(&format!("{UNSANDBOXED}=1")), "{why}");
+        }
+        assert!(unsandboxed(Some(OsStr::new("1"))).is_ok());
     }
 
     #[test]
