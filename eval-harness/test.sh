@@ -176,7 +176,7 @@ mkdir -p "$f/.claude-plugin" "$f/eval-harness" "$f/evals/_scaffold" "$f/evals/c/
   "$f/crates/a" "$scratch/fakebin"
 cp "$here/plugin-eval.sh" "$here/lib.sh" "$f/eval-harness/"
 mkdir -p "$f/eval-harness/fixtures"
-echo '{"name": "regex-budget-domain"}' >"$f/eval-harness/fixtures/run.json"
+echo '{"name": "some-grader"}' >"$f/eval-harness/fixtures/run.json"
 cp "$repo/evals/_scaffold/scaffold.sh" "$f/evals/_scaffold/"
 cp "$repo/evals/own-dont-leak/scaffold.sh" "$f/evals/c/"
 echo '{"name": "p"}' >"$f/.claude-plugin/plugin.json"
