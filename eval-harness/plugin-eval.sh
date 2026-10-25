@@ -68,7 +68,7 @@ EOF
   # cannot enter devenv (no writable /tmp), so it hunted /nix/store for any
   # rustc -- and a newer one words a compile_fail note differently. Give
   # every case the devenv profile this script runs under.
-  profile=$(cd "$(dirname "$(command -v cargo)")/.." && pwd -P)
+  profile=${DEVENV_PROFILE:?run inside devenv shell: the cases get its profile}
   for y in "$export_dir"/evals/*/case.yaml; do
     printf 'execution:\n  env:\n    PATH: "%s/bin:/usr/bin:/bin:/usr/sbin:/sbin"\n' "$profile" >>"$y"
   done
