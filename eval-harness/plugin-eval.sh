@@ -38,7 +38,8 @@ fi
 # variable, which the runner passes to every session (docs; measured), and
 # turned into CARGO_BUILD_JOBS and the rest by the export's devenv.env: an
 # export is shared by every invocation on its commit, whatever their -j.
-EVAL_JOB_CAP=$(pe_job_cap "$(pe_ncpu)" "$(pe_jobs "$@")")
+# PE_JOB_CAP overrides it (to measure the cap against none).
+EVAL_JOB_CAP=${PE_JOB_CAP:-$(pe_job_cap "$(pe_ncpu)" "$(pe_jobs "$@")")}
 export EVAL_JOB_CAP
 
 mkdir -p "${TMPDIR:-/tmp}/rust-code-plugin-eval"
