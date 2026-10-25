@@ -23,7 +23,46 @@ same() {
 words() { printf '%s ' $* | sed 's/ $//'; }
 
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/plugin-eval-test.XXXXXX")
-trap '[ -n "${KEEP:-}" ] || rm -rf "$scratch"' EXIT
+mkdir -p "$scratch/systmp" "$scratch/pids"
+# A temp dir of this run's own, so two runs at once never share a file.
+TMPDIR=$scratch/systmp
+export TMPDIR
+# Every process the test plants writes its PID to pids/NAME; the test looks
+# at and ends exactly those, never a process found by its command line (a
+# second run, or the user's own `sleep 300`, would match). The cleanup runs
+# on every exit, a signal's too.
+cleanup() {
+  for p in "$scratch"/pids/*; do
+    [ -f "$p" ] || continue
+    pid=$(cat "$p")
+    case $(ps -o args= -p "$pid" 2>/dev/null) in
+    sleep\ *) kill "$pid" 2>/dev/null ;;
+    esac
+  done
+  [ -n "${KEEP:-}" ] || {
+    chmod -R u+w "$scratch" 2>/dev/null
+    rm -rf "$scratch"
+  }
+}
+trap cleanup EXIT
+trap 'exit 129' HUP
+trap 'exit 130' INT
+trap 'exit 143' TERM
+# plant DIR NAME SECONDS: an orphan `sleep SECONDS` with its cwd in DIR (its
+# parent exits at once, as a timed-out session's shell does), its PID in
+# pids/NAME.
+plant() {
+  # shellcheck disable=SC2016 # expanded by the inner shell
+  (cd "$1" && sh -c 'sleep "$1" </dev/null >/dev/null 2>&1 & echo $! >"$2"' sh "$3" "$scratch/pids/$2")
+}
+# alive NAME: whether the process planted as NAME still runs (a zombie is
+# gone).
+alive() {
+  case $(ps -o stat= -p "$(cat "$scratch/pids/$1" 2>/dev/null)" 2>/dev/null) in
+  "" | Z*) echo gone ;;
+  *) echo alive ;;
+  esac
+}
 
 # --- lib.sh ---------------------------------------------------------------
 
@@ -49,32 +88,30 @@ same "never below one" 1 "$(pe_job_cap 4 8)"
 # process in another, and anything in a run older than the marker, is not.
 runs=$scratch/runs
 mkdir -p "$runs/e-old/home/cwd" "$runs/e-gone/home/cwd" "$runs/e-othergone/home/cwd"
-(cd "$runs/e-gone/home/cwd" && sh -c 'sleep 300 >/dev/null 2>&1 &')
-(cd "$runs/e-othergone/home/cwd" && sh -c 'sleep 305 >/dev/null 2>&1 &')
+plant "$runs/e-gone/home/cwd" gone 300
+plant "$runs/e-othergone/home/cwd" othergone 300
 sleep 1
 touch "$scratch/marker"
 sleep 1
 mkdir -p "$runs/e-dead/home/cwd" "$runs/e-live/home/cwd"
-(cd "$runs/e-old/home/cwd" && sh -c 'sleep 301 >/dev/null 2>&1 &')
-(cd "$runs/e-dead/home/cwd" && sh -c 'sleep 302 >/dev/null 2>&1 &')
-(cd "$runs/e-live/home/cwd" && exec sleep 303) &
-live=$!
+plant "$runs/e-old/home/cwd" old 300
+plant "$runs/e-dead/home/cwd" dead 300
+# A live session: its root's parent is this shell, outside the directory.
+(cd "$runs/e-live/home/cwd" && exec sleep 300 >/dev/null 2>&1) &
+echo $! >"$scratch/pids/live"
 rr=$(cd "$runs" && pwd -P)
 # An earlier poll saw e-gone as this invocation's; e-othergone it never saw.
 echo "$rr/e-gone" >"$scratch/marker.seen"
 rm -rf "$runs/e-gone" "$runs/e-othergone"
 sleep 1
-alive() { pgrep -f "sleep $1" >/dev/null && echo alive || echo gone; }
-same "an orphan exists before the reap" alive "$(alive 302)"
+same "an orphan exists before the reap" alive "$(alive dead)"
 pe_reap "$rr" "$scratch/marker" >/dev/null
 sleep 1
-same "the reaper ends an orphan of a dead session" gone "$(alive 302)"
-same "and one of its own runs the runner already removed" gone "$(alive 300)"
-same "but not one of a removed run it never saw" alive "$(alive 305)"
-same "and leaves a live session's process" alive "$(alive 303)"
-same "and a run older than this invocation" alive "$(alive 301)"
-kill "$live" 2>/dev/null
-pkill -f 'sleep 30[015]' 2>/dev/null
+same "the reaper ends an orphan of a dead session" gone "$(alive dead)"
+same "and one of its own runs the runner already removed" gone "$(alive gone)"
+same "but not one of a removed run it never saw" alive "$(alive othergone)"
+same "and leaves a live session's process" alive "$(alive live)"
+same "and a run older than this invocation" alive "$(alive old)"
 name=mine value=mine a=mine tab=mine
 pe_opt_value --json x --json y >/dev/null
 pe_has_opt --json --json y && pe_vendor_key "$repo" HEAD >/dev/null
@@ -267,7 +304,8 @@ printf 'cap=%s\n' "${EVAL_JOB_CAP:-}"
 printf 'arg=%s\n' "$@"
 if [ -n "${LEAVE_ORPHAN:-}" ]; then
   mkdir -p "$PE_RUN_ROOT/e-run1/home/cwd"
-  (cd "$PE_RUN_ROOT/e-run1/home/cwd" && sh -c 'sleep 304 >/dev/null 2>&1 &')
+  # shellcheck disable=SC2016 # expanded by the inner shell
+  (cd "$PE_RUN_ROOT/e-run1/home/cwd" && sh -c 'sleep 300 </dev/null >/dev/null 2>&1 & echo $! >"$1"' sh "$ORPHAN_PID")
 fi
 EOF
 chmod +x "$scratch/bin/claude"
@@ -325,11 +363,10 @@ same "--keep-state keeps the run directories for the harvest" yes \
   "$(run --keep-state -j 2 | grep -q -- '--keep-temp' && echo yes)"
 
 # What a timed-out session leaves running is ended when the suite is over.
-LEAVE_ORPHAN=1 pe -j 1 >/dev/null
+LEAVE_ORPHAN=1 ORPHAN_PID=$scratch/pids/suite pe -j 1 >/dev/null
 sleep 1
-same "a suite run ends what a dead session left running" gone \
-  "$(pgrep -f 'sleep 304' >/dev/null && echo alive || echo gone)"
-pkill -f 'sleep 304' 2>/dev/null
+same "the stand-in left a process behind" yes "$([ -s "$scratch/pids/suite" ] && echo yes)"
+same "a suite run ends what a dead session left running" gone "$(alive suite)"
 
 if [ "$failed" -ne 0 ]; then
   echo "$failed check(s) failed"
