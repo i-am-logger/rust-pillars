@@ -88,6 +88,7 @@ if [ "${1:-}" = --graders ]; then
       else
         overlay=":"
       fi
+      # shellcheck disable=SC2016 # $here and $0 belong to the generated script
       printf '#!/bin/sh\nset -e\nhere=$(cd "$(dirname "$0")" && pwd)\nsh "$here/../../evals/%s/scaffold.sh"\n%s\n' "$n" "$overlay" >"$d/scaffold.sh"
     done
   done
