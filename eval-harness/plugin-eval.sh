@@ -70,6 +70,12 @@ mkdir -p "${TMPDIR:-/tmp}/rust-code-plugin-eval"
 base=$(cd "${TMPDIR:-/tmp}/rust-code-plugin-eval" && pwd -P)
 out=$base/$sha
 export_dir=$out/root
+# The cases' reference solutions, beside the export rather than in it: the
+# export is the plugin root, which the arm with the plugin can read by path
+# (measured), so it holds no solution/, checks.toml or .solve.sh. --graders
+# and the vendoring take them from here; the scaffold that applies them
+# runs outside the sandbox.
+solutions=$out/solutions
 # The vendored dependencies, keyed on the Cargo files rather than the commit
 # (lib.sh, pe_vendor_key), and kept out of the export: the scaffold copies the
 # export into each working copy, and 77 MB of vendor/ went with it. They live
@@ -111,7 +117,7 @@ vendor_store() {
       d=$work/$n-$slot
       mkdir -p "$d" "$work/home"
       (cd "$d" && HOME=$work/home sh "$c/scaffold.sh" >/dev/null)
-      [ "$slot" = solution ] && cp -R "$c/solution/." "$d/"
+      [ "$slot" = solution ] && [ -d "$solutions/$n" ] && cp -R "$solutions/$n/." "$d/"
       syncs="$syncs -s $d/Cargo.toml"
     done
   done
@@ -188,6 +194,10 @@ if [ -f "$out/.ready" ] && [ -f "$export_dir/evals/_scaffold/target-dir" ] &&
   [ ! -d "$(cat "$export_dir/evals/_scaffold/target-dir")" ]; then
   rm -rf "$out"
 fi
+# An export made before the solutions moved out of it is made again.
+if [ -f "$out/.ready" ] && [ -n "$(ls -d "$export_dir"/evals/*/solution "$export_dir"/evals/*/checks.toml 2>/dev/null)" ]; then
+  rm -rf "$out"
+fi
 if [ ! -f "$out/.ready" ]; then
   rm -rf "$export_dir"
   mkdir -p "$export_dir/.cargo"
@@ -196,6 +206,16 @@ if [ ! -f "$out/.ready" ]; then
   # by path (measured): the harness's recorded results, which name graders,
   # stay out of it.
   rm -rf "$export_dir/eval-harness/fixtures"
+  # Nor do the answers: each case's solution/ goes beside the export, and
+  # its checks.toml (eval-harness's own graders) and any .solve.sh go.
+  rm -rf "$solutions"
+  mkdir -p "$solutions"
+  for c in "$export_dir"/evals/*/; do
+    n=$(basename "$c")
+    [ -d "$c/solution" ] && mv "$c/solution" "$solutions/$n"
+    rm -f "$c/checks.toml"
+  done
+  find "$export_dir" -name .solve.sh -type f -exec rm -f {} +
   vendor=$(vendor_store)
   cat >>"$export_dir/.cargo/config.toml" <<EOF
 
@@ -347,7 +367,7 @@ if [ "${1:-}" = --graders ]; then
       printf -- '---\nname: %s\nruns: 1\nmax_turns: 2\ntimeout_seconds: 300\n---\n\nReply with the single word done. Do not use any tool.\n' "$n" >"$d/prompt.md"
       printf 'schema_version: "1.1"\nname: %s\ncontext:\n  scaffold_script: scaffold.sh\n' "$n" >"$d/case.yaml"
       if [ "$state" = solution ]; then
-        overlay="cp -R \"\$here/../../evals/$n/solution/.\" . && if [ -f .solve.sh ]; then sh .solve.sh && rm -f .solve.sh; fi"
+        overlay="cp -R '$solutions/$n/.' . && if [ -f .solve.sh ]; then sh .solve.sh && rm -f .solve.sh; fi"
       else
         overlay=":"
       fi
@@ -494,6 +514,12 @@ trap ':' INT TERM
 code=0
 run_suite --scaffold --trust-plugin --allow-tools Bash Edit Write "$@" || code=$?
 trap - INT TERM
+# What is left in the plugin root under evals/ -- the prompts and graders the
+# runner needs -- the arm with the plugin can still read by path. Say so
+# when a run's visible trace names it.
+if [ -f "$result" ] && grep -qF -e "$export_dir/evals/" -e 'CLAUDE_PLUGIN_ROOT}/evals' -e 'CLAUDE_PLUGIN_ROOT/evals' "$result"; then
+  echo "plugin-eval: warning: $result names a path under the plugin root's evals/ (prompts, graders): a session may have read them" >&2
+fi
 if [ -n "$keep_state" ] && [ -f "$result" ]; then
   (cd "$repo" && PE_RUN_ROOT=$runroot cargo run --quiet --manifest-path eval-harness/Cargo.toml -- \
     --harvest "$result" "$out/state/$stamp" "$export_dir") || code=1

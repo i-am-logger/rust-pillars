@@ -211,7 +211,14 @@ for a reason not found, so a 900 s case reported up to 1,770 s.
 `--keep-state` records each run's start delay in `runs.tsv`.
 
 Both runners build every working copy with the same script, outside the
-repository, so no run can read the checks it is graded by. Two modes run no
+repository, ~~so no run can read the checks it is graded by~~. That holds
+for `eval-harness/`; under `claude plugin eval` the export is the plugin
+root, which the arm with the plugin can read by path (measured). So the
+export holds no reference solution, `checks.toml` or `.solve.sh`: they sit
+beside it, where `--graders` takes them. Each case's prompt and graders stay
+in it, as the runner needs them, and a session could read those; the script
+warns when a result names a path under the root's `evals/` (run 4's visible
+trace had none). Two modes run no
 model and prove every case can grade: `devenv tasks run eval:control` (every
 task check fails on the untouched project) and the harness's `--solution`
 (every check passes with the case's reference solution). Every other run is

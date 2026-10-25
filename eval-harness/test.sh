@@ -255,7 +255,11 @@ touch "$f/evals/s/solution/a.txt"
 printf '[workspace]\nmembers = ["crates/a"]\n' >"$f/Cargo.toml"
 echo '[package]' >"$f/crates/a/Cargo.toml"
 echo one >"$f/skills/s/SKILL.md"
-touch "$f/docs/research/notes/TEMPLATE.md" "$f/docs/research/sources/MANIFEST.toml" "$f/evals/c/fixture/a.txt" "$f/evals/c/solution/a.txt"
+touch "$f/docs/research/notes/TEMPLATE.md" "$f/docs/research/sources/MANIFEST.toml" "$f/evals/c/fixture/a.txt" "$f/evals/c/checks.toml"
+echo solution >"$f/evals/c/solution/a.txt"
+echo 'echo solved >solved.txt' >"$f/evals/c/solution/.solve.sh"
+mkdir -p "$f/evals/c/graders" "$f/evals/s/graders"
+printf -- '---\ntype: llm\n---\nPASS if done.\n' | tee "$f/evals/c/graders/g.md" >"$f/evals/s/graders/g.md"
 echo docs >"$f/docs/README.md"
 cat >"$scratch/fakebin/cargo" <<'EOF'
 #!/bin/sh
@@ -294,6 +298,10 @@ fsha=$(g2 rev-parse --short HEAD)
 same "the first export vendors once" 1 "$(grep -c . "$calls")"
 same "the harness's recorded results stay out of the export" "no" \
   "$([ -e "$fbase/$fsha/root/eval-harness/fixtures" ] && echo yes || echo no)"
+same "the export holds no solution, checks.toml or .solve.sh" "" \
+  "$(cd "$fbase/$fsha/root" 2>/dev/null && find . \( -name solution -o -name checks.toml -o -name .solve.sh \) -print)"
+same "the solutions sit beside the export" yes \
+  "$([ -f "$fbase/$fsha/solutions/c/a.txt" ] && [ -f "$fbase/$fsha/solutions/c/.solve.sh" ] && echo yes)"
 same "the vendored dependencies live outside the export" "no" \
   "$([ -e "$fbase/$fsha/root/vendor" ] && echo yes || echo no)"
 same "they go to the store, and cargo is pointed at the store path" \
@@ -318,6 +326,10 @@ same "and sets no cap without one" "/" \
   "$(env -u EVAL_JOB_CAP sh -c '. "$1"; echo "${CARGO_BUILD_JOBS:-}/"' sh "$fenv" 2>/dev/null)"
 same "the export names a prebuilt target for the scaffold to clone" yes \
   "$(d=$(cat "$fbase/$fsha/root/evals/_scaffold/target-dir" 2>/dev/null) && [ -d "$d" ] && echo yes)"
+mkdir -p "$fbase/$fsha/root/evals/c/solution"
+fakerun
+same "an export made with its solutions inside is made again" no \
+  "$([ -e "$fbase/$fsha/root/evals/c/solution" ] && echo yes || echo no)"
 echo two >"$f/skills/s/SKILL.md" && fcommit skills
 fakerun
 same "a skills-only commit reuses the vendoring" 1 "$(grep -c . "$calls")"
@@ -326,6 +338,14 @@ same "and still gets its own export" yes \
 echo '[package] # a dependency' >"$f/crates/a/Cargo.toml" && fcommit deps
 fakerun
 same "a Cargo.toml change vendors again" 2 "$(grep -c . "$calls")"
+# --graders finds the solutions beside the export: its solution-state
+# scaffold, run in an empty directory, applies the solution and its .solve.sh.
+CALLS=$calls FAKESTORE=$scratch/store DEVENV_PROFILE=/x TMPDIR=$scratch/ftmp PATH="$scratch/fakebin:$PATH" \
+  sh "$f/eval-harness/plugin-eval.sh" --graders >>"$scratch/fakerun.log" 2>&1
+mkdir -p "$scratch/gwork" "$scratch/ghome"
+(cd "$scratch/gwork" && HOME=$scratch/ghome sh "$fbase/$(g2 rev-parse --short HEAD)/root/graders-solution/c/scaffold.sh" >/dev/null 2>&1)
+same "--graders applies the solution and runs its .solve.sh" "solution solved no" \
+  "$(cat "$scratch/gwork/a.txt" "$scratch/gwork/solved.txt" 2>/dev/null | tr '\n' ' ')$([ -e "$scratch/gwork/.solve.sh" ] && echo yes || echo no)"
 
 # --- plugin-eval.sh, end to end -------------------------------------------
 
@@ -339,6 +359,13 @@ cat >"$scratch/bin/claude" <<'EOF'
 printf 'cwd=%s\n' "$(basename "$PWD")"
 printf 'cap=%s\n' "${EVAL_JOB_CAP:-}"
 printf 'arg=%s\n' "$@"
+if [ -n "${RESULT_TEXT:-}" ]; then
+  prev=""
+  for a in "$@"; do
+    [ "$prev" = --json ] && printf '%s\n' "$RESULT_TEXT" >"$a"
+    prev=$a
+  done
+fi
 if [ -n "${LEAVE_ORPHAN:-}" ]; then
   mkdir -p "$PE_RUN_ROOT/e-run1/home/cwd"
   # shellcheck disable=SC2016 # expanded by the inner shell
@@ -418,6 +445,20 @@ same "--reuse-baseline needs a baseline with keys" "" \
   "$(run --reuse-baseline "$scratch/nokeys.json" "$scratch/m.json")"
 same "--keep-state keeps the run directories for the harvest" yes \
   "$(run --keep-state -j 2 | grep -q -- '--keep-temp' && echo yes)"
+
+# A result whose trace names a file under the plugin root's evals/ is
+# warned about: the arm with the plugin can read what is left there.
+eroot=$(cd "$scratch/tmp/rust-code-plugin-eval" && pwd -P)/$sha/root
+warns() {
+  RESULT_TEXT=$1 TMPDIR=$scratch/tmp PE_RUN_ROOT=$(cd "$scratch/runs2" && pwd -P) PATH="$scratch/bin:$PATH" \
+    sh "$here/plugin-eval.sh" --json "$scratch/w.json" 2>&1 >/dev/null | grep -c 'names a path under the plugin root'
+}
+same "a run that read a grader by path is warned about" 1 \
+  "$(warns "{\"input\": \"cat $eroot/evals/own-dont-leak/graders/x.md\"}")"
+# shellcheck disable=SC2016 # the variable as a tool input carries it
+same "and one that named it through CLAUDE_PLUGIN_ROOT" 1 \
+  "$(warns '{"input": "cat ${CLAUDE_PLUGIN_ROOT}/evals/x/prompt.md"}')"
+same "and one that did not is not" 0 "$(warns '{"input": "cargo build"}')"
 
 # What a timed-out session leaves running is ended when the suite is over.
 LEAVE_ORPHAN=1 ORPHAN_PID=$scratch/pids/suite pe -j 1 >/dev/null
