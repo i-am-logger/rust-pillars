@@ -47,3 +47,30 @@ pe_pin_args() {
   pe_has_opt --model "$@" || printf -- '--model\n%s\n' "$PE_MODEL"
   pe_has_opt --judge-model "$@" || printf -- '--judge-model\n%s\n' "$PE_JUDGE"
 }
+
+# pe_sha256: the SHA-256 of stdin, in hex.
+pe_sha256() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum | cut -d' ' -f1
+  else
+    shasum -a 256 | cut -d' ' -f1
+  fi
+}
+
+# Raised whenever what plugin-eval.sh vendors, or how, changes.
+PE_VENDOR_FORMAT=1
+
+# pe_vendor_key REPO REV: the content key of the dependencies vendored for
+# REV -- every Cargo.toml and Cargo.lock that the scaffold copies or that a
+# case's fixture or solution brings, .cargo/config.toml, the solutions'
+# .solve.sh and the scaffold itself. Not the commit: a commit that changes
+# none of them reuses the vendoring.
+pe_vendor_key() {
+  tab=$(printf '\t')
+  {
+    echo "vendor-format $PE_VENDOR_FORMAT"
+    git -C "$1" ls-tree -r "$2" |
+      grep -E "$tab"'(\.cargo/config\.toml|evals/_scaffold/scaffold\.sh|evals/[^/]+/solution/\.solve\.sh|(.*/)?Cargo\.(toml|lock))$' |
+      grep -v "${tab}eval-harness/"
+  } | pe_sha256 | cut -c1-16
+}

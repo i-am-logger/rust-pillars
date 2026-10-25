@@ -26,8 +26,10 @@ for entry in "$root"/* "$root"/.[!.]*; do
   name=$(basename "$entry")
   case $name in
   # The plugin's own parts stay out, or the no-plugin arm could read them;
-  # graders-* are the grader self-check suites (eval-harness/plugin-eval.sh).
-  target | .git | skills | commands | agents | hooks | evals | graders-* | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md) continue ;;
+  # graders-* and probe-* are the grader self-check and probe suites, and
+  # vendor/ an older export's dependencies (eval-harness/plugin-eval.sh
+  # keeps them outside the export now, and points cargo at them).
+  target | .git | skills | commands | agents | hooks | evals | graders-* | probe-* | vendor | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md) continue ;;
   esac
   cp -R "$entry" .
 done

@@ -33,35 +33,65 @@ sha=$(git rev-parse --short HEAD)
 if [ -n "$(git status --porcelain -- evals skills commands agents hooks .claude-plugin crates xtask)" ]; then
   echo "plugin-eval: uncommitted changes; the run uses HEAD ($sha), not the working tree" >&2
 fi
-out=${TMPDIR:-/tmp}/rust-code-plugin-eval/$sha
+mkdir -p "${TMPDIR:-/tmp}/rust-code-plugin-eval"
+# The physical path: cargo and the sandbox see /private/tmp, not /tmp.
+base=$(cd "${TMPDIR:-/tmp}/rust-code-plugin-eval" && pwd -P)
+out=$base/$sha
 export_dir=$out/root
+# The vendored dependencies, keyed on the Cargo files rather than the commit
+# (lib.sh, pe_vendor_key), and kept outside every export: the scaffold copies
+# the export into each working copy, and 77 MB of vendor/ went with it.
+vendor=$base/vendor-$(pe_vendor_key "$repo" HEAD)
 
-if [ ! -f "$out/.ready" ]; then
-  mkdir -p "$export_dir" "$out/vendor-work"
-  git archive HEAD | tar -x -C "$export_dir"
+# share_dir NAME BUILD: makes $base/NAME by running BUILD with a fresh
+# directory as $1, and publishes it with one `ln -s`, which either wins or
+# finds another export's copy already there -- so exports of several commits
+# can build at once and none sees a half-made one.
+share_dir() {
+  [ -e "$base/$1" ] && return 0
+  tmp=$(mktemp -d "$base/.$1.XXXXXX")
+  "$2" "$tmp"
+  ln -s "$(basename "$tmp")" "$base/$1" 2>/dev/null || rm -rf "$tmp"
+}
+
+# vendor_into DIR: every dependency any case can need -- the starting state
+# and the reference solution of each -- vendored into DIR.
+vendor_into() {
+  work=$(mktemp -d "$base/.vendor-work.XXXXXX")
   syncs=""
   for c in "$export_dir"/evals/*/; do
     n=$(basename "$c")
     [ "$n" = _scaffold ] && continue
     for slot in start solution; do
-      d=$out/vendor-work/$n-$slot
-      mkdir -p "$d"
-      (cd "$d" && sh "$c/scaffold.sh" >/dev/null)
+      d=$work/$n-$slot
+      mkdir -p "$d" "$work/home"
+      (cd "$d" && HOME=$work/home sh "$c/scaffold.sh" >/dev/null)
       [ "$slot" = solution ] && cp -R "$c/solution/." "$d/"
       syncs="$syncs -s $d/Cargo.toml"
     done
   done
   # shellcheck disable=SC2086 # one word per -s argument
-  (cd "$export_dir" && cargo vendor --quiet --versioned-dirs vendor $syncs >/dev/null)
-  cat >>"$export_dir/.cargo/config.toml" <<'EOF'
+  (cd "$export_dir" && cargo vendor --quiet --versioned-dirs "$1" $syncs >/dev/null)
+  rm -rf "$work"
+}
+
+# A ready export whose vendoring was removed is built again.
+[ -f "$out/.ready" ] && [ ! -d "$vendor" ] && rm -rf "$out"
+if [ ! -f "$out/.ready" ]; then
+  rm -rf "$export_dir"
+  mkdir -p "$export_dir/.cargo"
+  git archive HEAD | tar -x -C "$export_dir"
+  share_dir "$(basename "$vendor")" vendor_into
+  cat >>"$export_dir/.cargo/config.toml" <<EOF
 
 # Eval runs only: the sandbox has no network, so every dependency the cases
-# can need is vendored here and cargo never asks the registry.
+# can need is vendored, outside the working copy, and cargo never asks the
+# registry.
 [source.crates-io]
 replace-with = "vendored-sources"
 
 [source.vendored-sources]
-directory = "vendor"
+directory = "$vendor"
 
 [net]
 offline = true
