@@ -2,6 +2,12 @@
 
 Copyright (c) 2026 i-am-logger
 
+Every path and link in this file is relative to the root of the rust-code
+repository, <https://github.com/i-am-logger/rust-code>. A skill zip from
+`dist:package` carries this file and [LICENSE](LICENSE) in the skill's
+folder, but not the other files named here; in the `rust-idioms` zip,
+BeautifulRust's licence is `LICENSE-BeautifulRust.txt` beside `SKILL.md`.
+
 rust-code is licensed under the Creative Commons
 Attribution-NonCommercial-ShareAlike 4.0 International License
 (CC-BY-NC-SA-4.0). [LICENSE](LICENSE) is that licence's legal code, verbatim
@@ -16,13 +22,19 @@ own.
 
 ## Third-party material
 
-The files below are unmodified copies of other projects' files, kept as
-pinned research sources (each one's sha256 is in
-[docs/research/sources/MANIFEST.toml](docs/research/sources/MANIFEST.toml)).
-They are not under CC-BY-NC-SA-4.0: each stays under its own licence. The
-licence texts, from each upstream at the same commit, are in
-[docs/research/sources](docs/research/sources/README.md) and cover every
-copy and quotation named here, wherever in this repository it sits.
+The material below comes from other projects. Most of it is unmodified
+copies of their files, kept as pinned research sources, each with its
+sha256 in
+[docs/research/sources/MANIFEST.toml](docs/research/sources/MANIFEST.toml).
+Two items differ: the research-note eval's fixture copy of the Cargo
+features chapter is pinned in that fixture's own
+[MANIFEST.toml](evals/research-note/fixture/docs/research/sources/MANIFEST.toml),
+and the eval's model solution holds an attributed excerpt of that chapter,
+not a copy, with no sha256. None of it is under CC-BY-NC-SA-4.0: each item
+stays under its own licence. The licence texts, from each upstream at the
+same commit, are in [docs/research/sources](docs/research/sources/README.md)
+and cover every copy and quotation named here, wherever in this repository
+it sits; the fixture also carries cargo's two beside its copy.
 
 - [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) at
   `97a0969cb07fe4cabb0eed8a56234053f47d83dc`, under MIT OR Apache-2.0,
