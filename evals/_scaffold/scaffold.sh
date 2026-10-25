@@ -7,12 +7,15 @@
 # eval-harness, so `claude plugin eval --scaffold` and the harness grade the
 # same starting point.
 #
-# usage: scaffold.sh <case dir>     (run from the empty working directory)
+# usage: scaffold.sh <case dir>        (run from the empty working directory)
+#        scaffold.sh <evals/_scaffold> the base workspace alone, no case
 set -eu
 
 case_dir=$(cd "$1" && pwd)
 root=$(cd "$case_dir/../.." && pwd)
-if [ ! -f "$root/.claude-plugin/plugin.json" ] || [ ! -f "$case_dir/prompt.md" ]; then
+base=$root/evals/_scaffold
+if [ ! -f "$root/.claude-plugin/plugin.json" ] ||
+  { [ "$case_dir" != "$base" ] && [ ! -f "$case_dir/prompt.md" ]; }; then
   echo "scaffold: $case_dir is not a case of a rust-code checkout" >&2
   exit 1
 fi
@@ -28,7 +31,7 @@ for entry in "$root"/* "$root"/.[!.]*; do
   # The plugin's own parts stay out, or the no-plugin arm could read them;
   # graders-* and probe-* are the grader self-check and probe suites, and
   # vendor/ an older export's dependencies (eval-harness/plugin-eval.sh
-  # keeps them outside the export now, and points cargo at them).
+  # keeps them outside the export now).
   target | .git | skills | commands | agents | hooks | evals | graders-* | probe-* | vendor | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md) continue ;;
   esac
   cp -R "$entry" .
@@ -41,7 +44,7 @@ find docs/research/notes -type f ! -name TEMPLATE.md -exec rm {} +
 grep -v 'a-rust-code-evidence' docs/README.md >docs/README.md.new
 mv docs/README.md.new docs/README.md
 
-if [ -d "$case_dir/fixture" ]; then
+if [ "$case_dir" != "$base" ] && [ -d "$case_dir/fixture" ]; then
   cp -R "$case_dir/fixture/." .
 fi
 
@@ -49,7 +52,7 @@ fi
 # is the run's own temp home, and devenv cannot run in the sandbox (nix must
 # read /private/tmp), so every shell the agent starts loads the environment
 # devenv gives this project, as direnv would -- for both arms alike.
-env_file=$root/evals/_scaffold/devenv.env
+env_file=$base/devenv.env
 if [ -f "$env_file" ] && [ ! -e "$HOME/.zshenv" ]; then
   sed "s|__ROOT__|$(pwd)|g" "$env_file" >"$HOME/.devenv.env"
   # shellcheck disable=SC2016 # expanded by the agent's shell, not here
@@ -67,17 +70,20 @@ clone() {
   cp -pR "$1/." "$2"
 }
 
-# Only in an eval export: the vendored dependencies (eval-harness/plugin-eval.sh
-# names their shared directory in vendor-dir). The sandbox cannot read that
-# directory, so each working copy gets its own clone, and cargo is pointed
-# at it.
-vendor_file=$root/evals/_scaffold/vendor-dir
-if [ -f "$vendor_file" ]; then
-  case $(cat "$root/evals/_scaffold/vendor-place" 2>/dev/null || echo work) in
-  home) vendor=$HOME/vendor ;;
-  *) vendor=$(pwd)/vendor ;;
-  esac
-  clone "$(cat "$vendor_file")" "$vendor"
-  sed "s|__VENDOR__|$vendor|" .cargo/config.toml >.cargo/config.toml.new
+# Only in an eval export: the vendored dependencies, whose shared directory
+# (named in vendor-dir) the sandbox cannot read. Each run gets a clone in its
+# own home, the working copy's parent, so the working copy holds no vendor/
+# for the agent to list or cargo-mutants to copy; cargo is pointed at it.
+if [ -f "$base/vendor-dir" ]; then
+  home=$(cd "$HOME" && pwd)
+  clone "$(cat "$base/vendor-dir")" "$home/vendor"
+  sed "s|__VENDOR__|$home/vendor|" .cargo/config.toml >.cargo/config.toml.new
   mv .cargo/config.toml.new .cargo/config.toml
+fi
+
+# Only in an eval export: the base workspace's target/, built once at export
+# time in this environment (target-dir names it), so dependencies are fresh
+# from the first build; the case's own crates still build.
+if [ -f "$base/target-dir" ] && [ ! -e target ]; then
+  clone "$(cat "$base/target-dir")" target
 fi

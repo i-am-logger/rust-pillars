@@ -33,6 +33,14 @@ sha=$(git rev-parse --short HEAD)
 if [ -n "$(git status --porcelain -- evals skills commands agents hooks .claude-plugin crates xtask)" ]; then
   echo "plugin-eval: uncommitted changes; the run uses HEAD ($sha), not the working tree" >&2
 fi
+# Each session's cargo and test threads, capped so the -j sessions of this
+# invocation share the cores (lib.sh, pe_job_cap). Handed over as an EVAL_
+# variable, which the runner passes to every session (docs; measured), and
+# turned into CARGO_BUILD_JOBS and the rest by the export's devenv.env: an
+# export is shared by every invocation on its commit, whatever their -j.
+EVAL_JOB_CAP=$(pe_job_cap "$(pe_ncpu)" "$(pe_jobs "$@")")
+export EVAL_JOB_CAP
+
 mkdir -p "${TMPDIR:-/tmp}/rust-code-plugin-eval"
 # The physical path: cargo and the sandbox see /private/tmp, not /tmp.
 base=$(cd "${TMPDIR:-/tmp}/rust-code-plugin-eval" && pwd -P)
@@ -75,8 +83,64 @@ vendor_into() {
   rm -rf "$work"
 }
 
-# A ready export whose vendoring was removed is built again.
+# in_agent_env DIR CMD...: CMD in DIR/home/cwd (a scaffolded working copy)
+# with the environment an agent's shell gets there: nothing of the caller's,
+# the captured devenv.env the scaffold wrote, then the system PATH.
+in_agent_env() {
+  _home=$1
+  shift
+  # shellcheck disable=SC2016 # expanded by the inner shell
+  env -i HOME="$_home/home" PATH=/usr/bin:/bin TERM=dumb sh -c \
+    '. "$HOME/.devenv.env"; export PATH="$PATH:/usr/bin:/bin"; cd "$HOME/cwd" && "$@"' sh "$@"
+}
+
+# base_workspace DIR: the base workspace (no case) scaffolded in DIR/home/cwd.
+base_workspace() {
+  mkdir -p "$1/home/cwd"
+  (cd "$1/home/cwd" && HOME=$1/home sh "$export_dir/evals/_scaffold/scaffold.sh" "$export_dir/evals/_scaffold" >/dev/null)
+}
+
+# content_key DIR: a key over every file of DIR but target/, with cargo's
+# vendored-sources line left out (it names the run's own clone).
+content_key() {
+  (cd "$1" && find . -type f ! -path './target/*' | LC_ALL=C sort | while IFS= read -r f; do
+    printf '%s %s\n' "$f" "$(grep -v '^directory = ' "$f" | pe_sha256)"
+  done) | pe_sha256 | cut -c1-16
+}
+
+# prebuild_into DIR: DIR/target, the base workspace built with the commands
+# the gates and the agents run, in the agent's environment -- the same
+# toolchain, RUSTFLAGS and profile, so cargo's fingerprints match and every
+# dependency is fresh in a working copy that clones it (measured: 58 of 62
+# units fresh). A failing command is logged, not fatal: what it built stays.
+prebuild_into() {
+  w=$(mktemp -d "$base/.prebuild-work.XXXXXX")
+  base_workspace "$w"
+  crates=$(in_agent_env "$w" cargo xtask crates --role domain,core 2>/dev/null) || crates=""
+  {
+    in_agent_env "$w" cargo build --workspace
+    in_agent_env "$w" cargo clippy --workspace --all-targets --all-features -- -D warnings
+    in_agent_env "$w" cargo nextest run --workspace
+    in_agent_env "$w" cargo nextest run --workspace --all-features --cargo-profile qa --no-run
+    for t in x86_64-unknown-none thumbv7em-none-eabihf; do
+      # shellcheck disable=SC2086 # one word per -p argument
+      in_agent_env "$w" cargo build --no-default-features --target "$t" $crates
+    done
+    in_agent_env "$w" cargo hack check --workspace --each-feature --no-dev-deps
+    in_agent_env "$w" cargo xtask all
+  } >"$1/prebuild.log" 2>&1 || true
+  mkdir -p "$w/home/cwd/target"
+  mv "$w/home/cwd/target" "$1/target"
+  rm -rf "$w"
+}
+
+# A ready export whose vendoring or prebuilt target was removed is built
+# again.
 [ -f "$out/.ready" ] && [ ! -d "$vendor" ] && rm -rf "$out"
+if [ -f "$out/.ready" ] && [ -f "$export_dir/evals/_scaffold/target-dir" ] &&
+  [ ! -d "$(cat "$export_dir/evals/_scaffold/target-dir")" ]; then
+  rm -rf "$out"
+fi
 if [ ! -f "$out/.ready" ]; then
   rm -rf "$export_dir"
   mkdir -p "$export_dir/.cargo"
@@ -114,6 +178,24 @@ EOF
       echo "plugin-eval: could not capture the devenv environment" >&2
       exit 1
     }
+  # Eval runs only, never the project: a lighter dev profile (measured
+  # faster: 12.1 / 12.5 s against 14.9 / 15.5 s for build, nextest, clippy
+  # and two edit loops on prebuilt dependencies), and the per-session job cap
+  # the invocation hands every session as EVAL_JOB_CAP (lib.sh, pe_job_cap).
+  cat >>"$export_dir/evals/_scaffold/devenv.env" <<'EOF'
+export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0
+if [ -n "${EVAL_JOB_CAP:-}" ]; then
+  export CARGO_BUILD_JOBS="$EVAL_JOB_CAP" NEXTEST_TEST_THREADS="$EVAL_JOB_CAP" RUST_TEST_THREADS="$EVAL_JOB_CAP"
+fi
+EOF
+  # The base workspace's target/, keyed on what it is built from: the
+  # working copy's files and the environment above.
+  kw=$(mktemp -d "$base/.key-work.XXXXXX")
+  base_workspace "$kw"
+  tkey=$( (content_key "$kw/home/cwd" && pe_sha256 <"$export_dir/evals/_scaffold/devenv.env") | pe_sha256 | cut -c1-16)
+  rm -rf "$kw"
+  share_dir "target-$tkey" prebuild_into
+  echo "$base/target-$tkey/target" >"$export_dir/evals/_scaffold/target-dir"
   touch "$out/.ready"
 fi
 

@@ -48,6 +48,36 @@ pe_pin_args() {
   pe_has_opt --judge-model "$@" || printf -- '--judge-model\n%s\n' "$PE_JUDGE"
 }
 
+# pe_jobs ARGS...: the concurrency ARGS give the runner (-j N, -jN, -j=N,
+# --concurrency N, --concurrency=N; the last wins), else the runner's
+# default, 1.
+pe_jobs() {
+  _pe_value=1
+  while [ $# -gt 0 ]; do
+    case $1 in
+    -j | --concurrency) [ $# -gt 1 ] && _pe_value=$2 ;;
+    -j=* | --concurrency=*) _pe_value=${1#*=} ;;
+    -j[0-9]*) _pe_value=${1#-j} ;;
+    esac
+    shift
+  done
+  printf '%s\n' "$_pe_value"
+}
+
+# pe_ncpu: this machine's logical cores.
+pe_ncpu() {
+  sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1
+}
+
+# pe_job_cap NCPU J: the cargo and test-thread cap of one session when J
+# sessions share NCPU cores: max(1, NCPU / J). Every cargo, nextest and test
+# binary otherwise takes all the cores, so J sessions oversubscribe J times.
+pe_job_cap() {
+  _pe_value=$(($1 / $2))
+  [ "$_pe_value" -ge 1 ] || _pe_value=1
+  printf '%s\n' "$_pe_value"
+}
+
 # pe_sha256: the SHA-256 of stdin, in hex.
 pe_sha256() {
   if command -v sha256sum >/dev/null 2>&1; then

@@ -38,6 +38,13 @@ same "an option value is not an option" \
 same "-j's value, the last one" "8" "$(pe_opt_value -j 1 -j 4 --runs 1 -j 8)"
 same "-j's default" "1" "$(pe_opt_value -j 1 --runs 1)"
 same "--opt=value" "3" "$(pe_opt_value --runs 1 --runs=3)"
+same "-j N" 4 "$(pe_jobs --runs 1 -j 4)"
+same "-jN, --concurrency=N, last wins" 6 "$(pe_jobs -j8 --concurrency=6)"
+same "--concurrency N" 2 "$(pe_jobs --concurrency 2 --no-publish)"
+same "the runner's default concurrency" 1 "$(pe_jobs --runs 3)"
+same "18 cores, -j 4" 4 "$(pe_job_cap 18 4)"
+same "18 cores, -j 8" 2 "$(pe_job_cap 18 8)"
+same "never below one" 1 "$(pe_job_cap 4 8)"
 name=mine value=mine a=mine tab=mine
 pe_opt_value --json x --json y >/dev/null
 pe_has_opt --json --json y && pe_vendor_key "$repo" HEAD >/dev/null
@@ -89,12 +96,24 @@ touch "$scratch/shared/serde-1.0.0/lib.rs"
 echo "$scratch/shared" >"$r/evals/_scaffold/vendor-dir"
 printf '[source.vendored-sources]\ndirectory = "__VENDOR__"\n' >"$r/.cargo/config.toml"
 (cd "$scratch/work2" && HOME=$scratch/home2 sh "$repo/evals/_scaffold/scaffold.sh" "$r/evals/c")
-w2=$(cd "$scratch/work2" && pwd)
-same "the scaffold clones the vendored dependencies" yes \
-  "$([ -f "$w2/vendor/serde-1.0.0/lib.rs" ] && echo yes)"
-same "and points cargo at the clone" "directory = \"$w2/vendor\"" \
-  "$(grep '^directory' "$w2/.cargo/config.toml")"
+h2=$(cd "$scratch/home2" && pwd)
+same "the scaffold clones the vendored dependencies outside the working copy" yes \
+  "$([ -f "$h2/vendor/serde-1.0.0/lib.rs" ] && [ ! -e "$scratch/work2/vendor" ] && echo yes)"
+same "and points cargo at the clone" "directory = \"$h2/vendor\"" \
+  "$(grep '^directory' "$scratch/work2/.cargo/config.toml")"
 rm "$r/evals/_scaffold/vendor-dir" "$r/.cargo/config.toml"
+
+# The base workspace alone (the scaffold's own directory as the case), with
+# a prebuilt target cloned in, its mtimes kept.
+mkdir -p "$scratch/prebuilt/target/debug" "$scratch/work3" "$scratch/home3"
+touch -t 200001010000 "$scratch/prebuilt/target/debug/dep.rlib"
+echo "$scratch/prebuilt/target" >"$r/evals/_scaffold/target-dir"
+(cd "$scratch/work3" && HOME=$scratch/home3 sh "$repo/evals/_scaffold/scaffold.sh" "$r/evals/_scaffold")
+same "the scaffold builds the base workspace" yes "$([ -f "$scratch/work3/crates/a/lib.rs" ] && echo yes)"
+mtime() { perl -e 'print +(stat shift)[9] // ""' "$1"; }
+same "the scaffold clones the prebuilt target, mtimes kept" \
+  "$(mtime "$scratch/prebuilt/target/debug/dep.rlib")" "$(mtime "$scratch/work3/target/debug/dep.rlib")"
+rm "$r/evals/_scaffold/target-dir"
 
 # --- plugin-eval.sh, building exports ---------------------------------------
 
@@ -149,6 +168,17 @@ same "the export names them for the scaffold to clone" \
   "$(cat "$fbase/$fsha/root/evals/_scaffold/vendor-dir" 2>/dev/null)"
 same "and leaves the clone's path to the scaffold" 'directory = "__VENDOR__"' \
   "$(grep '^directory = ' "$fbase/$fsha/root/.cargo/config.toml" 2>/dev/null)"
+fenv=$fbase/$fsha/root/evals/_scaffold/devenv.env
+same "the export's environment carries the lighter dev profile" yes \
+  "$(grep -q '^export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0$' "$fenv" 2>/dev/null && echo yes)"
+# shellcheck disable=SC2016 # expanded by the inner shells
+same "and derives the job caps from the invocation's EVAL_JOB_CAP" "3 3 3 /" \
+  "$(EVAL_JOB_CAP=3 sh -c '. "$1"; echo "$CARGO_BUILD_JOBS $NEXTEST_TEST_THREADS $RUST_TEST_THREADS /${CARGO_TARGET_DIR:-}"' sh "$fenv" 2>/dev/null)"
+# shellcheck disable=SC2016 # expanded by the inner shell
+same "and sets no cap without one" "/" \
+  "$(env -u EVAL_JOB_CAP sh -c '. "$1"; echo "${CARGO_BUILD_JOBS:-}/"' sh "$fenv" 2>/dev/null)"
+same "the export names a prebuilt target for the scaffold to clone" yes \
+  "$(d=$(cat "$fbase/$fsha/root/evals/_scaffold/target-dir" 2>/dev/null) && [ -d "$d" ] && echo yes)"
 echo two >"$f/skills/s/SKILL.md" && fcommit skills
 fakerun
 same "a skills-only commit reuses the vendoring" 1 "$(grep -c . "$calls")"
@@ -165,6 +195,7 @@ mkdir -p "$scratch/bin"
 cat >"$scratch/bin/claude" <<'EOF'
 #!/bin/sh
 printf 'cwd=%s\n' "$(basename "$PWD")"
+printf 'cap=%s\n' "${EVAL_JOB_CAP:-}"
 printf 'arg=%s\n' "$@"
 EOF
 chmod +x "$scratch/bin/claude"
@@ -188,6 +219,8 @@ same "a suite run pins the model and the judge" \
 same "a suite run keeps the caller's model" \
   "plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write --model haiku --judge-model haiku" \
   "$(run --model haiku)"
+same "a suite run hands its sessions the job cap for its -j" "$(pe_job_cap "$(pe_ncpu)" 4)" \
+  "$(TMPDIR=$scratch/tmp PATH="$scratch/bin:$PATH" sh "$here/plugin-eval.sh" -j 4 2>/dev/null | sed -n 's/^cap=//p')"
 
 if [ "$failed" -ne 0 ]; then
   echo "$failed check(s) failed"
