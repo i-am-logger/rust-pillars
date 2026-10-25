@@ -35,8 +35,9 @@ that is exactly the divergence this setup exists to prevent.
 
 The evals are not part of `dev-ci`: every run makes real model calls on your
 Claude account. The Rust harness (`devenv tasks run eval:run`) runs `claude`
-with `--permission-mode bypassPermissions` and no sandbox, so run it only on a
-tree you trust -- not on a branch whose `evals/` you have not read. See
+with `--permission-mode bypassPermissions` and no sandbox, so it refuses to
+start unless `RUST_CODE_EVAL_UNSANDBOXED=1` is set. Set it only on a tree you
+trust -- not on a branch whose `evals/` you have not read. See
 [eval-harness/README.md](eval-harness/README.md).
 
 ## Commit messages

@@ -19,16 +19,19 @@ machine is the security surface worth reporting on.
 
 **With `gate_on_edit` turned on**
 
-After an edit to a `.rs` file, `hooks/gate-on-edit.sh` walks upward from that
-file to the nearest directory with a `layers.toml`, and if it also has an
-`xtask/` directory, runs `cargo xtask budgets` and `cargo xtask arch` there.
-That executes the project's own code -- its xtask binary, build scripts and
-proc macros -- under the project's cargo configuration (which can redefine
-the `xtask` alias or set a compiler wrapper) and toolchain file, and cargo
-may fetch crates or a toolchain. Hooks run with no permission prompt, the walk
-is not bounded by the project directory, and an install is user-scoped by
-default, so the option applies to every project you open (inferred). Turn it
-on only if you trust the repositories you open.
+After an edit to a `.rs` file, `hooks/gate-on-edit.sh` acts only if
+`CLAUDE_PROJECT_DIR` is set and the file, once links and `..` are resolved,
+is inside that directory. It then walks upward from the file to the nearest
+directory with a `layers.toml`, stopping at the project's root, and if that
+directory also has an `xtask/` directory, runs `cargo xtask budgets` and
+`cargo xtask arch` there. That executes the project's own code -- its xtask
+binary, build scripts and proc macros -- under the project's cargo
+configuration (which can redefine the `xtask` alias or set a compiler
+wrapper) and toolchain file, and cargo may fetch crates or a toolchain. Hooks
+run with no permission prompt, and an install is user-scoped by default, so
+the option applies to every project you open (inferred). Turn it on only if
+you trust the repositories you open. `eval-harness/test-gate-on-edit.sh`
+checks the inside-the-project rule, and `test:plugin` runs it.
 
 **When you run a command**
 
@@ -37,13 +40,16 @@ long as the command runs:
 
 | Command | Pre-approved tools | Runs |
 |---|---|---|
-| `/rust-code:gate` | Bash, Read, Grep, Glob | `devenv test` or `cargo xtask`, or `cargo fmt`, `cargo clippy` and `cargo test` in a project without the gates |
-| `/rust-code:adopt` | Bash, Read, Grep, Glob, Edit, Write | `cargo metadata`, `cargo xtask init` and `cargo xtask all`; it copies gate files into the workspace |
+| `/rust-code:gate` | `Bash(devenv test:*)`, `Bash(cargo xtask:*)`, `Bash(cargo fmt --check:*)`, `Bash(cargo clippy:*)`, `Bash(cargo test:*)`, Read, Grep, Glob | `devenv test` or `cargo xtask`, or `cargo fmt`, `cargo clippy` and `cargo test` in a project without the gates |
+| `/rust-code:adopt` | `Bash(cargo metadata:*)`, `Bash(cargo xtask all:*)`, Read, Grep, Glob | `cargo metadata` and `cargo xtask all` without asking; `cargo xtask init`, copying gate files into the workspace and every edit prompt |
 
-Bash is not scoped to those commands, so text in the project that the model
-reads can steer what it runs while one of these is active. `adopt` asks before
-each step that changes files, but that is an instruction to the model, not a
-permission check. Both run the project's own code, as the hook does.
+No command pre-approves a bare Bash, Edit or Write, so any other command and
+every file change asks under your permission settings (`test:plugin` fails
+if a bare grant comes back). The scoped grants are still wide:
+`cargo xtask:*` covers `cargo xtask init`, which writes files, and
+`cargo clippy:*` covers `--fix`. Both commands run the project's own code, as
+the hook does. `adopt` copies files licensed CC BY-NC-SA 4.0 from
+rust-template, and says so before it copies anything.
 
 The `refuter` agent's `tools` list (Read, Grep, Glob, Bash) limits what it may
 use; it grants nothing past your permission settings (inferred).
@@ -53,8 +59,9 @@ use; it grants nothing past your permission settings (inferred).
 Nothing here runs when you use the plugin. `eval-harness/` runs `claude -p`
 with `--permission-mode bypassPermissions` in a scratch copy on the host, with
 no sandbox, and runs each case's `scaffold.sh`: the session has your shell,
-files, network and Claude login. Run it only on a tree you trust, ideally in a
-VM or container. `eval-harness/plugin-eval.sh` uses `claude plugin eval`,
+files, network and Claude login. A model run refuses to start unless
+`RUST_CODE_EVAL_UNSANDBOXED=1` is set; set it only on a tree you trust,
+ideally in a VM or container. `eval-harness/plugin-eval.sh` uses `claude plugin eval`,
 which runs each session in its sandbox with no network. Every eval run makes
 real model calls on your account.
 

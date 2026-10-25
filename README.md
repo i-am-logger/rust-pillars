@@ -60,12 +60,15 @@ it off with `--config nudge=false`.
 
 **Opt-in gates while you work.** Install with `--config gate_on_edit=true`
 (or set the option later with `claude plugin configure rust-code`), and after
-every edit to a `.rs` file the plugin looks upward from that file for a
-`layers.toml` beside an `xtask/` directory, runs `cargo xtask budgets` and
+every edit to a `.rs` file inside the open project the plugin looks upward
+from that file, no higher than the project's root, for a `layers.toml`
+beside an `xtask/` directory, runs `cargo xtask budgets` and
 `cargo xtask arch` there, and shows Claude what fails, so a violation is
-fixed in the same turn. It is off by default because the hook executes the
-open project's own code -- its xtask, build scripts, proc macros and cargo
-configuration -- with no permission prompt. An install is user-scoped by
+fixed in the same turn. A file outside the project, once links and `..` are
+resolved, runs nothing. The option is off by default because the hook
+executes the project's own code -- its xtask, build scripts, proc macros and
+cargo configuration (`.cargo/config.toml`, `rust-toolchain.toml`), which can
+run anything -- with no permission prompt. An install is user-scoped by
 default, so once the option is on it applies in every project you open
 (inferred): do not turn it on if you open repositories you do not trust.
 
@@ -98,9 +101,13 @@ any of them directly:
 | `/rust-code:adopt [--ratchet]` | brings the gates into an existing workspace: roles, then `cargo xtask init` |
 | `@agent-rust-code:refuter` | a closed-brief refuter: tries to show a change is wrong, returns its verdict as JSON |
 
-Both commands run the open project's code (`devenv test`, `cargo xtask`) and
-pre-approve shell commands while they run; [SECURITY.md](SECURITY.md) lists
-each grant.
+Both commands run the open project's own code: `/rust-code:gate` its build,
+xtask and tests (`devenv test`, `cargo xtask`), `/rust-code:adopt`
+`cargo metadata` and `cargo xtask`. Each pre-approves only a few scoped shell
+commands while it runs, and every edit or other command prompts;
+[SECURITY.md](SECURITY.md) lists each grant. `/rust-code:adopt` copies files
+from rust-template, which is licensed CC BY-NC-SA 4.0 (NonCommercial,
+ShareAlike): it says so and asks before it copies anything.
 
 ## The pillars and their gates
 
@@ -136,7 +143,7 @@ BeautifulRust copy pinned at commit 6b3a96c:
 | In-session enforcement | none | opt-in hook runs the gates after each `.rs` edit |
 | Commands, agents | none | `/rust-code:gate`, `/rust-code:adopt`, a refuter agent |
 | Code in the skills | examples | every Rust block compiles and runs (`cargo xtask snippets`) |
-| Context cost | ~160 tokens always-on, ~7.3k every time it fires (unmeasured: bytes / 4 over the pinned SKILL.md's 650-byte frontmatter and 504-line body) | ~982 always-on; ~1.6k for the entry skill, plus only the specialist a task needs (~3.9k-7.1k) (`claude plugin details` estimates, claude 2.1.303) |
+| Context cost | ~160 tokens always-on, ~7.3k every time it fires (unmeasured: bytes / 4 over the pinned SKILL.md's 650-byte frontmatter and 504-line body) | ~1,034 always-on; ~1.6k for the entry skill, plus only the specialist a task needs (~3.6k-7k) (the tool's estimates: `claude --plugin-dir . plugin details rust-code`, claude 2.1.303) |
 
 It costs more context up front -- one description per skill and command --
 and less when it works, because no task loads all of it. The idioms are
@@ -160,8 +167,9 @@ iterating (the smoke cases, one run, never reported) and
 `devenv tasks run eval:full` gives the numbers (every case, three runs, both
 arms). Every run makes real model calls on your Claude account. The Rust
 harness (`devenv tasks run eval:run`) runs `claude` with
-`--permission-mode bypassPermissions` and no sandbox: run it only on a tree
-you trust. Runner options, reuse and what was measured are in
+`--permission-mode bypassPermissions` and no sandbox, so it refuses to start
+unless `RUST_CODE_EVAL_UNSANDBOXED=1` is set: run it only on a tree you
+trust. Runner options, reuse and what was measured are in
 [eval-harness/README.md](eval-harness/README.md).
 
 ## Development
