@@ -96,26 +96,48 @@ names the planted fault.
 
 ## Against BeautifulRust
 
-Kept, almost whole: the idioms (`rust-idioms`, adapted under BeautifulRust's
-MIT license with attribution). Departed from, with the reason written down:
-performance-first design for domain and core, payload-free errors in a
-`no_std` core, primitives refused rather than only `bool`, `unsafe`
-forbidden rather than justified. Added: the architecture and the method,
-and enforcement. The full comparison, with sources pinned by hash, is
+Everything BeautifulRust does as a plugin, rust-code does too, and then:
+
+| | BeautifulRust | rust-code |
+|---|---|---|
+| Fires on any Rust work | one skill | the `rust-code` entry skill, which routes to six specialists |
+| Install from a marketplace, invoke by slash command | yes | yes |
+| claude.ai upload | a zipped skill folder | the whole plugin, or any one skill on its own (`dist:package`) |
+| Evals under `claude plugin eval` | 3 cases, graded by a model | 10 cases with scaffolds and transcript graders, **plus** executable checks that build, lint, test and gate what was written, each case proven to fail on an untouched project and pass with a reference solution |
+| Rules enforced | none: prose | every rule is a gate in rust-template, and every gate is seen failing for its reason |
+| In-session enforcement | none | opt-in hook runs the gates after each `.rs` edit |
+| Commands, agents | none | `/rust-code:gate`, `/rust-code:adopt`, a refuter agent |
+| Code in the skills | examples | every Rust block compiles and runs (`cargo xtask snippets`) |
+| Context cost | ~150 tokens always-on, ~7.3k every time it fires (estimated from its 504-line SKILL.md at ~4 bytes a token) | ~950 always-on (measured, `claude plugin details`); ~1.6k for the entry skill, plus only the specialist a task needs (~4-7k) |
+
+It costs more context up front -- one description per skill and command --
+and less when it works, because no task loads all of it. The idioms are
+adapted from BeautifulRust under its MIT license (`NOTICE.md`), with every
+departure written down: performance-first design for domain and core,
+payload-free errors in a `no_std` core, all primitives refused rather than
+only `bool`, `unsafe` forbidden rather than justified. The full comparison,
+with sources pinned by hash, is
 [the evidence note](docs/research/notes/a-rust-code-evidence.md).
 
 ## Evals
 
-Two layers. `claude plugin eval` grades transcripts (did a skill fire, how
-was the work done). `evals/harness` runs each case in `evals/` headless
-with and without the plugin, then builds, lints, tests and gates what was
-left on disk; each arm runs twice and a difference counts only if it is
-larger than the arm's own run-to-run spread. `devenv tasks run eval:control`
-runs no model: it proves every task-specific check fails on the untouched
-base, so no case can grade nothing. Every other run is a paid model call,
-so evals are a manual task (`eval:run`). The working copies live outside the
-repository, and the arm with the plugin gets a copy of the plugin alone, so
-no run can read the checks it is graded by.
+Two layers, over the same ten cases in `evals/`:
+
+- **`claude plugin eval`** grades transcripts: did the expected skill fire,
+  did the entry skill, and how was the work done (`graders/`). Each case's
+  `scaffold.sh` builds the working copy, so run it with `--scaffold`:
+  `claude plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write`.
+- **`eval-harness/`** runs each case headless with and without the plugin and
+  scores what was left on disk with `checks.toml`: it builds, lints, tests and
+  gates the code. Each arm runs twice, and a difference counts only if it is
+  larger than the arm's own run-to-run spread.
+
+Both runners build every working copy with the same script, outside the
+repository, so no run can read the checks it is graded by. Two modes run no
+model and prove every case can grade: `devenv tasks run eval:control` (every
+task check fails on the untouched project) and the harness's `--solution`
+(every check passes with the case's reference solution). Every other run is
+a real model call on your account, so `eval:run` is manual.
 
 ## Development
 
