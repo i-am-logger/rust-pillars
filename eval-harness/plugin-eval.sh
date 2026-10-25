@@ -19,6 +19,11 @@
 #       [--reuse-baseline BASELINE.json OUT.json] [claude plugin eval options...]
 #   sh eval-harness/plugin-eval.sh --graders
 #   sh eval-harness/plugin-eval.sh --probe NAME CMDFILE [options...]
+#   sh eval-harness/plugin-eval.sh --prune
+#
+# --prune removes what older commits left under $TMPDIR/rust-code-plugin-eval
+# (exports, prebuilt targets of about 1.1 GB each, vendorings and their GC
+# roots) that HEAD's export does not use; run it when no suite is running.
 #
 # The suite-run options are described where they are read, below; README.md
 # (Evals) says how to run each tier.
@@ -87,6 +92,71 @@ solutions=$out/solutions
 # ("the path to the source changed").
 vkey=$(pe_vendor_key "$repo" HEAD)
 vstore_file=$base/vendor-$vkey.store
+
+# --prune: removes, from $base only, the entries this script makes -- <sha>
+# exports, target-<key>, vendor-<key>, vendor-<key>.store and
+# vendor-<key>.gcroot -- that HEAD does not use: its own export, its
+# vendoring and the target its export names (all targets are kept when HEAD
+# has no export, since only the export knows its target's key). A link to a
+# `.NAME.XXXXXX` directory beside it (share_dir) goes with that directory; any
+# other link, a GC root into the nix store among them, is removed as a link
+# and never followed, so the store is never touched (`nix-store --gc` frees
+# the path later). A read-only directory inside a removed entry -- a copy out
+# of the store, or one sealed -- is opened (u+rwx) as find reaches it; find
+# does not follow links, so only directories under $base are. Prints each
+# removal and its size.
+if [ "${1:-}" = --prune ]; then
+  keep_target=""
+  if [ -f "$export_dir/evals/_scaffold/target-dir" ]; then
+    keep_target=$(basename "$(dirname "$(cat "$export_dir/evals/_scaffold/target-dir")")")
+  else
+    echo "plugin-eval: HEAD ($sha) has no export, so the target it uses is unknown: every target-* is kept"
+  fi
+  kb() { du -sk "$1" 2>/dev/null | cut -f1; }
+  size() { if [ "$1" -ge 1024 ]; then echo "$(($1 / 1024)) MB"; else echo "$1 KB"; fi; }
+  # remove_tree DIR: DIR (a real directory under $base) and all in it.
+  remove_tree() {
+    find "$1" -type d ! -perm -u+rwx -exec chmod u+rwx {} \;
+    rm -rf "$1"
+  }
+  total=0
+  for e in "$base"/*; do
+    [ -e "$e" ] || [ -L "$e" ] || continue
+    name=${e##*/}
+    printf '%s\n' "$name" | grep -Eq '^([0-9a-f]{7,40}|target-[0-9a-f]{16}|vendor-[0-9a-f]{16}(\.store|\.gcroot)?)$' || continue
+    case $name in
+    "$sha" | "vendor-$vkey" | "vendor-$vkey.store" | "vendor-$vkey.gcroot") continue ;;
+    target-*) [ -n "$keep_target" ] && [ "$name" != "$keep_target" ] || continue ;;
+    esac
+    if [ -L "$e" ]; then
+      to=$(readlink "$e")
+      case $to in
+      ."$name".*)
+        if [ -d "$base/$to" ] && [ ! -L "$base/$to" ]; then
+          k=$(kb "$base/$to")
+          remove_tree "$base/$to"
+          rm -f "$e"
+          echo "plugin-eval: removed $e and $base/$to ($(size "$k"))"
+          total=$((total + k))
+          continue
+        fi
+        ;;
+      esac
+      rm -f "$e"
+      echo "plugin-eval: removed the link $e (to $to, left as it is)"
+    elif [ -d "$e" ]; then
+      k=$(kb "$e")
+      remove_tree "$e"
+      echo "plugin-eval: removed $e ($(size "$k"))"
+      total=$((total + k))
+    else
+      rm -f "$e"
+      echo "plugin-eval: removed $e"
+    fi
+  done
+  echo "plugin-eval: pruned $(size "$total") from $base; store paths whose GC root went are freed by nix-store --gc"
+  exit 0
+fi
 
 # share_dir NAME BUILD: makes $base/NAME by running BUILD with a fresh
 # directory as $1, and publishes it with one `ln -s`, which either wins or

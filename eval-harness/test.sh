@@ -466,6 +466,53 @@ sleep 1
 same "the stand-in left a process behind" yes "$([ -s "$scratch/pids/suite" ] && echo yes)"
 same "a suite run ends what a dead session left running" gone "$(alive suite)"
 
+# --- plugin-eval.sh --prune --------------------------------------------------
+
+# A shared directory as exports of several commits leave it, in a TMPDIR of
+# the test's own (never the real one).
+pb=$scratch/ptmp/rust-code-plugin-eval
+vk=$(pe_vendor_key "$repo" HEAD)
+keep=1111111111111111 old=2222222222222222 old2=3333333333333333 old3=4444444444444444
+mkdir -p "$pb/$sha/root/evals/_scaffold" "$pb/.target-$keep.AAAAAA/target" "$pb/.target-$old.BBBBBB/target" \
+  "$pb/1234567/root/vendor/dep" "$pb/.vendor-$old2.CCCCCC/dep" "$pb/.prebuild-work.XYZ" "$pb/abcdefg-not" \
+  "$scratch/fakestore/keep" "$scratch/fakestore/old/dep" "$scratch/outside"
+touch "$pb/$sha/.ready" "$pb/$sha/root/evals/_scaffold/devenv.env" "$pb/notes.txt" "$pb/.started.abc.cwd"
+echo basekey >"$pb/$sha/base-key"
+echo "$pb/target-$keep/target" >"$pb/$sha/root/evals/_scaffold/target-dir"
+ln -s ".target-$keep.AAAAAA" "$pb/target-$keep"
+ln -s ".target-$old.BBBBBB" "$pb/target-$old"
+head -c 2097152 /dev/zero >"$pb/.target-$old.BBBBBB/target/big"
+echo "$scratch/fakestore/keep" >"$pb/vendor-$vk.store"
+ln -s "$scratch/fakestore/keep" "$pb/vendor-$vk.gcroot"
+echo "$scratch/fakestore/old" >"$pb/vendor-$old.store"
+ln -s "$scratch/fakestore/old" "$pb/vendor-$old.gcroot"
+ln -s ".vendor-$old2.CCCCCC" "$pb/vendor-$old2"
+ln -s "$scratch/outside" "$pb/vendor-$old3"
+# A read-only copy out of a store, in an old export; and the store itself,
+# read-only, which must stay so.
+touch "$pb/1234567/root/vendor/dep/lib.rs" "$scratch/fakestore/old/dep/lib.rs"
+chmod 555 "$pb/1234567/root/vendor/dep" "$pb/1234567/root/vendor" "$scratch/fakestore/old/dep" "$scratch/fakestore/old"
+prune() {
+  CALLS=$calls FAKESTORE=$scratch/store TMPDIR=$scratch/ptmp PATH="$scratch/fakebin:$PATH" \
+    sh "$here/plugin-eval.sh" --prune 2>&1
+}
+prune >"$scratch/prune.log"
+pbp=$(cd "$pb" && pwd -P)
+left() { (cd "$pb" && find . -mindepth 1 -maxdepth 1 | sed 's|^\./||' | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//'); }
+same "--prune keeps HEAD's export, vendoring and target, and what it did not make" \
+  "$(printf '%s\n' .prebuild-work.XYZ .started.abc.cwd ".target-$keep.AAAAAA" "$sha" abcdefg-not notes.txt \
+    "target-$keep" "vendor-$vk.gcroot" "vendor-$vk.store" | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')" "$(left)"
+same "and leaves the store and anything a link points to outside" "555 yes" \
+  "$(perl -e 'printf "%o", (stat shift)[2] & 0777' "$scratch/fakestore/old") $([ -f "$scratch/fakestore/old/dep/lib.rs" ] && [ -d "$scratch/outside" ] && echo yes)"
+same "and says what it removed and how much" yes \
+  "$(grep -qF "removed $pbp/target-$old and $pbp/.target-$old.BBBBBB (2 MB)" "$scratch/prune.log" &&
+    grep -qF "removed the link $pbp/vendor-$old.gcroot" "$scratch/prune.log" && grep -qF "pruned 2 MB" "$scratch/prune.log" && echo yes)"
+rm -rf "${pb:?}/$sha"
+ln -s ".target-$old.BBBBBB" "$pb/target-$old" && mkdir -p "$pb/.target-$old.BBBBBB"
+prune >"$scratch/prune2.log"
+same "without HEAD's export every target is kept" "yes yes" \
+  "$([ -L "$pb/target-$old" ] && echo yes) $(grep -q 'every target-\* is kept' "$scratch/prune2.log" && echo yes)"
+
 if [ "$failed" -ne 0 ]; then
   echo "$failed check(s) failed"
   exit 1
