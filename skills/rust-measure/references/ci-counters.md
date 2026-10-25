@@ -128,7 +128,7 @@ trusting a counter gate:
 The template's gates were checked this way: a planted-violation run turned
 28 of 28 gates red for the intended reason (after fixing the `std::` path
 hole in `clippy.toml`, where a `std::` path names nothing in a no_std crate);
-commit `ea24734` reports 32 of 32.
+commit `7c9bc27` reports 33 of 33.
 `cargo xtask controls` (`test:controls`, last in `devenv test`) now repeats
 that on every run: one plant per gate in a scratch copy, and a red only
 counts if the output names the planted reason. A new counter gate gets a case
