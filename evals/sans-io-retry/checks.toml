@@ -1,0 +1,237 @@
+# sans-io-retry: reconnect/backoff in the sans-IO core.
+#
+# Task checks (on_base = fail): the names the prompt fixed exist, the new
+# property drives failures, and a hidden behavioural test (written by the last
+# check, run, then removed -- the model never sees it) holds the backoff
+# contract the prompt states: 100 ms doubling to a 1600 ms cap, one retry per
+# failure, reset by bytes, Retry carrying its tick's time.
+#
+# Integrity checks (pass on base and after): builds, clippy, tests, the bare
+# no_std build, the gates, and every gate configuration file byte-identical to
+# the live workspace the base was copied from (outside the working copy).
+
+[[check]]
+name = "event-and-effect-named-in-the-prompt-exist"
+run = "grep -rqw 'UpstreamFailed' crates/rust-code-domain/src crates/rust-code-core/src && grep -rqE 'Retry\\(' crates/rust-code-domain/src crates/rust-code-core/src"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "a-chunk-invariance-property-drives-failures"
+run = 'for f in crates/rust-code-core/tests/*.rs; do grep -q "UpstreamFailed" "$f" && grep -q "fn chunk_invariance_" "$f" && exit 0; done; exit 1'
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "original-chunk-invariance-properties-kept"
+run = "grep -q 'fn chunk_invariance_any_split_gives_the_same_effects' crates/rust-code-core/tests/chunk_invariance.rs && grep -q 'fn chunk_invariance_one_byte_reads_agree_with_the_model' crates/rust-code-core/tests/chunk_invariance.rs"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "workspace-builds-all-targets"
+run = "cargo build --quiet --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy-clean"
+run = "cargo clippy --quiet --workspace --all-targets --all-features -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "core-tests-pass"
+run = "cargo test --quiet -p rust-code-core"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "workspace-tests-pass"
+run = "cargo test --quiet --workspace"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "core-builds-bare-no-std"
+run = "cargo build --quiet -p rust-code-core --no-default-features --target x86_64-unknown-none"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "domain-builds-bare-no-std"
+run = "cargo build --quiet -p rust-code-domain --no-default-features --target x86_64-unknown-none"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "xtask-arch"
+run = "cargo xtask arch"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "xtask-all"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "pass"
+
+# --- the gates were not weakened ----------------------------------------------
+# The working copy is <root>/target/eval/<case>/<slot>, so the live workspace
+# the base was copied from is $EVAL_ROOT; gate files are compared with it
+# there, outside the run's working copy (the root Cargo.toml whole, which
+# carries [workspace.lints]).
+
+[[check]]
+name = "gate-configs-unchanged"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in Cargo.toml layers.toml budgets.toml clippy.toml crates/rust-code-core/clippy.toml \
+         crates/rust-code-domain/clippy.toml deny.toml ignores.toml .cargo/config.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "domain-and-core-keep-workspace-lints-without-suppression"
+run = '''
+for c in rust-code-domain rust-code-core; do
+  grep -A3 '^\[lints\]' "crates/$c/Cargo.toml" | grep -Eq '^workspace *= *true' || exit 1
+  ! grep -rqE '#!?\[(allow|expect)\(|#\[ignore' "crates/$c/src" "crates/$c/tests" || exit 1
+done
+'''
+expect = "pass"
+on_base = "pass"
+
+# The gates themselves (eval.rs is the harness, not a gate).
+[[check]]
+name = "xtask-gates-unchanged"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"
+
+# Last, so the file it writes cannot leak into clippy or the gates above.
+[[check]]
+name = "hidden-backoff-contract"
+run = '''
+f=crates/rust-code-core/tests/zz_eval_retry_contract.rs
+cat > "$f" <<'EOF'
+//! Written and removed by the eval check; the contract the prompt states.
+
+use rust_code_core::{Effect, Elapsed, Event, Machine, Millis, Wire};
+
+const N: usize = 64;
+
+fn machine() -> Machine<N> {
+    // An idle threshold no test reaches, so only Line and Retry effects occur.
+    Machine::new(Elapsed::threshold_ms(u64::MAX))
+}
+
+/// Ticks every millisecond from 1 to `until`; after each tick calls `after`
+/// with the time and how many retries fired on it. Returns the retry times.
+fn drive(m: &mut Machine<N>, until: u64, mut after: impl FnMut(&mut Machine<N>, u64, usize)) -> Vec<u64> {
+    let mut out = Vec::new();
+    for t in 1..=until {
+        m.handle(Event::Tick(Millis::from_host(t)));
+        let mut fired = 0;
+        for e in m.effects() {
+            if let Effect::Retry(at) = e {
+                assert_eq!(*at, Millis::from_host(t), "a retry carries the tick it fired on");
+                out.push(t);
+                fired += 1;
+            }
+        }
+        assert_eq!(m.refused().effects.get(), 0, "the queue never fills here");
+        m.clear_effects();
+        after(m, t, fired);
+    }
+    out
+}
+
+/// Each delay must be the expected one, give or take where the anchor tick
+/// and the comparison sit (at most 2 ms late, never early).
+fn assert_delays(times: &[u64], start: u64, want: &[u64]) {
+    assert_eq!(times.len(), want.len(), "retries at {times:?}, wanted delays {want:?}");
+    let mut prev = start;
+    for (t, w) in times.iter().zip(want) {
+        let d = t - prev;
+        assert!(d >= *w && d <= *w + 2, "retries at {times:?}: a delay of {d}, wanted {w}");
+        prev = *t;
+    }
+}
+
+#[test]
+fn eval_no_failure_means_no_retry() {
+    let mut m = machine();
+    m.handle(Event::Tick(Millis::from_host(0)));
+    m.handle(Event::Bytes(Wire::of(b"hello\n")));
+    assert!(drive(&mut m, 4000, |_, _, _| {}).is_empty());
+}
+
+#[test]
+fn eval_one_failure_one_retry_after_100ms() {
+    let mut m = machine();
+    m.handle(Event::Tick(Millis::from_host(0)));
+    m.handle(Event::UpstreamFailed);
+    let times = drive(&mut m, 4000, |_, _, _| {});
+    assert_delays(&times, 0, &[100]);
+}
+
+#[test]
+fn eval_consecutive_failures_double_up_to_the_cap() {
+    let mut m = machine();
+    m.handle(Event::Tick(Millis::from_host(0)));
+    m.handle(Event::UpstreamFailed);
+    let times = drive(&mut m, 5500, |m, _, fired| {
+        if fired > 0 {
+            m.handle(Event::UpstreamFailed);
+        }
+    });
+    assert_delays(&times, 0, &[100, 200, 400, 800, 1600, 1600]);
+}
+
+#[test]
+fn eval_bytes_reset_the_backoff() {
+    let mut m = machine();
+    m.handle(Event::Tick(Millis::from_host(0)));
+    m.handle(Event::UpstreamFailed);
+    let mut seen = 0;
+    let mut healthy_at = None;
+    let times = drive(&mut m, 3000, |m, t, fired| {
+        seen += fired;
+        if fired > 0 && seen == 1 {
+            m.handle(Event::UpstreamFailed);
+        } else if fired > 0 && seen == 2 {
+            m.handle(Event::Bytes(Wire::of(b"back\n")));
+            healthy_at = Some(t);
+        } else if healthy_at.is_some_and(|h| t == h + 1) {
+            m.handle(Event::UpstreamFailed);
+        }
+    });
+    assert_eq!(times.len(), 3, "retries at {times:?}");
+    assert_delays(&times[..2], 0, &[100, 200]);
+    let d = times[2] - times[1];
+    assert!((101..=103).contains(&d), "after bytes the next failure waits 100 ms again, got {d} ({times:?})");
+}
+
+#[test]
+fn eval_many_failures_owe_one_capped_retry() {
+    let mut m = machine();
+    m.handle(Event::Tick(Millis::from_host(0)));
+    for _ in 0..100 {
+        m.handle(Event::UpstreamFailed);
+    }
+    let times = drive(&mut m, 5000, |_, _, _| {});
+    assert_delays(&times, 0, &[1600]);
+}
+EOF
+timeout 900 cargo test --quiet -p rust-code-core --test zz_eval_retry_contract </dev/null
+s=$?
+rm -f "$f"
+exit $s
+'''
+expect = "pass"
+on_base = "fail"

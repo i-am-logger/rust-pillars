@@ -1,0 +1,107 @@
+# measure-a-change: the record is the deliverable. Lines identical to a line of
+# the pristine MEASUREMENTS.md are ignored, so the base's own prose ("A/A
+# spread", "overlap there is no result") counts for nothing.
+#
+# The working copy is <root>/target/eval/<case>/<slot>, so the live workspace
+# the base was copied from (its MEASUREMENTS.md and gate files included) is
+# $EVAL_ROOT; references are read there, outside the run's working copy.
+#
+# Known limits: the record checks are keyword greps (the numbers' honesty is
+# the LLM grader's), and the default may move to 4 KiB only when the record
+# carries the bench's own verdict wording, "disjoint: faster".
+
+[[check]]
+name = "MEASUREMENTS.md has a results table"
+run = "grep -qE '^\\|.*\\|' MEASUREMENTS.md"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "the new record names an A/A control"
+run = "B=$EVAL_ROOT/MEASUREMENTS.md; test -s \"$B\" && grep -i 'A/A' MEASUREMENTS.md | grep -vxF -f \"$B\" | grep -q ."
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "the new record states a verdict"
+run = "B=$EVAL_ROOT/MEASUREMENTS.md; test -s \"$B\" && grep -iE 'no result|disjoint|overlap|under the' MEASUREMENTS.md | grep -vxF -f \"$B\" | grep -q ."
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "the new record names the 4 KiB arm"
+run = "B=$EVAL_ROOT/MEASUREMENTS.md; test -s \"$B\" && grep -iE '(^|[^0-9])(4 ?(KiB|KB|K)|4096)([^0-9]|$)' MEASUREMENTS.md | grep -vxF -f \"$B\" | grep -q ."
+expect = "pass"
+on_base = "fail"
+
+# `cargo xtask bench --aa` copies the first arm's binary to
+# target/bench/<name>-aa: a real, non-empty executable, not just a name.
+[[check]]
+name = "the repo's bench ran with an A/A arm"
+run = "test -n \"$(find target/bench -maxdepth 1 -type f -name '*-aa' -perm -u+x -size +1k 2>/dev/null)\""
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "the default is still 64 KiB unless the record says disjoint and faster"
+run = "cargo build -q -p rust-code && timeout 60 target/debug/rust-code --help </dev/null | grep -q 'default: 65536' || grep -qi 'disjoint: faster' MEASUREMENTS.md"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "workspace builds"
+run = "cargo build --quiet --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy is clean"
+run = "cargo clippy --quiet --workspace --all-targets -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "tests pass"
+run = "cargo nextest run --workspace --no-fail-fast"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "every gate passes"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "domain and core build bare-metal"
+run = "cargo build --quiet --no-default-features --target x86_64-unknown-none $(cargo xtask crates --role domain,core)"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "gate configs and CLAUDE.md untouched"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in layers.toml budgets.toml clippy.toml deny.toml ignores.toml .cargo/config.toml CLAUDE.md \
+         crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "workspace lints untouched"
+run = '''
+lints() { sed -n '/^\[workspace\.lints/,/^\[profile/p' "$1"; }
+b=$(lints $EVAL_ROOT/Cargo.toml) && test -n "$b" && test "$(lints Cargo.toml)" = "$b"
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the gates' source is untouched"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"

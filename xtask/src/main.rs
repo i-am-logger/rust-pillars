@@ -12,7 +12,6 @@ mod budgets;
 mod controls;
 mod coverage;
 mod docs;
-mod eval;
 mod init;
 mod layers;
 mod measure;
@@ -43,8 +42,6 @@ cargo xtask <gate>
   arms      <rev> <rev> [--bin NAME]: build both at one path, compare code
   init      [--ratchet]: adopt the gates in an existing workspace; budgets
             start at 0 (every violation fails) or, with --ratchet, at today's counts
-  eval      [--case NAME] [--runs N] [--model M]: run the plugin's evals
-            with and without the plugin, scored by running checks.toml
   crates    --role domain,core: the `-p <name>` arguments for crates of
             those roles, so tasks never hard-code a crate list
 ";
@@ -74,7 +71,6 @@ fn main() -> ExitCode {
         "crates" => crates(&args),
         "controls" => controls::run(),
         "init" => init::run(&args),
-        "eval" => project(|root, _| eval::run(&args, root)),
         "bench" => project(|root, name| {
             measure::bench(
                 &args,

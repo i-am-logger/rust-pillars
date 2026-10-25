@@ -1,0 +1,25 @@
+# Every source a research note or a code comment cites, pinned by sha256.
+# `cargo xtask sources` re-hashes each retrieved file, fails on any file here
+# that no entry names, and fails on any `[[source: key]]` that names no entry
+# or a gated one.
+#
+# [sources.<key>]
+# title = "..."
+# url = "..."
+# status = "retrieved" | "external" | "gated"
+#   retrieved: committed here as `file`, re-hashed on every run
+#   external:  read and hashed, not committed (licence or size)
+#   gated:     never obtained (paywalled, withdrawn); not citable
+# file = "..."            # retrieved only, relative to this directory
+# sha256 = "..."          # of the bytes read; not for gated
+#
+# Cite with a clause or page alongside: [[source: <key>]] section 3.2.
+
+[sources.cargo-features]
+title = "The Cargo Book: Features (additivity)"
+url = "https://github.com/rust-lang/cargo/blob/0f958632a72dbd5505cd9815ad1d615b0eab4af9/doc/book/src/reference/features.md"
+license = "MIT OR Apache-2.0"
+status = "retrieved"
+file = "cargo-0f95863-features.md"
+bytes = 22491
+sha256 = "7dde8d4ec8faa1ab9fc06f185d88dada09bbfa5924a05f2fd303cd620a54c9d2"

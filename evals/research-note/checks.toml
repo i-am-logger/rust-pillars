@@ -1,0 +1,115 @@
+# research-note: the fixture pins one retrieved source (the Cargo Book's
+# features chapter, key `cargo-features`) and ships the note TEMPLATE.md. A
+# good solution writes a new note under docs/research/notes/ that cites that
+# key, carries a filled-in Status line, marks its options CONFORMING or
+# DEPARTS, and leaves the manifest and every gate's config as they were.
+#
+# TEMPLATE.md itself contains `Status:`, CONFORMING and DEPARTS, so every
+# task check looks only at notes other than TEMPLATE.md. The gate trims the
+# key inside the marker, so the spaces around it are optional here too.
+
+# --- the task -----------------------------------------------------------
+
+[[check]]
+name = "a new note in docs/research/notes cites the pinned Cargo Book source"
+run = '''
+r=1
+for f in $(grep -rlE '\[\[source: *cargo-features *\]\]' docs/research/notes); do
+  [ "$(basename "$f")" = TEMPLATE.md ] && continue
+  r=0
+done
+exit $r
+'''
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "that note has a filled-in Status line and marks options CONFORMING or DEPARTS"
+run = '''
+r=1
+for f in $(grep -rlE '\[\[source: *cargo-features *\]\]' docs/research/notes); do
+  [ "$(basename "$f")" = TEMPLATE.md ] && continue
+  grep -q 'Status:' "$f" || continue
+  grep -qE 'CONFORMING|DEPARTS' "$f" || continue
+  grep -qE 'Status: *<|YYYY-MM-DD|<Letter>|<Question' "$f" && continue
+  r=0
+done
+exit $r
+'''
+expect = "pass"
+on_base = "fail"
+
+# --- citations and the pinned source -------------------------------------
+
+[[check]]
+name = "cargo xtask sources: every citation resolves, every pinned hash holds"
+run = "cargo xtask sources"
+expect = "pass"
+on_base = "pass"
+
+# The working copy is <root>/target/eval/<case>/<slot>; this case's fixture is
+# $EVAL_CASE/fixture and the live workspace $EVAL_ROOT,
+# both outside the run's working copy.
+[[check]]
+name = "MANIFEST.toml and the pinned source unchanged"
+run = '''
+F=$EVAL_CASE/fixture/docs/research/sources
+test -s "$F/MANIFEST.toml" &&
+cmp docs/research/sources/MANIFEST.toml "$F/MANIFEST.toml" &&
+cmp docs/research/sources/cargo-0f95863-features.md "$F/cargo-0f95863-features.md"
+'''
+expect = "pass"
+on_base = "pass"
+
+# --- integrity -------------------------------------------------------------
+
+[[check]]
+name = "workspace builds"
+run = "cargo build --quiet --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "domain and core still build for a target with no std"
+run = "cargo build --quiet --no-default-features --target x86_64-unknown-none -p rust-code-domain -p rust-code-core"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy -D warnings"
+run = "cargo clippy --quiet --workspace --all-targets --all-features -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "tests pass"
+run = "cargo nextest run --workspace --all-features --no-fail-fast --cargo-quiet"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "cargo xtask all"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "pass"
+
+# --- no gate was weakened -------------------------------------------------
+
+[[check]]
+name = "gate configs unchanged (layers, budgets, clippy x3, deny, ignores, cargo config, root Cargo.toml)"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in Cargo.toml layers.toml budgets.toml clippy.toml crates/rust-code-domain/clippy.toml \
+         crates/rust-code-core/clippy.toml deny.toml ignores.toml .cargo/config.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the gates' source is untouched"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"

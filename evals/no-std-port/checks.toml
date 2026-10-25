@@ -1,0 +1,218 @@
+# no-std-port (pillar 5): the fixture adds crates/rust-code-checksum, an
+# Adler-32 crate given the role "domain" in layers.toml (its seams declared in
+# budgets.toml), but written against std: `use std::io::Read`, a
+# `read_all<R: Read>` that buffers into a Vec, and `String` errors. It builds
+# and its tests pass on the host, and the bin's `--checksum` uses it, but it
+# is not `#![no_std]`, has no crate-local clippy.toml, and the `R: Read` bound
+# is a callback in a domain API. The port makes it no_std (the bare builds and
+# `cargo xtask arch` pass), moves the reading -- the I/O -- into the bin, which
+# feeds the incremental hasher slices, keeps `--checksum` printing the same
+# values, and adds a property or exhaustive test. Not by editing layers.toml,
+# budgets.toml or any other gate config.
+
+# --- the task -----------------------------------------------------------------
+
+[[check]]
+name = "checksum-builds-bare-x86_64"
+run = "cargo build -q -p rust-code-checksum --no-default-features --target x86_64-unknown-none"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "checksum-builds-bare-thumbv7em"
+run = "cargo build -q -p rust-code-checksum --no-default-features --target thumbv7em-none-eabihf"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "arch-gate-passes"
+run = "cargo xtask arch"
+expect = "pass"
+on_base = "fail"
+
+# The `R: Read` bound is a callback in a domain API: budgets hold the new
+# crate to callback_param = 0 and to exactly its three declared seams.
+[[check]]
+name = "budgets-gate-passes"
+run = "cargo xtask budgets"
+expect = "pass"
+on_base = "fail"
+
+# The prompt asks for a property test or a check over every byte value. Only
+# .rs files under the crate, so a dev-dependency line does not count, and
+# comment lines are dropped, so a `// proptest!` note does not either.
+[[check]]
+name = "checksum-has-property-or-exhaustive-test"
+run = '''
+grep -rhE --include='*.rs' \
+  -e 'proptest!' \
+  -e '\.\.=\s*u8::MAX' \
+  -e 'u8::MIN\s*\.\.' \
+  -e '0(_?u8)?\s*\.\.=\s*255' \
+  -e '0(_?u(16|32|64|size))?\s*\.\.\s*256' \
+  crates/rust-code-checksum | grep -vE '^[[:space:]]*//' | grep -q .
+'''
+expect = "pass"
+on_base = "fail"
+
+# The prompt says the crate does no I/O itself. Catches reading kept in the
+# crate behind a `std` feature with a concrete (non-generic) signature, which
+# the budgets would not see.
+[[check]]
+name = "no-io-in-checksum-crate"
+run = "! grep -rqE 'std::io|io::(Read|Stdin|stdin)' crates/rust-code-checksum/src"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "xtask-all"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "fail"
+
+# --- behaviour kept: the bin's --checksum, which the prompt pins ---------------
+
+[[check]]
+name = "bin-checksum-of-wikipedia"
+run = '''
+d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
+cargo build -q -p rust-code || exit 1
+printf Wikipedia > "$d/in"
+timeout 120 cargo run -q -p rust-code -- --checksum < "$d/in" > "$d/out" || exit 1
+grep -qx 11e60398 "$d/out"
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "bin-checksum-of-nothing"
+run = '''
+d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
+cargo build -q -p rust-code || exit 1
+timeout 120 cargo run -q -p rust-code -- --checksum < /dev/null > "$d/out" || exit 1
+grep -qx 00000001 "$d/out"
+'''
+expect = "pass"
+on_base = "pass"
+
+# A megabyte of 0xff: many reads, and sums that overflow u32 unless reduced.
+# Read in 1000-byte pieces through a pipe as well as from a file.
+[[check]]
+name = "bin-checksum-of-a-megabyte"
+run = '''
+d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
+cargo build -q -p rust-code || exit 1
+head -c 1000000 /dev/zero | tr '\000' '\377' > "$d/in"
+timeout 120 cargo run -q -p rust-code -- --checksum < "$d/in" > "$d/out" || exit 1
+grep -qx 3843e1be "$d/out" || exit 1
+dd if="$d/in" bs=1000 2>/dev/null | timeout 120 cargo run -q -p rust-code -- --checksum > "$d/out2" || exit 1
+grep -qx 3843e1be "$d/out2"
+'''
+expect = "pass"
+on_base = "pass"
+
+# The bin still gets its checksums from the crate, not from a copy of it.
+[[check]]
+name = "bin-depends-on-checksum-crate"
+run = '''
+d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
+cargo tree -q -p rust-code -e normal --prefix none > "$d/tree" || exit 1
+grep -q '^rust-code-checksum v' "$d/tree"
+'''
+expect = "pass"
+on_base = "pass"
+
+# --- integrity: the workspace still builds, tests and gates ------------------
+
+[[check]]
+name = "workspace-builds"
+run = "cargo build -q --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy-clean"
+run = "cargo clippy -q --workspace --all-targets --all-features -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "tests-pass"
+run = "cargo nextest run --workspace --all-features --no-fail-fast --cargo-quiet"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "other-domain-and-core-still-build-bare"
+run = '''
+cargo build -q --no-default-features --target x86_64-unknown-none -p rust-code-domain -p rust-code-core &&
+cargo build -q --no-default-features --target thumbv7em-none-eabihf -p rust-code-domain -p rust-code-core
+'''
+expect = "pass"
+on_base = "pass"
+
+# --- anti-cheat: the gates were not weakened ----------------------------------
+# The working copy is <root>/target/eval/<case>/<slot>, so the pristine
+# workspace is four levels up, and the fixture's own layers.toml and
+# budgets.toml (which add the new crate) are in evals/no-std-port/fixture.
+# Compared there rather than against copies inside the working copy, which the
+# run could edit.
+
+[[check]]
+name = "layers-and-budgets-unchanged-from-fixture"
+run = '''
+f=$EVAL_CASE/fixture
+cmp -s layers.toml "$f/layers.toml" && cmp -s budgets.toml "$f/budgets.toml"
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "gate-configs-unchanged"
+run = '''
+r=$EVAL_ROOT
+cmp -s clippy.toml "$r/clippy.toml" &&
+cmp -s deny.toml "$r/deny.toml" &&
+cmp -s ignores.toml "$r/ignores.toml" &&
+cmp -s .cargo/config.toml "$r/.cargo/config.toml" &&
+cmp -s crates/rust-code-domain/clippy.toml "$r/crates/rust-code-domain/clippy.toml" &&
+cmp -s crates/rust-code-core/clippy.toml "$r/crates/rust-code-core/clippy.toml" &&
+test "$(sed -n '/^\[workspace\.lints/,/^\[profile/p' Cargo.toml | cksum)" = "$(sed -n '/^\[workspace\.lints/,/^\[profile/p' "$r/Cargo.toml" | cksum)"
+'''
+expect = "pass"
+on_base = "pass"
+
+# The fixture carries whole copies of four root files. If the root ones
+# change, the overlay is stale (it would revert the change and could make a
+# perfect solution fail), so this fails the control until the fixture is
+# regenerated: each overlay must be the live root file plus only its own
+# addition, and main.rs (rewritten, not extended) is pinned by checksum.
+[[check]]
+name = "fixture-overlays-match-base"
+run = '''
+r=$EVAL_ROOT
+f=$r/evals/no-std-port/fixture
+test "$(diff "$r/layers.toml" "$f/layers.toml" | grep '^[<>]')" = '> rust-code-checksum = "domain"' &&
+test -z "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^<')" &&
+test -n "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^> \[crates.rust-code-checksum\]')" &&
+test "$(diff "$r/crates/rust-code/Cargo.toml" "$f/crates/rust-code/Cargo.toml" | grep '^[<>]')" = '> rust-code-checksum = { path = "../rust-code-checksum" }' &&
+test "$(cksum < "$r/crates/rust-code/src/main.rs")" = "798385495 3399"
+'''
+expect = "pass"
+on_base = "pass"
+
+# The gates themselves (eval.rs is the harness, not a gate).
+[[check]]
+name = "gates-source-unchanged"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "checksum-keeps-workspace-lints"
+run = '''
+grep -A3 '^\[lints\]' crates/rust-code-checksum/Cargo.toml | grep -Eq '^workspace *= *true' &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-checksum/src
+'''
+expect = "pass"
+on_base = "pass"

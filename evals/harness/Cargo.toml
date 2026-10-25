@@ -1,0 +1,26 @@
+# The eval harness: runs evals/<case>/ with and without the plugin and scores
+# each run by executing its checks. A project of its own (its own [workspace])
+# so the workspace an eval copies -- crates, gates, layers.toml -- is exactly a
+# rust-template project, with nothing in it that names the eval.
+[package]
+name = "rust-code-eval"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+license = "CC-BY-NC-SA-4.0"
+publish = false
+
+[workspace]
+
+[dependencies]
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+
+[lints.rust]
+unsafe_code = "forbid"
+unused = { level = "deny", priority = -1 }
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+unwrap_used = "deny"

@@ -79,13 +79,15 @@ and enforcement. The full comparison, with sources pinned by hash, is
 ## Evals
 
 Two layers. `claude plugin eval` grades transcripts (did a skill fire, how
-was the work done). `cargo xtask eval` runs each case in `evals/` headless
+was the work done). `evals/harness` runs each case in `evals/` headless
 with and without the plugin, then builds, lints, tests and gates what was
 left on disk; each arm runs twice and a difference counts only if it is
-larger than the arm's own run-to-run spread. `cargo xtask eval --control`
+larger than the arm's own run-to-run spread. `devenv tasks run eval:control`
 runs no model: it proves every task-specific check fails on the untouched
 base, so no case can grade nothing. Every other run is a paid model call,
-so evals are a manual task (`eval:run`).
+so evals are a manual task (`eval:run`). The working copies live outside the
+repository, and the arm with the plugin gets a copy of the plugin alone, so
+no run can read the checks it is graded by.
 
 ## Development
 

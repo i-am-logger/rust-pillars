@@ -1,11 +1,17 @@
-//! `cargo xtask eval`: the plugin's evals, scored by running the code.
+//! The plugin's evals, scored by running the code.
 //!
 //! `claude plugin eval` grades a transcript; it has no command graders, so it
-//! cannot tell whether the code it produced builds. This layer can: each case
-//! in `evals/<case>/` is run headless (`claude -p`) in a fresh copy of the
-//! base workspace plus the case's fixture, once with this plugin
-//! (`--plugin-dir`) and once without, and then every command in the case's
-//! `checks.toml` is run against what was left on disk.
+//! cannot tell whether the code it produced builds. This harness can: each
+//! case in `evals/<case>/` is run headless (`claude -p`) in a fresh copy of
+//! the base workspace plus the case's fixture, once with the plugin and once
+//! without, and then every command in the case's `checks.toml` is run against
+//! what was left on disk.
+//!
+//! The copies live outside this repository (under the system temp dir), so a
+//! run cannot reach the cases' checks with a relative path, and the arm with
+//! the plugin gets a copy of the plugin alone (its manifests and skills), not
+//! the repository. Checks reach the repository through `$EVAL_ROOT` and their
+//! case through `$EVAL_CASE`, which no model run sees.
 //!
 //! Each arm runs `--runs` times (default 2), and the spread between an arm's
 //! own runs is its A/A noise: a difference between the arms counts only when
@@ -13,13 +19,17 @@
 //!
 //! `--control` runs no model: it checks every check against the untouched
 //! base, where a task's own checks must fail -- a check the base already
-//! passes would grade nothing. Every other run is a real model call, so this
-//! is a manual task (`eval:run`), never part of `devenv test`.
+//! passes would grade nothing. Every other run is a real model call.
+//!
+//! Run it from the devenv shell: `cargo run --manifest-path
+//! evals/harness/Cargo.toml -- [--control] [--case NAME] [--runs N]
+//! [--model M]` (the `eval:run` task).
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, ExitCode, Stdio};
+use std::process::{Child, Command, ExitCode, ExitStatus, Stdio};
+use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
@@ -39,6 +49,13 @@ struct Check {
     expect: Expect,
     /// What it must do on the untouched base, before any model ran.
     on_base: Expect,
+    /// Seconds before the check is killed and counted as failed.
+    #[serde(default = "default_check_timeout")]
+    timeout_s: u64,
+}
+
+fn default_check_timeout() -> u64 {
+    1800
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug, Deserialize)]
@@ -77,18 +94,17 @@ struct Opts {
     case: Option<String>,
     runs: usize,
     model: Option<String>,
-    max_turns: usize,
 }
 
-fn opts(args: &[String]) -> Result<Opts> {
+fn opts() -> Result<Opts> {
+    let args: Vec<String> = std::env::args().skip(1).collect();
     let mut o = Opts {
         mode: Mode::Model,
         case: None,
         runs: 2,
         model: None,
-        max_turns: 40,
     };
-    let mut it = args.iter().skip(1);
+    let mut it = args.iter();
     while let Some(a) = it.next() {
         let mut val = || it.next().with_context(|| format!("{a} needs a value"));
         match a.as_str() {
@@ -96,8 +112,7 @@ fn opts(args: &[String]) -> Result<Opts> {
             "--case" => o.case = Some(val()?.clone()),
             "--runs" => o.runs = val()?.parse()?,
             "--model" => o.model = Some(val()?.clone()),
-            "--max-turns" => o.max_turns = val()?.parse()?,
-            other => bail!("unknown eval option `{other}`"),
+            other => bail!("unknown option `{other}`"),
         }
     }
     ensure!(
@@ -107,14 +122,38 @@ fn opts(args: &[String]) -> Result<Opts> {
     Ok(o)
 }
 
-/// The prompt: `prompt.md` with its YAML frontmatter removed.
-fn prompt(case: &Path) -> Result<String> {
+/// What `prompt.md`'s frontmatter sets for a run.
+#[derive(Debug)]
+struct Prompt {
+    body: String,
+    max_turns: u64,
+    timeout: Duration,
+}
+
+fn prompt(case: &Path) -> Result<Prompt> {
     let text = fs::read_to_string(case.join("prompt.md")).context("reading prompt.md")?;
-    let body = match text.strip_prefix("---") {
-        Some(rest) => rest.split_once("\n---").map_or(rest, |(_, b)| b),
-        None => &text,
+    let (front, body) = match text.strip_prefix("---") {
+        Some(rest) => rest.split_once("\n---").unwrap_or(("", rest)),
+        None => ("", text.as_str()),
     };
-    Ok(body.trim().to_string())
+    let field = |key: &str, default: u64| -> u64 {
+        front
+            .lines()
+            .find_map(|l| {
+                l.trim()
+                    .strip_prefix(key)?
+                    .strip_prefix(':')?
+                    .trim()
+                    .parse()
+                    .ok()
+            })
+            .unwrap_or(default)
+    };
+    Ok(Prompt {
+        body: body.trim().to_string(),
+        max_turns: field("max_turns", 40),
+        timeout: Duration::from_secs(field("timeout_seconds", 900)),
+    })
 }
 
 fn copy_dir(from: &Path, to: &Path) -> Result<()> {
@@ -131,11 +170,15 @@ fn copy_dir(from: &Path, to: &Path) -> Result<()> {
     Ok(())
 }
 
+/// Where working copies and the plugin copy go: outside the repository.
+fn scratch() -> PathBuf {
+    std::env::temp_dir().join("rust-code-eval")
+}
+
 /// What a case starts from: this workspace's crates, gates, config and docs
 /// skeleton, as a project made from the template has them -- without the
-/// plugin itself, its evals, or its research (the evidence note and the pinned
-/// sources, which include BeautifulRust's skill text): the arm without the
-/// plugin must not be able to read what the plugin teaches.
+/// plugin, its evals, or its research (the evidence note and the pinned
+/// sources, which include BeautifulRust's skill text).
 fn base(root: &Path, work: &Path) -> Result<()> {
     const SKIP: &[&str] = &[
         "target",
@@ -161,15 +204,13 @@ fn base(root: &Path, work: &Path) -> Result<()> {
             fs::copy(e.path(), work.join(name.as_ref()))?;
         }
     }
-    // The research skeleton stays; the plugin's own research goes.
     let research = work.join("docs/research");
     for dir in ["sources", "notes"] {
         let d = research.join(dir);
         if d.exists() {
             for e in fs::read_dir(&d)? {
                 let p = e?.path();
-                let keep = p.file_name().is_some_and(|n| n == "TEMPLATE.md");
-                if !keep {
+                if p.file_name().is_none_or(|n| n != "TEMPLATE.md") {
                     fs::remove_file(&p)?;
                 }
             }
@@ -192,10 +233,21 @@ fn base(root: &Path, work: &Path) -> Result<()> {
     Ok(())
 }
 
+/// A copy of the plugin alone, for the arm with the plugin.
+fn plugin_copy(root: &Path) -> Result<PathBuf> {
+    let dir = scratch().join("plugin");
+    if dir.exists() {
+        fs::remove_dir_all(&dir)?;
+    }
+    copy_dir(&root.join(".claude-plugin"), &dir.join(".claude-plugin"))?;
+    copy_dir(&root.join("skills"), &dir.join("skills"))?;
+    Ok(dir)
+}
+
 /// A fresh working copy for one run: the base, then the case's fixture.
 fn fresh(root: &Path, case: &Path, slot: &str) -> Result<PathBuf> {
     let name = case.file_name().and_then(|n| n.to_str()).unwrap_or("case");
-    let work = root.join("target/eval").join(name).join(slot);
+    let work = scratch().join(name).join(slot);
     if work.exists() {
         fs::remove_dir_all(&work)?;
     }
@@ -207,15 +259,34 @@ fn fresh(root: &Path, case: &Path, slot: &str) -> Result<PathBuf> {
     Ok(work)
 }
 
-fn run_check(work: &Path, c: &Check) -> Result<bool> {
-    let status = Command::new("sh")
+/// Waits for a child up to `limit`; `None` if it was killed for running over.
+fn wait(mut child: Child, limit: Duration) -> Result<Option<ExitStatus>> {
+    let start = Instant::now();
+    loop {
+        if let Some(status) = child.try_wait()? {
+            return Ok(Some(status));
+        }
+        if start.elapsed() > limit {
+            child.kill()?;
+            child.wait()?;
+            return Ok(None);
+        }
+        std::thread::sleep(Duration::from_millis(200));
+    }
+}
+
+fn run_check(root: &Path, case: &Path, work: &Path, c: &Check) -> Result<bool> {
+    let child = Command::new("sh")
         .args(["-c", &c.run])
         .current_dir(work)
+        .env("EVAL_ROOT", root)
+        .env("EVAL_CASE", case)
+        .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .status()
+        .spawn()
         .with_context(|| format!("running check `{}`", c.name))?;
-    Ok(status.success())
+    Ok(wait(child, Duration::from_secs(c.timeout_s))?.is_some_and(|s| s.success()))
 }
 
 /// Every check on the untouched base must do what its `on_base` says.
@@ -224,7 +295,7 @@ fn control(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
     let name = case.file_name().and_then(|n| n.to_str()).unwrap_or("case");
     let mut wrong = Vec::new();
     for c in &checks.check {
-        let passed = run_check(&work, c)?;
+        let passed = run_check(root, case, &work, c)?;
         if passed != (c.on_base == Expect::Pass) {
             let did = if passed { "passes" } else { "fails" };
             wrong.push(format!(
@@ -237,45 +308,57 @@ fn control(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
 }
 
 /// Runs the model once in a fresh working copy; returns the copy.
-fn attempt(root: &Path, case: &Path, arm: Arm, run: usize, o: &Opts) -> Result<PathBuf> {
-    let work = fresh(root, case, &format!("{}-{run}", arm.name()))?;
+fn attempt(
+    root: &Path,
+    case: &Path,
+    plugin: Option<&Path>,
+    slot: &str,
+    o: &Opts,
+) -> Result<PathBuf> {
+    let p = prompt(case)?;
+    let work = fresh(root, case, slot)?;
+    let transcript = fs::File::create(work.join(".eval-transcript.json"))?;
     let mut cmd = Command::new("claude");
     cmd.arg("-p")
-        .arg(prompt(case)?)
+        .arg(&p.body)
         .args([
             "--output-format",
             "json",
             "--permission-mode",
             "bypassPermissions",
         ])
-        .args(["--max-turns", &o.max_turns.to_string()])
+        .args(["--max-turns", &p.max_turns.to_string()])
         .current_dir(&work)
-        .stdin(Stdio::null());
-    if arm == Arm::With {
-        cmd.arg("--plugin-dir").arg(root);
+        .stdin(Stdio::null())
+        .stdout(transcript)
+        .stderr(Stdio::null());
+    if let Some(dir) = plugin {
+        cmd.arg("--plugin-dir").arg(dir);
     }
     if let Some(m) = &o.model {
         cmd.args(["--model", m]);
     }
-    let out = cmd
-        .output()
+    let child = cmd
+        .spawn()
         .context("running claude -p (is Claude Code installed and logged in?)")?;
-    fs::write(work.join(".eval-transcript.json"), &out.stdout)?;
-    ensure!(
-        out.status.success(),
-        "claude -p failed in {}: {}",
-        work.display(),
-        String::from_utf8_lossy(&out.stderr)
-    );
+    match wait(child, p.timeout)? {
+        Some(s) if s.success() => {}
+        Some(s) => eprintln!("  claude -p exited {s} in {}", work.display()),
+        None => eprintln!(
+            "  claude -p ran over {}s in {}: scored as it stands",
+            p.timeout.as_secs(),
+            work.display()
+        ),
+    }
     Ok(work)
 }
 
 /// Runs each check in `work`; returns how many passed and the names that did not.
-fn score(work: &Path, checks: &Checks) -> Result<(usize, Vec<String>)> {
+fn score(root: &Path, case: &Path, work: &Path, checks: &Checks) -> Result<(usize, Vec<String>)> {
     let mut passed = 0;
     let mut failed = Vec::new();
     for c in &checks.check {
-        if run_check(work, c)? == (c.expect == Expect::Pass) {
+        if run_check(root, case, work, c)? == (c.expect == Expect::Pass) {
             passed += 1;
         } else {
             failed.push(c.name.clone());
@@ -322,37 +405,38 @@ fn checks_of(case: &Path) -> Result<Checks> {
         .with_context(|| format!("parsing {}", path.display()))
 }
 
-pub(crate) fn run(args: &[String], root: &Path) -> Result<ExitCode> {
-    let o = opts(args)?;
-    let cases = cases(root, o.case.as_ref())?;
-    if o.mode == Mode::Control {
-        let mut wrong = Vec::new();
-        for case in &cases {
-            wrong.extend(control(root, case, &checks_of(case)?)?);
-        }
-        for w in &wrong {
-            eprintln!("{w}");
-        }
-        eprintln!(
-            "{} cases against the untouched base: {} wrong",
-            cases.len(),
-            wrong.len()
-        );
-        return Ok(if wrong.is_empty() {
-            ExitCode::SUCCESS
-        } else {
-            ExitCode::FAILURE
-        });
+fn run_control(root: &Path, cases: &[PathBuf]) -> Result<ExitCode> {
+    let mut wrong = Vec::new();
+    for case in cases {
+        wrong.extend(control(root, case, &checks_of(case)?)?);
     }
+    for w in &wrong {
+        eprintln!("{w}");
+    }
+    eprintln!(
+        "{} cases against the untouched base: {} wrong",
+        cases.len(),
+        wrong.len()
+    );
+    Ok(if wrong.is_empty() {
+        ExitCode::SUCCESS
+    } else {
+        ExitCode::FAILURE
+    })
+}
+
+fn run_models(root: &Path, cases: &[PathBuf], o: &Opts) -> Result<ExitCode> {
+    let plugin = plugin_copy(root)?;
     let mut report =
         String::from("| case | checks | with | without | verdict |\n|---|---|---|---|---|\n");
-    for case in &cases {
+    for case in cases {
         let checks = checks_of(case)?;
         let mut scores = [Vec::new(), Vec::new()];
         for (i, arm) in [Arm::With, Arm::Without].into_iter().enumerate() {
             for run in 1..=o.runs {
-                let work = attempt(root, case, arm, run, &o)?;
-                let (passed, failed) = score(&work, &checks)?;
+                let dir = (arm == Arm::With).then_some(plugin.as_path());
+                let work = attempt(root, case, dir, &format!("{}-{run}", arm.name()), o)?;
+                let (passed, failed) = score(root, case, &work, &checks)?;
                 let missed = if failed.is_empty() {
                     String::new()
                 } else {
@@ -377,8 +461,27 @@ pub(crate) fn run(args: &[String], root: &Path) -> Result<ExitCode> {
         )?;
     }
     println!("{report}");
-    fs::write(root.join("target/eval/report.md"), &report)?;
+    fs::write(scratch().join("report.md"), &report)?;
     Ok(ExitCode::SUCCESS)
+}
+
+fn main() -> ExitCode {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let result = opts().and_then(|o| {
+        let root = root.canonicalize().context("finding the repository root")?;
+        let cases = cases(&root, o.case.as_ref())?;
+        match o.mode {
+            Mode::Control => run_control(&root, &cases),
+            Mode::Model => run_models(&root, &cases, &o),
+        }
+    });
+    match result {
+        Ok(code) => code,
+        Err(e) => {
+            eprintln!("eval: {e:#}");
+            ExitCode::FAILURE
+        }
+    }
 }
 
 #[cfg(test)]

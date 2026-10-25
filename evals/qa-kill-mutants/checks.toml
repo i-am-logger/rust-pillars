@@ -1,0 +1,137 @@
+# qa-kill-mutants: percent.rs ships with one test that only reaches the clamp,
+# so every mutant of the arithmetic and the boundary survives. A good run adds
+# tests until none does, and changes neither the function nor any gate.
+#
+# The working copy is <root>/target/eval/<case>/<slot>, so the live workspace
+# the base was copied from is $EVAL_ROOT; gate files are compared with it
+# there, outside the run's working copy. cargo-mutants builds in a copy of the
+# tree under $TMPDIR, so TMPDIR points into the working copy's target/.
+
+[[check]]
+name = "no mutant of percent.rs survives (whole-workspace tests, repo config ignored)"
+run = '''
+export TMPDIR="$PWD/target/evalchk/mutants-tmp"
+rm -rf "$TMPDIR" && mkdir -p "$TMPDIR" || exit 1
+PROPTEST_CASES=256 PROPTEST_RNG_SEED=1 timeout 1200 cargo mutants --no-config \
+  --test-tool=nextest --test-workspace=true --output target/evalchk \
+  -p rust-code-domain --file crates/rust-code-domain/src/percent.rs
+'''
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "percent.rs is still compiled and still yields mutants to test"
+run = '''
+export TMPDIR="$PWD/target/evalchk/mutants-tmp"
+mkdir -p "$TMPDIR" || exit 1
+cargo mutants --no-config --list -p rust-code-domain --file crates/rust-code-domain/src/percent.rs | grep -q 'Percent::through'
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "percent.rs above its test module is byte-for-byte unchanged"
+run = "test \"$(sed '/#\\[cfg(test)\\]/,$d' crates/rust-code-domain/src/percent.rs | cksum)\" = '739275401 994'"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "Percent is still exported from the domain crate"
+run = "grep -Eq '^pub use percent::Percent;' crates/rust-code-domain/src/lib.rs"
+expect = "pass"
+on_base = "pass"
+
+# A test that reads the source text -- embedded, or read back from disk at run
+# time -- would see every mutation and kill every mutant without checking any
+# behaviour.
+[[check]]
+name = "no test reads the source text (a checksum test would kill every mutant)"
+run = '''
+! grep -rqE --include='*.rs' 'include_(str|bytes)!' crates &&
+! grep -rqE --include='*.rs' 'percent\.rs|CARGO_MANIFEST_DIR|read_to_string|fs::read|File::open|file!\(' crates/rust-code-domain crates/rust-code-core
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "no mutant is skipped by attribute"
+run = "! grep -rqE --include='*.rs' 'mutants::skip|cfg_attr\\([^)]*mutants|cfg\\(mutants' crates"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "workspace tests pass"
+run = "cargo nextest run --workspace --no-fail-fast"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy is clean with -D warnings"
+run = "cargo clippy --quiet --workspace --all-targets -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "domain builds bare-metal with no default features"
+run = "cargo build --quiet --no-default-features --target x86_64-unknown-none -p rust-code-domain -p rust-code-core"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "budgets gate passes"
+run = "cargo xtask budgets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "coverage gate passes"
+run = "cargo xtask coverage"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "every gate passes"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "gate configs unchanged (layers, budgets, clippy x3, deny, ignores, cargo and mutants config)"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in layers.toml budgets.toml clippy.toml crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml \
+         deny.toml ignores.toml .cargo/config.toml .cargo/mutants.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "Cargo.toml [workspace.lints] unchanged"
+run = '''
+lints() { sed -n '/^\[workspace\.lints/,/^\[profile/p' "$1"; }
+b=$(lints $EVAL_ROOT/Cargo.toml) && test -n "$b" && test "$(lints Cargo.toml)" = "$b"
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the gates' source is untouched"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"
+
+# The fixture replaces whole root files. If the root ones change, the overlay
+# is stale (it would silently revert the change), so this fails the control
+# until the fixture is regenerated from the new root files and these updated.
+[[check]]
+name = "fixture overlays match the base"
+run = '''
+r=$EVAL_ROOT
+d=$(diff "$r/crates/rust-code-domain/src/lib.rs" "$r/evals/qa-kill-mutants/fixture/crates/rust-code-domain/src/lib.rs" | grep '^[<>]')
+test "$d" = "$(printf '> mod percent;\n> pub use percent::Percent;')"
+'''
+expect = "pass"
+on_base = "pass"

@@ -1,0 +1,144 @@
+# domain-refuse-primitives: the thermostat vocabulary must enter the domain
+# without a new primitive-carrying public API. `cargo xtask budgets` holds the
+# domain to exact counts (seam = 8, primitive_api = 0, bool_param_or_field = 0),
+# so a `new(i16)`, `From<i16>`, `of(i16)` or `get() -> i16` fails it unless a
+# budget is raised -- and every budget, lint and gate source is pinned below.
+# The base domain lists exactly 10 tests (`cargo nextest list -p rust-code-domain`).
+#
+# The working copy is <root>/target/eval/<case>/<slot>, so the live workspace
+# the base was copied from is $EVAL_ROOT; the gate files are compared with it
+# there, outside the run's working copy, so no reference copy sits where the
+# run could see or edit it. Scratch files go under target/evalchk/ in the
+# working copy, never to $TMPDIR.
+
+# --- the task -----------------------------------------------------------------
+
+[[check]]
+name = "the domain defines a Heat enum"
+run = "grep -rqE 'pub +enum +Heat\\b' crates/rust-code-domain/src"
+expect = "pass"
+on_base = "fail"
+
+# Comment lines are dropped first, so a `// i16` note does not count.
+[[check]]
+name = "the reading is a signed 16-bit value in the domain"
+run = "grep -rhiE '\\bi16\\b' crates/rust-code-domain/src | grep -vE '^[[:space:]]*//' | grep -q ."
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "the domain gained tests"
+run = "n=$(cargo nextest list -p rust-code-domain --message-format oneline 2>/dev/null | grep -c '^rust-code-domain') && test \"$n\" -gt 10"
+expect = "pass"
+on_base = "fail"
+
+# The prompt asks for tests that pin the behaviour. Every mutant of the file(s)
+# holding `Heat` and the decision that returns it must be caught -- the repo's
+# own mutation gate (test:mutants-diff) holds changed domain lines to the same.
+# A file with no mutant to test fails rather than passing vacuously.
+[[check]]
+name = "the tests pin the decision: no mutant of the Heat code survives"
+run = '''
+files=$(grep -rlE 'enum +Heat\b|-> *Heat\b' crates/rust-code-domain/src) || exit 1
+args=""
+for f in $files; do args="$args --file $f"; done
+export TMPDIR="$PWD/target/evalchk/mutants-tmp"
+rm -rf "$TMPDIR" && mkdir -p "$TMPDIR" || exit 1
+n=$(cargo mutants --no-config --list -p rust-code-domain $args | grep -c .) || exit 1
+test "$n" -gt 0 || exit 1
+PROPTEST_CASES=256 PROPTEST_RNG_SEED=1 timeout 1200 cargo mutants --no-config \
+  --test-tool=nextest --test-workspace=true --output target/evalchk \
+  -p rust-code-domain $args
+'''
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "budgets hold with budgets.toml unchanged"
+run = "cmp -s budgets.toml $EVAL_ROOT/budgets.toml && cargo xtask budgets"
+expect = "pass"
+on_base = "pass"
+
+# --- integrity ----------------------------------------------------------------
+
+[[check]]
+name = "every public function is called by a test"
+run = "cargo xtask coverage"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "workspace builds"
+run = "cargo build --quiet --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy is clean"
+run = "cargo clippy --quiet --workspace --all-targets -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "tests pass"
+run = "cargo nextest run --workspace --no-fail-fast"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "every gate passes"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "domain and core build bare-metal"
+run = "cargo build --quiet --no-default-features --target x86_64-unknown-none $(cargo xtask crates --role domain,core)"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "core and binary left alone"
+run = "! grep -rqE '\\bHeat\\b' crates/rust-code-core/src crates/rust-code/src"
+expect = "pass"
+on_base = "pass"
+
+# --- anti-cheat: the gates were not weakened ----------------------------------
+
+[[check]]
+name = "gate configs untouched"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in layers.toml budgets.toml clippy.toml deny.toml ignores.toml .cargo/config.toml \
+         crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "workspace lints untouched"
+run = '''
+lints() { sed -n '/^\[workspace\.lints/,/^\[profile/p' "$1"; }
+b=$(lints $EVAL_ROOT/Cargo.toml) && test -n "$b" && test "$(lints Cargo.toml)" = "$b"
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the domain still inherits the workspace lints, with no suppression"
+run = '''
+grep -A3 '^\[lints\]' crates/rust-code-domain/Cargo.toml | grep -Eq '^workspace *= *true' &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-domain/src
+'''
+expect = "pass"
+on_base = "pass"
+
+# The gates themselves (eval.rs is the harness, not a gate).
+[[check]]
+name = "the gates' scanner is untouched"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"

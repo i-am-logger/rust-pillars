@@ -1,0 +1,157 @@
+# layering-fix (pillar 3): someone added `log` to rust-code-core, called
+# `log::debug!` inside `Machine::handle`, and replaced the dropped-effects
+# counter in `Refusals` with a debug line. `cargo xtask layers` fails (core may
+# depend on the domain only, and on no external crate). The fix takes `log` out
+# of the core and surfaces the drop as state the host polls -- a counter (or an
+# effect) the bin reads and reports -- not by relaxing layers.toml, not by
+# hiding the edge behind a feature or a cfg, and not by deleting the
+# information.
+#
+# Scratch files go under target/evalchk/ in the working copy, never $TMPDIR.
+# The working copy is <root>/target/eval/<case>/<slot>, so the live workspace
+# the base was copied from is $EVAL_ROOT; gate files are compared with it.
+
+# --- the task -----------------------------------------------------------------
+
+[[check]]
+name = "layers-gate-passes"
+run = "cargo xtask layers"
+expect = "pass"
+on_base = "fail"
+
+# `--all-features` catches an optional dep, `--target all` a cfg-gated one.
+# Written to a file first, so a cargo error cannot pass as "no log found".
+[[check]]
+name = "core-has-no-log-dependency"
+run = '''
+d=target/evalchk/tree; rm -rf "$d"; mkdir -p "$d" || exit 1
+cargo tree -q -p rust-code-core -e normal,build --all-features --target all --prefix none > "$d/tree" || exit 1
+grep -q '^rust-code-core v' "$d/tree" || exit 1
+! grep -Eq '^log v' "$d/tree"
+'''
+expect = "pass"
+on_base = "fail"
+
+# The observable the prompt pins: 3000 lines in one read overflow the
+# 1024-slot queue; the bin must warn with the count, 1976, at RUST_LOG=warn
+# (where the core's old debug lines would be hidden). A second size the prompt
+# does not name (5000 lines: 3976 dropped, measured on the base workspace
+# before the fixture) rules out a hard-coded number. Files, not pipes, so the
+# bin gets each in one read.
+[[check]]
+name = "bin-warns-how-many-effects-were-dropped"
+run = '''
+cargo build -q -p rust-code || exit 1
+b="$PWD/target/debug/rust-code"
+d=target/evalchk/warn; rm -rf "$d"; mkdir -p "$d" || exit 1
+for pair in 3000:1976 5000:3976; do
+  n=${pair%%:*}; want=${pair##*:}
+  yes ab | head -n "$n" > "$d/in$n"
+  RUST_LOG=warn timeout 60 "$b" < "$d/in$n" > "$d/out$n" 2> "$d/err$n" || exit 1
+  grep -Eq "(^|[^0-9])$want([^0-9]|\$)" "$d/err$n" || exit 1
+done
+'''
+expect = "pass"
+on_base = "fail"
+
+# --- behaviour kept -----------------------------------------------------------
+
+# Two lines, and exactly a full queue (1024 lines, nothing dropped): no stderr.
+[[check]]
+name = "bin-is-quiet-when-nothing-is-dropped"
+run = '''
+cargo build -q -p rust-code || exit 1
+b="$PWD/target/debug/rust-code"
+d=target/evalchk/quiet; rm -rf "$d"; mkdir -p "$d" || exit 1
+printf 'one two\nthree\n' > "$d/in"
+RUST_LOG=warn timeout 60 "$b" < "$d/in" > "$d/out" 2> "$d/err" || exit 1
+test "$(wc -l < "$d/out" | tr -d ' ')" = 2 && test ! -s "$d/err" || exit 1
+yes ab | head -n 1024 > "$d/in1024"
+RUST_LOG=warn timeout 60 "$b" < "$d/in1024" > "$d/out1024" 2> "$d/err1024" || exit 1
+test "$(wc -l < "$d/out1024" | tr -d ' ')" = 1024 && test ! -s "$d/err1024"
+'''
+expect = "pass"
+on_base = "pass"
+
+# --- integrity: the workspace still builds, tests and gates ------------------
+
+[[check]]
+name = "workspace-builds"
+run = "cargo build -q --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy-clean"
+run = "cargo clippy -q --workspace --all-targets --all-features -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "tests-pass"
+run = "cargo nextest run --workspace --all-features --no-fail-fast --cargo-quiet"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "no-std-builds"
+run = '''
+cargo build -q --no-default-features --target x86_64-unknown-none -p rust-code-domain -p rust-code-core &&
+cargo build -q --no-default-features --target thumbv7em-none-eabihf -p rust-code-domain -p rust-code-core
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "xtask-all"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "fail"
+
+# --- anti-cheat: the gates were not weakened ----------------------------------
+
+[[check]]
+name = "gate-configs-unchanged"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in layers.toml budgets.toml deny.toml ignores.toml .cargo/config.toml \
+         clippy.toml crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+lints() { sed -n '/^\[workspace\.lints/,/^\[profile/p' "$1"; }
+b=$(lints "$R/Cargo.toml") && test -n "$b" && test "$(lints Cargo.toml)" = "$b"
+'''
+expect = "pass"
+on_base = "pass"
+
+# The gates themselves (eval.rs is the harness, not a gate).
+[[check]]
+name = "gates-source-unchanged"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "core-keeps-workspace-lints"
+run = '''
+grep -A3 '^\[lints\]' crates/rust-code-core/Cargo.toml | grep -Eq '^workspace *= *true' &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-core/src
+'''
+expect = "pass"
+on_base = "pass"
+
+# The fixture replaces whole root files. If the root ones change, the overlay
+# is stale (it would silently revert the change), so this fails the control
+# until the fixture is regenerated from the new root files and these updated.
+[[check]]
+name = "fixture-overlays-match-base"
+run = '''
+r=$EVAL_ROOT
+f=$r/evals/layering-fix/fixture
+test "$(diff "$r/crates/rust-code-core/Cargo.toml" "$f/crates/rust-code-core/Cargo.toml" | grep '^[<>]')" = '> log.workspace = true' &&
+test "$(cksum < "$r/crates/rust-code-core/src/machine.rs")" = "3630043939 7636" &&
+test "$(cksum < "$r/crates/rust-code-core/tests/chunk_invariance.rs")" = "1019410075 3911"
+'''
+expect = "pass"
+on_base = "pass"

@@ -1,0 +1,246 @@
+# Checks run in target/eval/no-unsafe-simd/<slot>, so the live workspace root
+# -- whose files the base was copied from at the start of the run -- is
+# $EVAL_ROOT and this case's fixture is $EVAL_CASE/fixture.
+# Configs the fixture overlays (layers.toml, budgets.toml) are compared with
+# the fixture; the rest with the live root, so the "gates untouched" checks
+# stay right when the workspace's own config changes.
+
+# --- the task -----------------------------------------------------------------
+
+[[check]]
+name = "arch gate passes (the scan crate inherits the workspace lints)"
+run = "cargo xtask arch"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "no unsafe code in the scan crate"
+run = '''
+test -f crates/rust-code-scan/src/lib.rs &&
+! grep -rqE '\bunsafe\s*[{(]|\bunsafe\s+(fn|impl|trait|extern)\b' crates/rust-code-scan/src
+'''
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "budgets gate passes (no unsafe counted anywhere, no budget raised)"
+run = "cargo xtask budgets"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "every gate passes"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "the tests catch a planted wrong first_newline"
+# Renames every `pub fn first_newline(` in the crate and appends a wrong one
+# in its place: it also stops at `\r` and at bytes >= 0x80, and reports a
+# newline at index 16 or later one byte late. The fixture's own tests (short
+# ASCII inputs, chunk invariance) cannot see any of that; an agreement test of
+# first_newline against a byte-by-byte search over many inputs does. The
+# sources are restored afterwards, whatever happened.
+run = '''
+files=$(grep -rlE 'pub (const )?fn first_newline\s*\(' crates/rust-code-scan/src) || exit 1
+mkdir -p target/plant || exit 1
+n=0
+for f in $files; do
+  n=$((n + 1))
+  cp "$f" "target/plant/$n" || exit 1
+done
+n=0
+for f in $files; do
+  n=$((n + 1))
+  sed -E 's/pub (const )?fn first_newline\s*\(/\1fn first_newline_unplanted(/' "target/plant/$n" > "$f"
+  cat >> "$f" <<'PLANT'
+
+/// Planted by the eval: wrong on `\r`, high bytes and late newlines.
+pub fn first_newline(haystack: &[u8]) -> Option<usize> {
+    let real = first_newline_unplanted(haystack);
+    let wrong = haystack.iter().position(|&b| b == b'\r' || b >= 0x80);
+    let first = match (real, wrong) {
+        (Some(r), Some(w)) => Some(r.min(w)),
+        (r, w) => r.or(w),
+    };
+    first.map(|i| if i >= 16 { i + 1 } else { i })
+}
+PLANT
+done
+cargo build -q -p rust-code-scan
+built=$?
+caught=0
+if [ "$built" -eq 0 ]; then
+  timeout 900 cargo test -q -p rust-code-scan </dev/null >/dev/null 2>&1
+  caught=$?
+  # A run cut off by the timeout is not a catch.
+  [ "$caught" -eq 124 ] && caught=0
+fi
+n=0
+for f in $files; do
+  n=$((n + 1))
+  cp "target/plant/$n" "$f"
+done
+[ "$built" -eq 0 ] && [ "$caught" -ne 0 ]
+'''
+expect = "pass"
+on_base = "fail"
+
+# --- what must stay true --------------------------------------------------------
+
+[[check]]
+name = "first_newline keeps its signature"
+run = '''grep -rqE 'pub (const )?fn first_newline\s*\(\s*\w+\s*:\s*&\s*\[u8\]\s*\)\s*->\s*Option<usize>' crates/rust-code-scan/src'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the workspace builds"
+run = "cargo build --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy is clean"
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the tests pass"
+run = "cargo test --workspace"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the scan crate builds bare for x86_64-unknown-none"
+run = "cargo build -p rust-code-scan --no-default-features --target x86_64-unknown-none"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the scan crate builds bare for thumbv7em-none-eabihf"
+run = "cargo build -p rust-code-scan --no-default-features --target thumbv7em-none-eabihf"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "the scan crate is still a core crate (layers.toml unchanged)"
+run = "cmp layers.toml $EVAL_CASE/fixture/layers.toml"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "budgets.toml unchanged"
+run = "cmp budgets.toml $EVAL_CASE/fixture/budgets.toml"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "clippy.toml unchanged"
+run = "cmp clippy.toml $EVAL_ROOT/clippy.toml"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "deny.toml unchanged"
+run = "cmp deny.toml $EVAL_ROOT/deny.toml"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "Cargo.toml [workspace.lints] unchanged"
+run = '''
+lints() { sed -n '/^\[workspace\.lints/,/^\[profile/p' "$1"; }
+a=$(lints Cargo.toml) && b=$(lints $EVAL_ROOT/Cargo.toml) && [ -n "$b" ] && [ "$a" = "$b" ]
+'''
+expect = "pass"
+on_base = "pass"
+
+
+[[check]]
+name = "the other gate files and the gates' source are unchanged"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in ignores.toml .cargo/config.toml crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+cmp -s crates/rust-code-scan/clippy.toml "$R/evals/no-unsafe-simd/fixture/crates/rust-code-scan/clippy.toml" &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-scan/src &&
+diff -r -x eval.rs xtask "$R/xtask"
+'''
+expect = "pass"
+on_base = "pass"
+
+# The fixture carries whole copies of layers.toml and budgets.toml. If the
+# root ones change, the overlay is stale (it would revert the change), so this
+# fails the control until the fixture is regenerated: each must be the live
+# root file plus only this case's addition.
+[[check]]
+name = "fixture overlays match the base"
+run = '''
+r=$EVAL_ROOT
+f=$r/evals/no-unsafe-simd/fixture
+test "$(diff "$r/layers.toml" "$f/layers.toml" | grep '^[<>]')" = '> rust-code-scan = "core"' &&
+test -z "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^<')" &&
+test -n "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^> \[crates.rust-code-scan\]')"
+'''
+expect = "pass"
+on_base = "pass"
+
+# --- still fast -------------------------------------------------------------------
+
+# The prompt rules out a byte-by-byte loop. A hidden test, written here, run in
+# release (debug inverts the comparison) and removed whatever happened, times
+# first_newline against `iter().position` over 1 MiB with the newline last:
+# best of 9 interleaved rounds, and the fast scan must take under 0.6 of the
+# loop's time. A safe word-at-a-time scan measured about 0.23, the base's NEON
+# path passes, and a plain loop sits near 1.0. Last, so the file it writes
+# cannot reach any check above.
+[[check]]
+name = "first_newline is still faster than a byte loop (release)"
+run = '''
+f=crates/rust-code-scan/tests/zz_eval_speed.rs
+test -d crates/rust-code-scan/tests || exit 1
+cat > "$f" <<'RS'
+//! Written and removed by the eval check: the scan must beat a byte loop.
+
+use std::hint::black_box;
+use std::time::Instant;
+
+use rust_code_scan::first_newline;
+
+fn naive(haystack: &[u8]) -> Option<usize> {
+    haystack.iter().position(|&b| b == b'\n')
+}
+
+fn once(f: fn(&[u8]) -> Option<usize>, h: &[u8]) -> u128 {
+    let t = Instant::now();
+    for _ in 0..40 {
+        black_box(f(black_box(h)));
+    }
+    t.elapsed().as_nanos()
+}
+
+#[test]
+fn eval_first_newline_beats_a_byte_loop() {
+    let mut h = vec![b'a'; 1 << 20];
+    h[(1 << 20) - 1] = b'\n';
+    assert_eq!(first_newline(&h), Some((1 << 20) - 1));
+    let (mut fast, mut slow) = (u128::MAX, u128::MAX);
+    for _ in 0..9 {
+        fast = fast.min(once(first_newline, &h));
+        slow = slow.min(once(naive, &h));
+    }
+    assert!(fast * 10 < slow * 6, "first_newline {fast} ns vs byte loop {slow} ns");
+}
+RS
+timeout 900 cargo test -q --release -p rust-code-scan --test zz_eval_speed </dev/null
+s=$?
+rm -f "$f"
+exit $s
+'''
+expect = "pass"
+on_base = "pass"

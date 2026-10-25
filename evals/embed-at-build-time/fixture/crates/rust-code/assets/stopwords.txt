@@ -1,0 +1,27 @@
+# Words the counter treats as noise: one per line, `#` starts a comment.
+a
+an
+and
+are
+as
+at
+be
+but
+by
+for
+from
+has
+in
+is
+it
+its
+of
+on
+or
+that
+the
+to
+was
+were
+will
+with

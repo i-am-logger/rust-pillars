@@ -1,0 +1,138 @@
+# own-dont-leak (pillar 4): the bin crate builds its bucket-label table once
+# and hands out a `&'static` to it through `Box::leak`, which clippy.toml bans.
+# The fix is an owner (or a lazily initialised static) borrowed where it is
+# used -- not a clone per use, not a suppression, not an unbanned method.
+
+# --- the task -----------------------------------------------------------------
+
+[[check]]
+name = "clippy-bin-clean"
+run = "cargo clippy -q -p rust-code --all-targets -- -D warnings"
+expect = "pass"
+on_base = "fail"
+
+[[check]]
+name = "clippy-workspace-clean"
+run = "cargo clippy -q --workspace --all-targets --all-features -- -D warnings"
+expect = "pass"
+on_base = "fail"
+
+# --- behaviour kept: same stdout for a fixed input ----------------------------
+
+[[check]]
+name = "output-unchanged"
+run = '''
+got=$(printf '\nhello\nthe quick brown fox jumps over the lazy dog\nlorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et\n%s\nno newline at the end' 'aaaaaaaaaa bbbbbbbbbb cccccccccc dddddddddd eeeeeeeeee ffffffffff gggggggggg hhhhhhhhhh iiiiiiiiii jjjjjjjjjj kkkkkkkkkk llllllllll' | timeout 120 cargo run -q -p rust-code -- --idle-ms 3600000) || exit 1
+want=$(printf '0\t0\t0\t0-7\n1\t5\t1\t0-7\n7\t43\t9\t40-47\n51\t100\t16\t96-103\n152\t131\t12\t128+\n284\t21\t5\t16-23\n')
+test "$got" = "$want"
+'''
+expect = "pass"
+on_base = "pass"
+
+# --- integrity: the workspace still builds, tests and gates ------------------
+
+[[check]]
+name = "workspace-builds"
+run = "cargo build -q --workspace --all-targets"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "tests-pass"
+run = "cargo nextest run --workspace"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "no-std-builds"
+run = "cargo build -q -p rust-code-domain -p rust-code-core --target x86_64-unknown-none"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "xtask-all"
+run = "cargo xtask all"
+expect = "pass"
+on_base = "pass"
+
+# --- anti-cheat: the gates were not weakened ----------------------------------
+# The working copy is <root>/target/eval/<case>/<slot>, so the live workspace
+# the base was copied from is $EVAL_ROOT; gate files are compared with it
+# there, outside the run's working copy.
+
+[[check]]
+name = "clippy-toml-unchanged"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/clippy.toml" || exit 1
+for f in clippy.toml crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "no-bin-clippy-override"
+run = '''
+test ! -e crates/rust-code/clippy.toml &&
+test -z "$(find . -name .clippy.toml -not -path './target/*')" &&
+grep -A3 '^\[lints\]' crates/rust-code/Cargo.toml | grep -Eq '^workspace *= *true' &&
+! grep -q 'disallowed' crates/rust-code/Cargo.toml &&
+cmp -s .cargo/config.toml $EVAL_ROOT/.cargo/config.toml
+'''
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "gate-configs-unchanged"
+run = '''
+R=$EVAL_ROOT
+test -f "$R/Cargo.toml" || exit 1
+for f in budgets.toml layers.toml deny.toml ignores.toml; do
+  cmp -s "$f" "$R/$f" || exit 1
+done
+lints() { sed -n '/^\[workspace\.lints/,/^\[profile/p' "$1"; }
+b=$(lints "$R/Cargo.toml") && test -n "$b" && test "$(lints Cargo.toml)" = "$b"
+'''
+expect = "pass"
+on_base = "pass"
+
+# The gates themselves (eval.rs is the harness, not a gate).
+[[check]]
+name = "gates-source-unchanged"
+run = "diff -r -x eval.rs xtask $EVAL_ROOT/xtask"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "no-suppression-or-other-leak"
+run = "! grep -rnE --include='*.rs' 'disallowed_methods|ManuallyDrop|mem::forget|\\bforget\\(' crates"
+expect = "pass"
+on_base = "pass"
+
+[[check]]
+name = "no-clone-of-the-table"
+run = '''
+! grep -rnE '\.clone\(\)|\.to_vec\(\)' crates/rust-code/src &&
+test "$(grep -roE '\bClone\b' crates/rust-code/src | wc -l | tr -d ' ')" -le 1
+'''
+expect = "pass"
+on_base = "pass"
+
+# A group-level suppression (`#[expect(clippy::all)]`, `#![expect(...)]`) would
+# silence the ban without naming it; the bin carries no suppression at all.
+[[check]]
+name = "no-lint-attribute-in-bin"
+run = "! grep -rnE '#!?\\[(expect|allow)\\(' crates/rust-code/src"
+expect = "pass"
+on_base = "pass"
+
+# The fixture replaces whole root files. If the root ones change, the overlay
+# is stale (it would silently revert the change), so this fails the control
+# until the fixture is regenerated from the new root files and these updated.
+[[check]]
+name = "fixture-overlays-match-base"
+run = 'test "$(cksum < $EVAL_ROOT/crates/rust-code/src/main.rs)" = "798385495 3399"'
+expect = "pass"
+on_base = "pass"

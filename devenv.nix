@@ -326,9 +326,14 @@ in
     };
 
     # The plugin's evals, scored by building and gating what the model wrote
-    # (xtask/src/eval.rs). Every run is a real model call: manual only.
+    # (evals/harness). Every run is a real model call: manual only.
+    # `eval:control` runs no model: each check against the untouched base.
     "eval:run" = {
-      exec = "cargo xtask eval";
+      exec = "cargo run --quiet --manifest-path evals/harness/Cargo.toml --";
+    };
+
+    "eval:control" = {
+      exec = "cargo run --quiet --manifest-path evals/harness/Cargo.toml -- --control";
     };
 
     # Every mutant of domain and core, not only changed lines.
