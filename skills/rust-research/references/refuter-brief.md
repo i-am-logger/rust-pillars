@@ -64,7 +64,7 @@ rerun it.
 ```
 
 - `verdict` is `CODE-READY` or `CODE-NOT-READY` for a code subject.
-  rust-pillars adds `NOTE-READY` / `NOTE-NOT-READY` for a research
+  rust-code adds `NOTE-READY` / `NOTE-NOT-READY` for a research
   note, with blocking findings in `code` (rule 7 says which).
 - `CODE-NOT-READY` / `NOTE-NOT-READY` iff `code` is non-empty.
 - `checked` lists what was tried even when nothing failed: a verdict with an
