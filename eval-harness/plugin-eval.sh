@@ -65,12 +65,21 @@ directory = "vendor"
 offline = true
 EOF
   # The agent's shell starts without the project's toolchain on PATH and
-  # cannot enter devenv (no writable /tmp), so it hunted /nix/store for any
+  # cannot enter devenv (nix must read /private/tmp), so it hunted /nix/store for any
   # rustc -- and a newer one words a compile_fail note differently. A case
-  # may not set PATH, and the shell rebuilds it anyway, so the scaffold links
-  # the devenv profile this script runs under as the run's ~/.nix-profile.
-  echo "${DEVENV_PROFILE:?run inside devenv shell: the cases get its profile}" \
-    >"$export_dir/evals/_scaffold/toolchain"
+  # may not set PATH, and the shell rebuilds it anyway, so capture what
+  # devenv exports for this project -- PATH, RUSTFLAGS, the SDK, CC -- from an
+  # empty environment (no operator variable leaks in), with the repository's
+  # path left as __ROOT__; the scaffold loads it into the run's ~/.zshenv.
+  : "${DEVENV_PROFILE:?run inside devenv shell}"
+  env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin "$(command -v devenv)" shell -- \
+    sh -c 'unset HOME USER SHELL PWD OLDPWD SHLVL TMPDIR TMP TEMP TERM LOGNAME DEVENV_RUNTIME _; export -p' \
+    2>/dev/null | sed -n '/^export /,$p' | sed "s|$repo|__ROOT__|g" >"$export_dir/evals/_scaffold/devenv.env"
+  grep -q '^export RUSTFLAGS=' "$export_dir/evals/_scaffold/devenv.env" ||
+    {
+      echo "plugin-eval: could not capture the devenv environment" >&2
+      exit 1
+    }
   touch "$out/.ready"
 fi
 

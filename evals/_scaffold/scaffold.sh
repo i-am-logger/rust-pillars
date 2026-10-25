@@ -44,9 +44,12 @@ if [ -d "$case_dir/fixture" ]; then
 fi
 
 # Only in an eval export (eval-harness/plugin-eval.sh writes the file): HOME
-# is the run's own temp home, and the agent's shell rebuilds PATH from
-# /etc/zshenv with $HOME/.nix-profile/bin first, so the devenv profile goes
-# there -- for both arms alike.
-if [ -f "$root/evals/_scaffold/toolchain" ] && [ ! -e "$HOME/.nix-profile" ]; then
-  ln -s "$(cat "$root/evals/_scaffold/toolchain")" "$HOME/.nix-profile"
+# is the run's own temp home, and devenv cannot run in the sandbox (nix must
+# read /private/tmp), so every shell the agent starts loads the environment
+# devenv gives this project, as direnv would -- for both arms alike.
+env_file=$root/evals/_scaffold/devenv.env
+if [ -f "$env_file" ] && [ ! -e "$HOME/.zshenv" ]; then
+  sed "s|__ROOT__|$(pwd)|g" "$env_file" >"$HOME/.devenv.env"
+  # shellcheck disable=SC2016 # expanded by the agent's shell, not here
+  printf '__p=$PATH\n. "$HOME/.devenv.env"\nexport PATH="$PATH:$__p"\nunset __p\n' >"$HOME/.zshenv"
 fi
