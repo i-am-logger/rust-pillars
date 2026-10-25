@@ -1,6 +1,6 @@
 ---
 name: rust-code
-description: "Use for any Rust work -- writing, reviewing, refactoring, debugging, testing or explaining Rust code, cargo, crates, .rs files, the borrow checker, lifetimes, traits, clippy or rustfmt -- even when nobody asks for best practice. Gives the six pillars, the hand-back checklist, and which rust-code skill to load for the task."
+description: "Write robust, fast Rust on six enforced pillars. Use this skill whenever you write, review, refactor, debug, test or explain Rust code: new crates, modules, functions, types, traits, errors, async, unsafe or FFI, Cargo.toml, tests or docs. Trigger on any mention of Rust, cargo, crates, .rs files, the borrow checker, lifetimes, clippy or rustfmt, even when nobody asks for best practice."
 ---
 
 # rust-code: Rust on six enforced pillars

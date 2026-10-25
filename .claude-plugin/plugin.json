@@ -25,6 +25,12 @@
       "title": "Run the gates after each Rust edit",
       "description": "After Claude edits a .rs file in a project with rust-template's gates, run `cargo xtask budgets` and `cargo xtask arch` and show Claude what they find. Runs commands in your project, so it is off until you turn it on.",
       "default": false
+    },
+    "nudge": {
+      "type": "boolean",
+      "title": "Remind Claude to load the Rust skills",
+      "description": "When a prompt is about Rust (or the project has a Cargo.toml), add one line telling Claude to load the rust-code skill. Runs nothing in your project.",
+      "default": true
     }
   }
 }

@@ -44,6 +44,16 @@ setup-git`). A project made from rust-template enables the plugin for
 everyone in it through its Claude Code project settings. From a local checkout:
 `claude --plugin-dir ~/Code/rust-code`.
 
+**Loading the skills.** A skill's description leaves loading to the model,
+and on small tasks it skips it: measured with Sonnet, writing a whole crate
+loaded no skill. So the plugin adds one line to any prompt about Rust (it
+mentions Rust, cargo, a crate, a `.rs` file, the borrow checker, lifetimes,
+clippy or rustfmt, or the project has a `Cargo.toml`) telling Claude to load
+the entry skill; with it, the same task loaded `rust-code:rust-code` first.
+A one-line question it can answer outright may still be answered without the
+skills. The hook runs nothing in your project; turn it off with
+`--config nudge=false`.
+
 **Opt-in gates while you work.** Install with `--config gate_on_edit=true`
 (or set the option later with `claude plugin configure rust-code`), and after
 every edit to a `.rs` file in a rust-template project the plugin runs
@@ -105,6 +115,7 @@ Everything BeautifulRust does as a plugin, rust-code does too, and then:
 | claude.ai upload | a zipped skill folder | the whole plugin, or any one skill on its own (`dist:package`) |
 | Evals under `claude plugin eval` | 3 cases, graded by a model | 10 cases with scaffolds and transcript graders, **plus** executable checks that build, lint, test and gate what was written, each case proven to fail on an untouched project and pass with a reference solution |
 | Rules enforced | none: prose | every rule is a gate in rust-template, and every gate is seen failing for its reason |
+| Getting loaded | its description only | its descriptions, plus a nudge on any Rust prompt (measured: it turned a crate-writing task that loaded no skill into one that loaded the entry skill first) |
 | In-session enforcement | none | opt-in hook runs the gates after each `.rs` edit |
 | Commands, agents | none | `/rust-code:gate`, `/rust-code:adopt`, a refuter agent |
 | Code in the skills | examples | every Rust block compiles and runs (`cargo xtask snippets`) |
