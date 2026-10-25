@@ -8,9 +8,9 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # master is exempt: it is the only ref that publishes, and release-plz
-  # publishes, tags and creates a GitHub release as separate steps. A cancel
-  # between them cannot be undone, so master runs queue instead.
+  # master is exempt: it is the only ref that releases, and release-plz tags
+  # and creates the GitHub release as separate steps. A cancel between them
+  # leaves a tag with no release, so master runs queue instead.
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 # Read-only by default. Each job asks for what it needs and no more: the jobs
@@ -162,18 +162,18 @@ jobs:
           files: lcov.info
           fail_ci_if_error: false
 
-  # Publishes to crates.io, tags, and creates the GitHub release when a Release
-  # PR has been merged. `release_always = false` in release-plz.toml means this
-  # is a no-op on an ordinary feature merge — merging the Release PR is the act
-  # that authorises a publish.
+  # Tags vX.Y.Z and creates the GitHub release when a Release PR has been
+  # merged; nothing goes to crates.io (release-plz.toml). `release_always =
+  # false` means this is a no-op on an ordinary feature merge -- merging the
+  # Release PR is the act that authorises a release.
   release-plz-release:
     name: Release
     runs-on: ubuntu-latest
     needs: [devenv-checks]
     timeout-minutes: 30
-    # `!cancelled()`, not `always()`: this job publishes to an IMMUTABLE
-    # registry, so running it from a cancelled workflow is the one thing that
-    # cannot be undone. Only `success` counts: devenv-checks never skips on a
+    # `!cancelled()`, not `always()`: a tag and a release are public the moment
+    # they exist, so this never runs from a cancelled workflow. Only `success`
+    # counts: devenv-checks never skips on a
     # push, so a skipped or failed check means nothing was proven.
     if: |
       !cancelled() &&
@@ -194,13 +194,15 @@ jobs:
           persist-credentials: false
       - name: Install the stable toolchain
         run: rustup toolchain install stable --profile minimal && rustup default stable
-      - uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
+      - uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5.146
         id: release-plz
         with:
           command: release
+          # The release-plz whose config docs release-plz.toml was written
+          # against; also this action version's default.
+          version: 0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   # Opens/updates the Release PR that bumps the version and writes CHANGELOG.md.
   # MUST run after release-plz-release — see the anti-loop note at the top.
@@ -209,10 +211,18 @@ jobs:
     runs-on: ubuntu-latest
     needs: [devenv-checks, release-plz-release]
     timeout-minutes: 20
-    # Requires Release to have SUCCEEDED: a failed publish leaves no new tag,
+    # Requires Release to have SUCCEEDED: a failed release leaves no new tag,
     # which would re-trigger the same redundant-PR loop. On an ordinary feature
     # merge Release succeeds as a no-op, so this never blocks the first PR.
+    #
+    # Off until the repository variable RELEASE_PR is 'true'. Opening a PR
+    # with the workflow token needs the owner's repository setting "Allow
+    # GitHub Actions to create and approve pull requests" (Settings > Actions >
+    # General). Without it release-plz pushes its branch, then fails with a
+    # 403 on the PR, leaving master red and a stray release-plz-* branch on
+    # every push. Turn the setting on first, then set the variable.
     if: |
+      vars.RELEASE_PR == 'true' &&
       !cancelled() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master' &&
@@ -231,10 +241,10 @@ jobs:
           persist-credentials: false
       - name: Install the stable toolchain
         run: rustup toolchain install stable --profile minimal && rustup default stable
-      - uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9 # v0.5.131
+      - uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5.146
         id: release-plz
         with:
           command: release-pr
+          version: 0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
