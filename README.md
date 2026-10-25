@@ -219,7 +219,9 @@ repository, ~~so no run can read the checks it is graded by~~. That holds
 for `eval-harness/`; under `claude plugin eval` the export is the plugin
 root, which the arm with the plugin can read by path (measured). So the
 export holds no reference solution, `checks.toml` or `.solve.sh`: they sit
-beside it, where `--graders` takes them. Each case's prompt and graders stay
+beside it, where `--graders` takes them, and so do the runner's own results
+in every mode (by default it writes them under the root, with the graders'
+evidence: in `--graders`, the solution's files). Each case's prompt and graders stay
 in it, as the runner needs them, and a session could read those; the script
 warns when a result names a path under the root's `evals/` (run 4's visible
 trace had none). Two modes run no

@@ -380,6 +380,14 @@ mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/own-dont-leak" \
   "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/layering-fix" \
   "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/_scaffold"
 touch "$scratch/tmp/rust-code-plugin-eval/$sha/.ready" "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/_scaffold/devenv.env"
+for c in own-dont-leak layering-fix; do
+  mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/$c/graders"
+  printf -- '---\ntype: llm\n---\nPASS if done.\n' >"$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/$c/graders/g.md"
+done
+# Results an older script let the runner write inside the plugin root.
+mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/results/old" \
+  "$scratch/tmp/rust-code-plugin-eval/$sha/root/graders-solution/results/old"
+echo '{"evidence": "the solution"}' >"$scratch/tmp/rust-code-plugin-eval/$sha/root/graders-solution/results/old/aggregate-result.json"
 echo basekey >"$scratch/tmp/rust-code-plugin-eval/$sha/base-key"
 mkdir -p "$scratch/vendored"
 echo "$scratch/vendored" >"$scratch/tmp/rust-code-plugin-eval/vendor-$(pe_vendor_key "$repo" HEAD).store"
@@ -396,6 +404,25 @@ run() {
   pe "$@" | sed -n 's/^arg=//p' | tr '\n' ' ' | sed -e 's/ $//' -e 's|--output-dir [^ ]*|--output-dir DIR|'
 }
 
+eroot=$(cd "$scratch/tmp/rust-code-plugin-eval" && pwd -P)/$sha/root
+# outdirs ARGS...: for each --output-dir the runner gets for ARGS, "in" if it
+# is under the plugin root, else "out".
+outdirs() {
+  pe "$@" | awk -v root="$eroot" '/^arg=/ { a = substr($0, 5); if (p) print (index(a, root) == 1 ? "in" : "out"); p = (a == "--output-dir") }' |
+    tr '\n' ' ' | sed 's/ $//'
+}
+same "results an older run left in the plugin root are moved out of it" "no yes" \
+  "$(
+    pe --runs 1 >/dev/null
+    [ -e "$eroot/graders-solution/results" ] || [ -e "$eroot/evals/results" ] && echo yes || echo no
+  ) $(
+    cat "$eroot"/../moved-results/graders-solution-*/old/aggregate-result.json >/dev/null 2>&1 && echo yes
+  )"
+same "a suite run with --json still writes its results outside the plugin root" out "$(outdirs --json "$scratch/o.json")"
+same "so does the with-arm run of --reuse-baseline" out "$(pe --json "$scratch/r0.json" >/dev/null && outdirs --reuse-baseline "$scratch/r0.json" "$scratch/m0.json")"
+same "and --graders, on both states" "out out" "$(outdirs --graders)"
+echo 'true' >"$scratch/p.cmd"
+same "and --probe" out "$(outdirs --probe pn "$scratch/p.cmd")"
 same "a suite run pins the model and the judge" \
   "plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write -j 4 --no-publish --model claude-opus-5-5 --judge-model haiku --output-dir DIR" \
   "$(run -j 4 --no-publish)"
@@ -448,7 +475,6 @@ same "--keep-state keeps the run directories for the harvest" yes \
 
 # A result whose trace names a file under the plugin root's evals/ is
 # warned about: the arm with the plugin can read what is left there.
-eroot=$(cd "$scratch/tmp/rust-code-plugin-eval" && pwd -P)/$sha/root
 warns() {
   RESULT_TEXT=$1 TMPDIR=$scratch/tmp PE_RUN_ROOT=$(cd "$scratch/runs2" && pwd -P) PATH="$scratch/bin:$PATH" \
     sh "$here/plugin-eval.sh" --json "$scratch/w.json" 2>&1 >/dev/null | grep -c 'names a path under the plugin root'

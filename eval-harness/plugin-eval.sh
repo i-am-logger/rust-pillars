@@ -355,6 +355,16 @@ EOF
   done
   touch "$out/.ready"
 fi
+# The runner writes each result into <eval dir>/results/ under the plugin
+# root unless told otherwise -- even with --json -- and a result holds the
+# graders' evidence (under graders-solution/, the solution's own files),
+# which the arm with the plugin could read there. Every mode now passes an
+# --output-dir beside the root; what earlier runs left in it is moved there.
+for r in "$export_dir"/*/results; do
+  [ -d "$r" ] || continue
+  mkdir -p "$out/moved-results"
+  mv "$r" "$out/moved-results/$(basename "$(dirname "$r")")-$$"
+done
 
 # run_suite ARGS...: the runner on the export with ARGS, ending what timed-out
 # sessions leave running (lib.sh, pe_reap) every 15 s while it runs and once
@@ -450,7 +460,8 @@ if [ "${1:-}" = --graders ]; then
     # shellcheck disable=SC2046 # the pins are single words
     run_suite --eval-dir "graders-$state" --scaffold --trust-plugin \
       --ablation none --model haiku --no-publish --threshold 0 \
-      --json "$out/graders-$state.json" --report "$out/graders-$state.html" "$@" \
+      --json "$out/graders-$state.json" --report "$out/graders-$state.html" \
+      --output-dir "$out/graders-$state-results" "$@" \
       $(pe_pin_args --model haiku "$@") || true
   done
   echo "reports: $out/graders-solution.html $out/graders-start.html"
@@ -493,7 +504,8 @@ EOF
   pe_has_opt --json "$@" && json=$(pe_opt_value --json "$json" "$@")
   # shellcheck disable=SC2046 # the pins are single words
   run_suite --eval-dir "probe-$name" --scaffold --trust-plugin --allow-tools Bash \
-    --ablation "${PE_PROBE_ABLATION:-none}" --model haiku --no-publish --threshold 0 --json "$json" "$@" \
+    --ablation "${PE_PROBE_ABLATION:-none}" --model haiku --no-publish --threshold 0 --json "$json" \
+    --output-dir "$out/probe-$name-results" "$@" \
     $(pe_pin_args --model haiku "$@") || true
   # From the repository: the export's cargo config points at the vendored
   # dependencies, which hold the cases' crates, not the harness's.
@@ -575,6 +587,7 @@ else
   set -- "$@" --output-dir "$out/results/$stamp"
   result=$out/results/$stamp/aggregate-result.json
 fi
+pe_has_opt --output-dir "$@" || set -- "$@" --output-dir "$out/results/$stamp"
 [ -n "$keep_state" ] && set -- "$@" --keep-temp
 mkdir -p "$(dirname "$result")"
 write_keys "${result%.json}.keys" "$@"
