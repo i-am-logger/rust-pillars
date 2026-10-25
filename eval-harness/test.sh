@@ -48,7 +48,8 @@ same "never below one" 1 "$(pe_job_cap 4 8)"
 # The reaper: an orphan in one run directory is ended; a live session's
 # process in another, and anything in a run older than the marker, is not.
 runs=$scratch/runs
-mkdir -p "$runs/e-old/home/cwd"
+mkdir -p "$runs/e-old/home/cwd" "$runs/e-gone/home/cwd"
+(cd "$runs/e-gone/home/cwd" && sh -c 'sleep 300 >/dev/null 2>&1 &')
 sleep 1
 touch "$scratch/marker"
 sleep 1
@@ -57,16 +58,18 @@ mkdir -p "$runs/e-dead/home/cwd" "$runs/e-live/home/cwd"
 (cd "$runs/e-dead/home/cwd" && sh -c 'sleep 302 >/dev/null 2>&1 &')
 (cd "$runs/e-live/home/cwd" && exec sleep 303) &
 live=$!
+rm -rf "$runs/e-gone"
 sleep 1
 alive() { pgrep -f "sleep $1" >/dev/null && echo alive || echo gone; }
 same "an orphan exists before the reap" alive "$(alive 302)"
 pe_reap "$(cd "$runs" && pwd -P)" "$scratch/marker" >/dev/null
 sleep 1
 same "the reaper ends an orphan of a dead session" gone "$(alive 302)"
+same "and one whose run directory the runner already removed" gone "$(alive 300)"
 same "and leaves a live session's process" alive "$(alive 303)"
 same "and a run older than this invocation" alive "$(alive 301)"
 kill "$live" 2>/dev/null
-pkill -f 'sleep 301' 2>/dev/null
+pkill -f 'sleep 30[01]' 2>/dev/null
 name=mine value=mine a=mine tab=mine
 pe_opt_value --json x --json y >/dev/null
 pe_has_opt --json --json y && pe_vendor_key "$repo" HEAD >/dev/null

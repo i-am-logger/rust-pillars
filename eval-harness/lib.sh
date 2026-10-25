@@ -114,7 +114,8 @@ pe_job_cap() {
 # they live on, reparented to launchd (PPID 1), with their working directory
 # inside the run's directory RUNROOT/e-*/ (measured), taking cores from the
 # runs that follow. For each run directory newer than MARKER (so only this
-# invocation's runs), the processes whose cwd is inside it are grouped; their
+# invocation's runs) or already removed by the runner (so the session is
+# over), the processes whose cwd is inside it are grouped; their
 # roots are those whose parent is not among them. A live session's root is
 # its claude process, whose parent is the runner; a dead one's roots have
 # PPID 1. Only a directory with no live root is reaped: every process whose
@@ -135,7 +136,10 @@ pe_reap() {
   awk '{ d[$1] = $3; pp[$1] = $2 } END { for (p in d) if (!(pp[p] in d) || d[pp[p]] != d[p])
          print d[p], (pp[p] == 1 ? "dead" : "live") }' "$2.procs" | sort -u >"$2.roots"
   cut -d' ' -f1 "$2.roots" | sort -u | while read -r dir; do
-    [ "$dir" -nt "$2" ] || continue
+    # A directory the runner already removed belongs to a session that is
+    # over, whoever ran it (lsof still names it); one that is still there
+    # only when this invocation made it.
+    [ ! -e "$dir" ] || [ "$dir" -nt "$2" ] || continue
     grep -qxF "$dir live" "$2.roots" && continue
     awk -v dir="$dir" '$3 == dir { print $1 }' "$2.procs" | while read -r pid; do
       kill -TERM "$pid" 2>/dev/null && echo "plugin-eval: ended $pid, left running in $dir"
