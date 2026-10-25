@@ -236,12 +236,18 @@ fi
 runroot=${PE_RUN_ROOT:-/private/tmp}
 run_suite() {
   marker=$(mktemp "$base/.started.XXXXXX")
+  # On stderr: a background job holding stdout would keep a caller's pipe
+  # open until its last sleep ends.
   (
+    s=""
+    trap 'kill "$s" 2>/dev/null; exit 0' TERM
     while kill -0 "$$" 2>/dev/null; do
-      sleep 15
+      sleep 15 &
+      s=$!
+      wait "$s"
       pe_reap "$runroot" "$marker"
     done
-  ) &
+  ) >&2 &
   reaper=$!
   set +e
   (cd "$export_dir" && claude plugin eval . "$@")
