@@ -90,29 +90,30 @@ same "the scaffold copies the workspace" yes "$([ -f "$scratch/work/crates/a/lib
 same "the scaffold leaves out vendor/, probe-*/, graders-*/ and the plugin" "" \
   "$(cd "$scratch/work" && ls -d vendor probe-env graders-start skills evals 2>/dev/null)"
 
-# In an export, the shared vendored dependencies are cloned into the copy.
-mkdir -p "$scratch/shared/serde-1.0.0" "$r/.cargo" "$r/evals/_scaffold" "$scratch/work2" "$scratch/home2"
-touch "$scratch/shared/serde-1.0.0/lib.rs"
-echo "$scratch/shared" >"$r/evals/_scaffold/vendor-dir"
-printf '[source.vendored-sources]\ndirectory = "__VENDOR__"\n' >"$r/.cargo/config.toml"
+mtime() { perl -e 'print +(stat shift)[9] // ""' "$1"; }
+
+# Base files keep their mtimes (a prebuilt target was built from them, later);
+# a fixture's files are new, so whatever the case changes rebuilds.
+mkdir -p "$r/evals/c/fixture/crates/a" "$scratch/work2" "$scratch/home2"
+echo changed >"$r/evals/c/fixture/crates/a/lib.rs"
+touch -t 200001010000 "$r/crates/a/lib.rs" "$r/evals/c/fixture/crates/a/lib.rs" "$r/layers.toml"
 (cd "$scratch/work2" && HOME=$scratch/home2 sh "$repo/evals/_scaffold/scaffold.sh" "$r/evals/c")
-h2=$(cd "$scratch/home2" && pwd)
-same "the scaffold clones the vendored dependencies outside the working copy" yes \
-  "$([ -f "$h2/vendor/serde-1.0.0/lib.rs" ] && [ ! -e "$scratch/work2/vendor" ] && echo yes)"
-same "and points cargo at the clone" "directory = \"$h2/vendor\"" \
-  "$(grep '^directory' "$scratch/work2/.cargo/config.toml")"
-rm "$r/evals/_scaffold/vendor-dir" "$r/.cargo/config.toml"
+same "a base file keeps its mtime" "$(mtime "$r/layers.toml")" "$(mtime "$scratch/work2/layers.toml")"
+same "a fixture file is copied new" yes \
+  "$([ "$(mtime "$scratch/work2/crates/a/lib.rs")" -gt "$(mtime "$r/crates/a/lib.rs")" ] && echo yes)"
+rm -r "$r/evals/c/fixture"
 
 # The base workspace alone (the scaffold's own directory as the case), with
 # a prebuilt target cloned in, its mtimes kept.
-mkdir -p "$scratch/prebuilt/target/debug" "$scratch/work3" "$scratch/home3"
+mkdir -p "$scratch/prebuilt/target/debug" "$r/evals/_scaffold" "$scratch/work3" "$scratch/home3"
 touch -t 200001010000 "$scratch/prebuilt/target/debug/dep.rlib"
 echo "$scratch/prebuilt/target" >"$r/evals/_scaffold/target-dir"
 (cd "$scratch/work3" && HOME=$scratch/home3 sh "$repo/evals/_scaffold/scaffold.sh" "$r/evals/_scaffold")
 same "the scaffold builds the base workspace" yes "$([ -f "$scratch/work3/crates/a/lib.rs" ] && echo yes)"
-mtime() { perl -e 'print +(stat shift)[9] // ""' "$1"; }
 same "the scaffold clones the prebuilt target, mtimes kept" \
   "$(mtime "$scratch/prebuilt/target/debug/dep.rlib")" "$(mtime "$scratch/work3/target/debug/dep.rlib")"
+same "no vendored tree in the working copy or its home" "" \
+  "$(ls -d "$scratch/work3/vendor" "$scratch/home3/vendor" 2>/dev/null)"
 rm "$r/evals/_scaffold/target-dir"
 
 # --- plugin-eval.sh, building exports ---------------------------------------
@@ -146,14 +147,22 @@ cat >"$scratch/fakebin/devenv" <<'EOF'
 printf 'declare\nexport PATH="/nix/x/bin"\nexport RUSTFLAGS="-D warnings"\n'
 EOF
 printf '#!/bin/sh\n' >"$scratch/fakebin/claude"
-chmod +x "$scratch/fakebin/cargo" "$scratch/fakebin/devenv" "$scratch/fakebin/claude"
+# A stand-in store: --add copies DIR in and prints its path; --add-root is a no-op.
+cat >"$scratch/fakebin/nix-store" <<'EOF'
+#!/bin/sh
+[ "$1" = --add ] || exit 0
+mkdir -p "$FAKESTORE"
+cp -R "$2" "$FAKESTORE/"
+echo "$FAKESTORE/$(basename "$2")"
+EOF
+chmod +x "$scratch/fakebin/cargo" "$scratch/fakebin/devenv" "$scratch/fakebin/claude" "$scratch/fakebin/nix-store"
 g2() { git -C "$f" "$@"; }
 fcommit() { g2 add -A && g2 -c user.name=t -c user.email=t@t commit -qm "$1"; }
 g2 init -q && fcommit base
 calls=$scratch/calls
 : >"$calls"
 fakerun() {
-  CALLS=$calls DEVENV_PROFILE=/x TMPDIR=$scratch/ftmp PATH="$scratch/fakebin:$PATH" \
+  CALLS=$calls FAKESTORE=$scratch/store DEVENV_PROFILE=/x TMPDIR=$scratch/ftmp PATH="$scratch/fakebin:$PATH" \
     sh "$f/eval-harness/plugin-eval.sh" --case c >>"$scratch/fakerun.log" 2>&1
 }
 mkdir -p "$scratch/ftmp"
@@ -163,11 +172,11 @@ fsha=$(g2 rev-parse --short HEAD)
 same "the first export vendors once" 1 "$(grep -c . "$calls")"
 same "the vendored dependencies live outside the export" "no" \
   "$([ -e "$fbase/$fsha/root/vendor" ] && echo yes || echo no)"
-same "the export names them for the scaffold to clone" \
-  "$(cd "$fbase/vendor-$(pe_vendor_key "$f" HEAD)" && pwd -P)" \
-  "$(cat "$fbase/$fsha/root/evals/_scaffold/vendor-dir" 2>/dev/null)"
-same "and leaves the clone's path to the scaffold" 'directory = "__VENDOR__"' \
+same "they go to the store, and cargo is pointed at the store path" \
+  "directory = \"$scratch/store/vendored-crates-$(pe_vendor_key "$f" HEAD)\"" \
   "$(grep '^directory = ' "$fbase/$fsha/root/.cargo/config.toml" 2>/dev/null)"
+same "the store holds what cargo vendor made" yes \
+  "$([ -f "$scratch/store/vendored-crates-$(pe_vendor_key "$f" HEAD)/dep" ] && echo yes)"
 fenv=$fbase/$fsha/root/evals/_scaffold/devenv.env
 same "the export's environment carries the lighter dev profile" yes \
   "$(grep -q '^export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0$' "$fenv" 2>/dev/null && echo yes)"
@@ -204,8 +213,8 @@ chmod +x "$scratch/bin/claude"
 sha=$(git -C "$repo" rev-parse --short HEAD)
 mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root"
 touch "$scratch/tmp/rust-code-plugin-eval/$sha/.ready"
-mkdir -p "$scratch/tmp/rust-code-plugin-eval/vendor-$(pe_vendor_key "$repo" HEAD)"
-touch "$scratch/tmp/rust-code-plugin-eval/vendor-$(pe_vendor_key "$repo" HEAD)/.ready"
+mkdir -p "$scratch/vendored"
+echo "$scratch/vendored" >"$scratch/tmp/rust-code-plugin-eval/vendor-$(pe_vendor_key "$repo" HEAD).store"
 
 # run ARGS...: plugin-eval.sh's runner arguments for ARGS, space-separated.
 run() {

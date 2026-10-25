@@ -47,9 +47,16 @@ base=$(cd "${TMPDIR:-/tmp}/rust-code-plugin-eval" && pwd -P)
 out=$base/$sha
 export_dir=$out/root
 # The vendored dependencies, keyed on the Cargo files rather than the commit
-# (lib.sh, pe_vendor_key), and kept outside every export: the scaffold copies
-# the export into each working copy, and 77 MB of vendor/ went with it.
-vendor=$base/vendor-$(pe_vendor_key "$repo" HEAD)
+# (lib.sh, pe_vendor_key), and kept out of the export: the scaffold copies the
+# export into each working copy, and 77 MB of vendor/ went with it. They live
+# in the nix store, the one place found that every session reads in both arms
+# at the same path (measured: the sandbox refuses the shared directory under
+# /private/tmp, and the plugin root in the arm without the plugin), and the
+# same path is what keeps prebuilt dependencies fresh: cargo's fingerprint
+# holds the source path, and a clone per working copy left every one dirty
+# ("the path to the source changed").
+vkey=$(pe_vendor_key "$repo" HEAD)
+vstore_file=$base/vendor-$vkey.store
 
 # share_dir NAME BUILD: makes $base/NAME by running BUILD with a fresh
 # directory as $1, and publishes it with one `ln -s`, which either wins or
@@ -62,9 +69,15 @@ share_dir() {
   ln -s "$(basename "$tmp")" "$base/$1" 2>/dev/null || rm -rf "$tmp"
 }
 
-# vendor_into DIR: every dependency any case can need -- the starting state
-# and the reference solution of each -- vendored into DIR.
-vendor_into() {
+# vendor_store: the store path of every dependency any case can need -- the
+# starting state and the reference solution of each -- vendoring them and
+# adding them to the store (with a GC root beside the exports) if no export
+# did yet. Content-addressed, so exports racing on one key get one path.
+vendor_store() {
+  if [ -f "$vstore_file" ] && [ -d "$(cat "$vstore_file")" ]; then
+    cat "$vstore_file"
+    return 0
+  fi
   work=$(mktemp -d "$base/.vendor-work.XXXXXX")
   syncs=""
   for c in "$export_dir"/evals/*/; do
@@ -79,8 +92,13 @@ vendor_into() {
     done
   done
   # shellcheck disable=SC2086 # one word per -s argument
-  (cd "$export_dir" && cargo vendor --quiet --versioned-dirs "$1" $syncs >/dev/null)
+  (cd "$export_dir" && cargo vendor --quiet --versioned-dirs "$work/vendored-crates-$vkey" $syncs >/dev/null)
+  p=$(nix-store --add "$work/vendored-crates-$vkey")
+  nix-store --add-root "$base/vendor-$vkey.gcroot" --indirect --realise "$p" >/dev/null
+  echo "$p" >"$vstore_file.$$"
+  mv "$vstore_file.$$" "$vstore_file"
   rm -rf "$work"
+  echo "$p"
 }
 
 # in_agent_env DIR CMD...: CMD in DIR/home/cwd (a scaffolded working copy)
@@ -100,11 +118,11 @@ base_workspace() {
   (cd "$1/home/cwd" && HOME=$1/home sh "$export_dir/evals/_scaffold/scaffold.sh" "$export_dir/evals/_scaffold" >/dev/null)
 }
 
-# content_key DIR: a key over every file of DIR but target/, with cargo's
-# vendored-sources line left out (it names the run's own clone).
+# content_key DIR: a key over every file of DIR but target/: names and
+# contents (cargo's config among them, which names the vendored store path).
 content_key() {
   (cd "$1" && find . -type f ! -path './target/*' | LC_ALL=C sort | while IFS= read -r f; do
-    printf '%s %s\n' "$f" "$(grep -v '^directory = ' "$f" | pe_sha256)"
+    printf '%s %s\n' "$f" "$(pe_sha256 <"$f")"
   done) | pe_sha256 | cut -c1-16
 }
 
@@ -136,7 +154,9 @@ prebuild_into() {
 
 # A ready export whose vendoring or prebuilt target was removed is built
 # again.
-[ -f "$out/.ready" ] && [ ! -d "$vendor" ] && rm -rf "$out"
+if [ -f "$out/.ready" ] && { [ ! -f "$vstore_file" ] || [ ! -d "$(cat "$vstore_file")" ]; }; then
+  rm -rf "$out"
+fi
 if [ -f "$out/.ready" ] && [ -f "$export_dir/evals/_scaffold/target-dir" ] &&
   [ ! -d "$(cat "$export_dir/evals/_scaffold/target-dir")" ]; then
   rm -rf "$out"
@@ -145,11 +165,8 @@ if [ ! -f "$out/.ready" ]; then
   rm -rf "$export_dir"
   mkdir -p "$export_dir/.cargo"
   git archive HEAD | tar -x -C "$export_dir"
-  share_dir "$(basename "$vendor")" vendor_into
-  # The sandbox cannot read $vendor (measured: "Operation not permitted"),
-  # so the scaffold clones it into each working copy and fills __VENDOR__.
-  (cd "$vendor" && pwd -P) >"$export_dir/evals/_scaffold/vendor-dir"
-  cat >>"$export_dir/.cargo/config.toml" <<'EOF'
+  vendor=$(vendor_store)
+  cat >>"$export_dir/.cargo/config.toml" <<EOF
 
 # Eval runs only: the sandbox has no network, so every dependency the cases
 # can need is vendored, and cargo never asks the registry.
@@ -157,7 +174,7 @@ if [ ! -f "$out/.ready" ]; then
 replace-with = "vendored-sources"
 
 [source.vendored-sources]
-directory = "__VENDOR__"
+directory = "$vendor"
 
 [net]
 offline = true
@@ -274,7 +291,7 @@ EOF
   cd "$export_dir"
   # shellcheck disable=SC2046 # the pins are single words
   claude plugin eval . --eval-dir "probe-$name" --scaffold --trust-plugin --allow-tools Bash \
-    --ablation none --model haiku --no-publish --threshold 0 --json "$json" "$@" \
+    --ablation "${PE_PROBE_ABLATION:-none}" --model haiku --no-publish --threshold 0 --json "$json" "$@" \
     $(pe_pin_args --model haiku "$@") || true
   # From the repository: the export's cargo config points at the vendored
   # dependencies, which hold the cases' crates, not the harness's.

@@ -34,7 +34,10 @@ for entry in "$root"/* "$root"/.[!.]*; do
   # keeps them outside the export now).
   target | .git | skills | commands | agents | hooks | evals | graders-* | probe-* | vendor | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md) continue ;;
   esac
-  cp -R "$entry" .
+  # mtimes kept: in an export a prebuilt target (below) was built from these
+  # very files, later, so cargo finds the base's own crates fresh. Anything
+  # the case changes is copied with a new mtime and rebuilds.
+  cp -pR "$entry" .
 done
 
 # The research skeleton stays; the plugin's own research goes.
@@ -70,20 +73,10 @@ clone() {
   cp -pR "$1/." "$2"
 }
 
-# Only in an eval export: the vendored dependencies, whose shared directory
-# (named in vendor-dir) the sandbox cannot read. Each run gets a clone in its
-# own home, the working copy's parent, so the working copy holds no vendor/
-# for the agent to list or cargo-mutants to copy; cargo is pointed at it.
-if [ -f "$base/vendor-dir" ]; then
-  home=$(cd "$HOME" && pwd)
-  clone "$(cat "$base/vendor-dir")" "$home/vendor"
-  sed "s|__VENDOR__|$home/vendor|" .cargo/config.toml >.cargo/config.toml.new
-  mv .cargo/config.toml.new .cargo/config.toml
-fi
-
 # Only in an eval export: the base workspace's target/, built once at export
-# time in this environment (target-dir names it), so dependencies are fresh
-# from the first build; the case's own crates still build.
+# time in this environment (target-dir names it), so dependencies -- and the
+# workspace's own crates where the case left them as they were -- are fresh
+# from the first build.
 if [ -f "$base/target-dir" ] && [ ! -e target ]; then
   clone "$(cat "$base/target-dir")" target
 fi
