@@ -66,8 +66,11 @@ fi
 # file system can (APFS clonefile, then a reflink), else a plain copy; mtimes
 # kept, so cargo sees prebuilt output as fresh.
 clone() {
-  cp -c -pR "$1/." "$2" 2>/dev/null && return 0
-  rm -rf "$2"
+  # -c is clonefile on macOS only; GNU cp reads it as --preserve=context.
+  if [ "$(uname)" = Darwin ]; then
+    cp -c -pR "$1/." "$2" 2>/dev/null && return 0
+    rm -rf "$2"
+  fi
   cp --reflink=auto -pR "$1/." "$2" 2>/dev/null && return 0
   rm -rf "$2"
   cp -pR "$1/." "$2"
