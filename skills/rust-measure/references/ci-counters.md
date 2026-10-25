@@ -9,9 +9,6 @@ allocation, byte and size counts are the same on every host; instruction
 counts need a pinned runner class (below) -- and timings stay local under the
 A/B protocol.
 
-This is rust-code's addition to the worked example, whose performance
-evidence is local A/B timings recorded in its MEASUREMENTS.md (by-reading).
-
 ## The counters
 
 | Counter | What it catches | Status in rust-template |
