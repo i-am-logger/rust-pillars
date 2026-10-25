@@ -1,12 +1,7 @@
 # Funding
 
-<!-- TEMPLATE: if the project instantiated from this template has funding terms
-     of its own — a commercial licence you actually sell, a support contract, a
-     sponsor tier that buys something specific — state them here and delete the
-     parts below that do not apply. Do not leave a generic ask in place of real
-     terms. -->
-
-This is a solo-maintained open-source project. Funding is optional and buys no
+This is a solo-maintained, source-available project: the licence allows
+non-commercial use only. Funding is optional and buys no
 obligation — see [What sponsorship does not buy](#what-sponsorship-does-not-buy)
 below.
 
