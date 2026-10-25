@@ -31,14 +31,19 @@ for entry in "$root"/* "$root"/.[!.]*; do
   # The plugin's own parts stay out, or the no-plugin arm could read them;
   # graders-* and probe-* are the grader self-check and probe suites, and
   # vendor/ an older export's dependencies (eval-harness/plugin-eval.sh
-  # keeps them outside the export now).
-  target | .git | skills | commands | agents | hooks | evals | graders-* | probe-* | vendor | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md) continue ;;
+  # keeps them outside the export now). The contributor docs describe the
+  # plugin repository -- its manifest, hooks, evals and maintainer -- and
+  # name files the copy leaves out, so `cargo xtask docs` would fail on them
+  # in every base; FUNDING.md links the other two.
+  target | .git | skills | commands | agents | hooks | evals | graders-* | probe-* | vendor | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md | CONTRIBUTING.md | SECURITY.md | FUNDING.md) continue ;;
   esac
   # mtimes kept: in an export a prebuilt target (below) was built from these
   # very files, later, so cargo finds the base's own crates fresh. Anything
   # the case changes is copied with a new mtime and rebuilds.
   cp -pR "$entry" .
 done
+# The PR template names the plugin manifest and links CONTRIBUTING.md.
+rm -f .github/pull_request_template.md
 
 # The research skeleton stays; the plugin's own research goes.
 find docs/research/sources -type f -exec rm {} +
