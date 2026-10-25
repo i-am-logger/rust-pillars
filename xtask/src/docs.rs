@@ -6,7 +6,10 @@
 //! * every `compile_fail` case under `tests/ui/fail` has its passing twin
 //!   under `tests/ui/pass` and its pinned `.stderr`, and every twin its case;
 //! * CLAUDE.md is exactly at its byte budget: it is loaded into every agent
-//!   session whole, so it may only shrink, and a raise is its own commit.
+//!   session whole, so it may only shrink, and a raise is its own commit;
+//! * a Claude Code plugin manifest, if the project has one, states the
+//!   workspace's version: the plugin and the crates are one release, and
+//!   release-plz bumps only Cargo.toml.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -44,6 +47,25 @@ struct DocBudgets {
 #[derive(Debug, Deserialize)]
 struct Docs {
     claude_md_bytes: usize,
+}
+
+/// The plugin manifest whose version must be the workspace's.
+const PLUGIN_MANIFEST: &str = ".claude-plugin/plugin.json";
+
+/// The root Cargo.toml, as far as `[workspace.package] version`.
+#[derive(Debug, Deserialize)]
+struct RootManifest {
+    workspace: RootWorkspace,
+}
+
+#[derive(Debug, Deserialize)]
+struct RootWorkspace {
+    package: WorkspacePackage,
+}
+
+#[derive(Debug, Deserialize)]
+struct WorkspacePackage {
+    version: String,
 }
 
 /// Relative link targets in Markdown text: `](target)` that is not a URL or
@@ -112,11 +134,55 @@ pub(crate) fn run(ws: &Workspace, r: &mut Report) -> Result<()> {
     }
     let cases = twins(ws, r)?;
     claude_md(ws, r)?;
+    let plugins = plugin_version(ws, r)?;
     r.checked(
         GATE,
-        format!("{} documents, {cases} compile_fail cases", docs.len()),
+        format!(
+            "{} documents, {cases} compile_fail cases, {plugins} plugin manifest version",
+            docs.len()
+        ),
     );
     Ok(())
+}
+
+/// The plugin manifest states the workspace's version. Returns how many
+/// manifests were compared: none in a project that is not a plugin.
+fn plugin_version(ws: &Workspace, r: &mut Report) -> Result<usize> {
+    let path = ws.root.join(PLUGIN_MANIFEST);
+    if !path.exists() {
+        return Ok(0);
+    }
+    let workspace = read_toml::<RootManifest>(&ws.root.join("Cargo.toml"))
+        .context("Cargo.toml needs [workspace.package] version for the plugin manifest to match")?
+        .workspace
+        .package
+        .version;
+    let text = fs::read_to_string(&path).with_context(|| format!("reading {PLUGIN_MANIFEST}"))?;
+    match stated_version(&text).with_context(|| format!("parsing {PLUGIN_MANIFEST}"))? {
+        Some(v) if v == workspace => {}
+        Some(v) => r.fail(
+            GATE,
+            PLUGIN_MANIFEST,
+            format!(
+                "states version {v}, but the workspace is {workspace}: they are one release, and release-plz bumps only Cargo.toml -- set it to {workspace}"
+            ),
+        ),
+        None => r.fail(
+            GATE,
+            PLUGIN_MANIFEST,
+            format!("states no version: give it the workspace's, {workspace}"),
+        ),
+    }
+    Ok(1)
+}
+
+/// The `version` a plugin manifest states, if any.
+fn stated_version(json: &str) -> Result<Option<String>> {
+    let manifest: serde_json::Value = serde_json::from_str(json)?;
+    Ok(manifest
+        .get("version")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string))
 }
 
 fn twins(ws: &Workspace, r: &mut Report) -> Result<usize> {
@@ -195,6 +261,11 @@ fn control() -> Result<()> {
         !Path::new("crates/no-such-crate/src/lib.rs").exists(),
         "positive control fixture exists"
     );
+    anyhow::ensure!(
+        stated_version(r#"{"name": "x", "version": "0.0.0-planted"}"#)?.as_deref()
+            == Some("0.0.0-planted"),
+        "positive control failed: plugin version reader"
+    );
     Ok(())
 }
 
@@ -216,5 +287,25 @@ mod tests {
             named_paths("`crates/<name>/src` `cargo xtask` `layers.toml` `docs/a.md:12`"),
             ["layers.toml", "docs/a.md"]
         );
+    }
+
+    #[test]
+    fn plugin_version_is_read_from_the_manifest() {
+        assert_eq!(
+            stated_version(r#"{"name": "p", "version": "1.2.3", "keywords": ["version"]}"#)
+                .unwrap()
+                .as_deref(),
+            Some("1.2.3")
+        );
+    }
+
+    #[test]
+    fn a_manifest_without_a_version_states_none() {
+        assert_eq!(stated_version(r#"{"name": "p"}"#).unwrap(), None);
+    }
+
+    #[test]
+    fn a_manifest_that_is_not_json_is_an_error() {
+        assert!(stated_version("version = \"1.2.3\"").is_err());
     }
 }
