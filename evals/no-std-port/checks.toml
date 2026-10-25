@@ -196,7 +196,7 @@ test "$(diff "$r/layers.toml" "$f/layers.toml" | grep '^[<>]')" = '> rust-code-c
 test -z "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^<')" &&
 test -n "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^> \[crates.rust-code-checksum\]')" &&
 test "$(diff "$r/crates/rust-code/Cargo.toml" "$f/crates/rust-code/Cargo.toml" | grep '^[<>]')" = '> rust-code-checksum = { path = "../rust-code-checksum" }' &&
-test "$(cksum < "$r/crates/rust-code/src/main.rs")" = "798385495 3399"
+test "$(cksum < "$r/crates/rust-code/src/main.rs")" = "1658020495 4935"
 '''
 expect = "pass"
 on_base = "pass"

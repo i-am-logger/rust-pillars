@@ -1,0 +1,7 @@
+error[E0277]: the trait bound `Reading: From<i16>` is not satisfied
+ --> tests/ui/fail/integer_into_reading.rs:4:30
+  |
+4 |     let r: Reading = 215_i16.into();
+  |                              ^^^^ the trait `From<i16>` is not implemented for `Reading`
+  |
+  = note: required for `i16` to implement `Into<Reading>`

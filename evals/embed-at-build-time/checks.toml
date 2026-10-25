@@ -181,6 +181,6 @@ on_base = "pass"
 # until the fixture is regenerated from the new root files and these updated.
 [[check]]
 name = "fixture-overlays-match-base"
-run = 'test "$(cksum < $EVAL_ROOT/crates/rust-code/src/main.rs)" = "798385495 3399"'
+run = 'test "$(cksum < $EVAL_ROOT/crates/rust-code/src/main.rs)" = "1658020495 4935"'
 expect = "pass"
 on_base = "pass"

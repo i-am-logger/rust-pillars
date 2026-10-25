@@ -1,0 +1,20 @@
+[package]
+name = "rust-code-scan"
+description = "Fast byte scans for the reader (role: core)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[features]
+default = []
+
+[dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

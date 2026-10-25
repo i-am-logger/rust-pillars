@@ -22,7 +22,9 @@
 //! own checks must fail (a check the base already passes grades nothing), and
 //! `--solution` runs them against the base plus the case's reference
 //! `solution/`, where every check must pass (a check nothing can pass grades
-//! nothing either). Every other run is a real model call.
+//! nothing either); a solution may carry `.solve.sh`, run in the copy first,
+//! to regenerate what a tool would leave instead of committing it. Every
+//! other run is a real model call.
 //!
 //! Run it from the devenv shell: `cargo run --manifest-path
 //! evals/harness/Cargo.toml -- [--control] [--case NAME] [--runs N]
@@ -327,6 +329,24 @@ fn solution(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
     }
     let work = fresh(root, case, "solution")?;
     copy_dir(&reference, &work)?;
+    // A solution whose honest answer is a tool's output (a measurement, a
+    // generated file) regenerates it here rather than committing build
+    // products: `.solve.sh` runs in the copy, and is gone before the checks.
+    let script = work.join(".solve.sh");
+    if script.exists() {
+        let solve = Check {
+            name: ".solve.sh".into(),
+            run: "sh .solve.sh".into(),
+            expect: Expect::Pass,
+            on_base: Expect::Pass,
+            timeout_s: default_check_timeout(),
+        };
+        let solved = run_check(root, case, &work, &solve)?;
+        fs::remove_file(&script)?;
+        if !solved {
+            return Ok(vec![format!("{name}: solution/.solve.sh failed")]);
+        }
+    }
     let mut wrong = Vec::new();
     for c in &checks.check {
         if run_check(root, case, &work, c)? != (c.expect == Expect::Pass) {
