@@ -1,11 +1,13 @@
 ---
 description: Adopt the rust-code gates in an existing Rust workspace, strictly or as a ratchet
 argument-hint: "[--ratchet]"
-allowed-tools: Bash, Read, Grep, Glob, Edit, Write
+allowed-tools: Bash(cargo metadata:*), Bash(cargo xtask all:*), Read, Grep, Glob
 ---
 
 Adopt rust-template's gates in this workspace. Ask before each step that
-changes files, and say what it will change.
+changes files, and say what it will change. Only `cargo metadata`,
+`cargo xtask all` and reading run without the user's approval; every edit,
+file written and other command asks.
 
 1. Read the workspace (`cargo metadata --no-deps`) and propose a role for
    every crate -- domain, core, adapter, bin, tool, harness or quarantine --

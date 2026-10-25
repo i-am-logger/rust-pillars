@@ -1,7 +1,7 @@
 ---
-description: Run every rust-code gate on this project and report what fails, by pillar
+description: Run every rust-code gate on this project (which runs its own build, xtask and test code) and report what fails, by pillar
 argument-hint: "[gate]  e.g. budgets, arch, layers, tests, coverage, snippets"
-allowed-tools: Bash, Read, Grep, Glob
+allowed-tools: Bash(devenv test:*), Bash(cargo xtask:*), Bash(cargo fmt --check:*), Bash(cargo clippy:*), Bash(cargo test:*), Read, Grep, Glob
 ---
 
 Run the project's gates and report the result by pillar.
