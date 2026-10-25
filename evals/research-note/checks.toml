@@ -2,7 +2,10 @@
 # features chapter, key `cargo-features`) and ships the note TEMPLATE.md. A
 # good solution writes a new note under docs/research/notes/ that cites that
 # key, carries a filled-in Status line, marks its options CONFORMING or
-# DEPARTS, and leaves the manifest and every gate's config as they were.
+# DEPARTS, and leaves the pinned chapter, its sha256 and every gate's config
+# as they were. The prompt says nothing about the manifest otherwise, so a
+# note that pins its own probe output beside the chapter (as rust-research
+# teaches) is not graded down for it; `cargo xtask sources` checks any pin.
 #
 # TEMPLATE.md itself contains `Status:`, CONFORMING and DEPARTS, so every
 # task check looks only at notes other than TEMPLATE.md. The gate trims the
@@ -51,11 +54,12 @@ on_base = "pass"
 # $EVAL_CASE/fixture and the live workspace $EVAL_ROOT,
 # both outside the run's working copy.
 [[check]]
-name = "MANIFEST.toml and the pinned source unchanged"
+name = "the pinned Cargo Book chapter and its sha256 in MANIFEST.toml unchanged"
 run = '''
 F=$EVAL_CASE/fixture/docs/research/sources
-test -s "$F/MANIFEST.toml" &&
-cmp docs/research/sources/MANIFEST.toml "$F/MANIFEST.toml" &&
+pin=$(grep -x 'sha256 = "[0-9a-f]\{64\}"' "$F/MANIFEST.toml") &&
+test "$(printf '%s\n' "$pin" | wc -l)" -eq 1 &&
+grep -qxF "$pin" docs/research/sources/MANIFEST.toml &&
 cmp docs/research/sources/cargo-0f95863-features.md "$F/cargo-0f95863-features.md"
 '''
 expect = "pass"
