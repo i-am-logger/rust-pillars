@@ -1,0 +1,5586 @@
+{
+ "schemaVersion": 1,
+ "claudeVersion": "2.1.303",
+ "startedAt": "2026-10-25T13:33:51.970Z",
+ "durationSeconds": 7335,
+ "costUsd": 42.7458137,
+ "partial": false,
+ "suite": {
+  "root": "/export/root",
+  "ablation": "with-without",
+  "threshold": 1,
+  "concurrency": 4,
+  "plugins": [
+   {
+    "name": "rust-code",
+    "version": "0.1.0",
+    "path": "/export/root"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "name": "domain-refuse-primitives",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-thermostat",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "regex-binary-untouched",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-budget-domain",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-budget-seams",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-core-untouched",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-lib-exports-heat",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-lib-no-suppression",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.6309775999999999,
+      "judgeCostUsd": 0.012664400000000006,
+      "durationSeconds": 488,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 18,
+      "costUsd": 0.5737375000000001,
+      "judgeCostUsd": 0.014056100000000002,
+      "durationSeconds": 214,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 29,
+      "costUsd": 0.7153738000000001,
+      "judgeCostUsd": 0.010376000000000003,
+      "durationSeconds": 286,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.8155564,
+      "judgeCostUsd": 0.012533200000000001,
+      "durationSeconds": 359,
+      "startedAt": "2026-10-25T13:33:52.130Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 21,
+      "costUsd": 0.6392838,
+      "judgeCostUsd": 0.016227599999999995,
+      "durationSeconds": 292,
+      "startedAt": "2026-10-25T13:37:26.247Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.6219072,
+      "judgeCostUsd": 0.01962839999999999,
+      "durationSeconds": 231,
+      "startedAt": "2026-10-25T13:38:37.968Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-thermostat",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-binary-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-domain",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budget-seams",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-core-untouched",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-exports-heat",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lib-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.5833333333333334,
+    "passRate": 0,
+    "scoreWithout": 0.5,
+    "passRateWithout": 0,
+    "delta": 0.08333333333333337
+   }
+  },
+  {
+   "name": "embed-at-build-time",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-main",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "code-stopwords",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "no-allow-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-allow-stopwords",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-disk-read",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 18,
+      "costUsd": 0.40222329999999995,
+      "judgeCostUsd": 0.03369349999999999,
+      "durationSeconds": 159,
+      "startedAt": "2026-10-25T13:39:50.639Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 20,
+      "costUsd": 0.44650030000000007,
+      "judgeCostUsd": 0.014235899999999996,
+      "durationSeconds": 175,
+      "startedAt": "2026-10-25T13:41:59.651Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.6666666666666666,
+      "passed": false,
+      "turns": 19,
+      "costUsd": 0.44327189999999994,
+      "judgeCostUsd": 0.020177699999999993,
+      "durationSeconds": 121,
+      "startedAt": "2026-10-25T13:42:18.120Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.6666666666666666,
+      "passed": false,
+      "turns": 13,
+      "costUsd": 0.2859499,
+      "judgeCostUsd": 0.010615299999999994,
+      "durationSeconds": 84,
+      "startedAt": "2026-10-25T13:42:29.173Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 16,
+      "costUsd": 0.3299620000000001,
+      "judgeCostUsd": 0.02024200000000001,
+      "durationSeconds": 155,
+      "startedAt": "2026-10-25T13:42:29.247Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.6666666666666666,
+      "passed": false,
+      "turns": 12,
+      "costUsd": 0.31010180000000004,
+      "judgeCostUsd": 0.011209799999999992,
+      "durationSeconds": 107,
+      "startedAt": "2026-10-25T13:43:53.553Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-allow-stopwords",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-disk-read",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.8333333333333334,
+    "passRate": 0.3333333333333333,
+    "scoreWithout": 0.7222222222222222,
+    "passRateWithout": 0,
+    "delta": 0.11111111111111116
+   }
+  },
+  {
+   "name": "layering-fix",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-machine",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "core-no-log-dep",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "layers-core-external-empty",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "layers-crates-unchanged",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "machine-no-log",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 24,
+      "costUsd": 0.5255464000000001,
+      "judgeCostUsd": 0.016262799999999994,
+      "durationSeconds": 179,
+      "startedAt": "2026-10-25T13:44:19.123Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 21,
+      "costUsd": 0.45897989999999994,
+      "judgeCostUsd": 0.03304170000000001,
+      "durationSeconds": 159,
+      "startedAt": "2026-10-25T13:44:54.681Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 21,
+      "costUsd": 0.46638250000000003,
+      "judgeCostUsd": 0.027075700000000008,
+      "durationSeconds": 148,
+      "startedAt": "2026-10-25T13:45:04.296Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 22,
+      "costUsd": 0.5057438,
+      "judgeCostUsd": 0.018167600000000034,
+      "durationSeconds": 143,
+      "startedAt": "2026-10-25T13:45:40.361Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 19,
+      "costUsd": 0.40484180000000003,
+      "judgeCostUsd": 0.01736879999999999,
+      "durationSeconds": 137,
+      "startedAt": "2026-10-25T13:47:18.606Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 20,
+      "costUsd": 0.4640524,
+      "judgeCostUsd": 0.014229400000000003,
+      "durationSeconds": 180,
+      "startedAt": "2026-10-25T13:47:32.508Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "core-no-log-dep",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-core-external-empty",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "layers-crates-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-log",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 1,
+    "passRate": 1,
+    "scoreWithout": 0.8333333333333334,
+    "passRateWithout": 0,
+    "delta": 0.16666666666666663
+   }
+  },
+  {
+   "name": "measure-a-change",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-measurements",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "record-4kib",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "record-table",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 14,
+      "costUsd": 0.5473407,
+      "judgeCostUsd": 0.028987899999999983,
+      "durationSeconds": 218,
+      "startedAt": "2026-10-25T13:47:34.021Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 15,
+      "costUsd": 0.4911342000000001,
+      "judgeCostUsd": 0.015408599999999995,
+      "durationSeconds": 181,
+      "startedAt": "2026-10-25T13:48:03.395Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 17,
+      "costUsd": 0.6069902000000001,
+      "judgeCostUsd": 0.02432180000000006,
+      "durationSeconds": 206,
+      "startedAt": "2026-10-25T13:49:35.515Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 15,
+      "costUsd": 0.42129,
+      "judgeCostUsd": 0.01718160000000002,
+      "durationSeconds": 143,
+      "startedAt": "2026-10-25T13:50:32.072Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 14,
+      "costUsd": 0.39265410000000006,
+      "judgeCostUsd": 0.014929500000000095,
+      "durationSeconds": 142,
+      "startedAt": "2026-10-25T13:51:04.680Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.75,
+      "passed": false,
+      "turns": 16,
+      "costUsd": 0.4287431000000002,
+      "judgeCostUsd": 0.012986500000000067,
+      "durationSeconds": 178,
+      "startedAt": "2026-10-25T13:51:11.675Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-measurements",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-4kib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "record-table",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.75,
+    "passRate": 0,
+    "scoreWithout": 0.75,
+    "passRateWithout": 0,
+    "delta": 0
+   }
+  },
+  {
+   "name": "no-std-port",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-clippy",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "code-lib",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "code-main",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "code-tests",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "regex-budgets-seams-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-keeps-workspace-lints",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-layers-role-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-main-uses-crate-hasher",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-default-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-io",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-typed-error",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 29,
+      "costUsd": 0.6560244000000002,
+      "judgeCostUsd": 0.017262800000000078,
+      "durationSeconds": 944,
+      "startedAt": "2026-10-25T13:52:55.146Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 39,
+      "costUsd": 0.9925782000000001,
+      "judgeCostUsd": 0.015760000000000107,
+      "durationSeconds": 782,
+      "startedAt": "2026-10-25T13:53:01.115Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 32,
+      "costUsd": 0.9010829,
+      "judgeCostUsd": 0.015330099999999958,
+      "durationSeconds": 1272,
+      "startedAt": "2026-10-25T13:53:26.634Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 35,
+      "costUsd": 0.8041459000000001,
+      "judgeCostUsd": 0.035121099999999905,
+      "durationSeconds": 1770,
+      "startedAt": "2026-10-25T13:54:09.745Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8461538461538461,
+      "passed": false,
+      "turns": 26,
+      "costUsd": 0.6437252000000001,
+      "judgeCostUsd": 0.025339799999999912,
+      "durationSeconds": 1050,
+      "startedAt": "2026-10-25T14:06:02.825Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9230769230769231,
+      "passed": false,
+      "turns": 33,
+      "costUsd": 0.8796869,
+      "judgeCostUsd": 0.01903110000000008,
+      "durationSeconds": 948,
+      "startedAt": "2026-10-25T14:08:39.134Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-clippy",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-tests",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-budgets-seams-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-keeps-workspace-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-layers-role-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-main-uses-crate-hasher",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-default-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-io",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-typed-error",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.9487179487179488,
+    "passRate": 0.3333333333333333,
+    "scoreWithout": 0.8974358974358975,
+    "passRateWithout": 0,
+    "delta": 0.05128205128205132
+   }
+  },
+  {
+   "name": "no-unsafe-simd",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-lib",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "regex-forbid-unsafe",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-lints-inherit",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-own-lints",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-quarantine",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-suppression",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-no-unsafe",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "regex-scan-still-core",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 41,
+      "costUsd": 1.6307618000000004,
+      "judgeCostUsd": 0.00985159999999996,
+      "durationSeconds": 503,
+      "startedAt": "2026-10-25T14:14:38.258Z",
+      "error": "exit 1: Reached maximum number of turns (40)",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 30,
+      "costUsd": 0.8018149999999999,
+      "judgeCostUsd": 0.014153000000000027,
+      "durationSeconds": 920,
+      "startedAt": "2026-10-25T14:23:00.844Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 46,
+      "costUsd": 1.6892307,
+      "judgeCostUsd": 0.012703499999999979,
+      "durationSeconds": 796,
+      "startedAt": "2026-10-25T14:23:32.839Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 27,
+      "costUsd": 0.9793239000000002,
+      "judgeCostUsd": 0.01417470000000004,
+      "durationSeconds": 873,
+      "startedAt": "2026-10-25T14:23:39.347Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 27,
+      "costUsd": 0.5971332,
+      "judgeCostUsd": 0.02004079999999997,
+      "durationSeconds": 920,
+      "startedAt": "2026-10-25T14:24:26.979Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9,
+      "passed": false,
+      "turns": 21,
+      "costUsd": 0.5049059000000001,
+      "judgeCostUsd": 0.010886500000000132,
+      "durationSeconds": 919,
+      "startedAt": "2026-10-25T14:36:48.416Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-lib",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-forbid-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-lints-inherit",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-own-lints",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-quarantine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-suppression",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-no-unsafe",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "regex-scan-still-core",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.9333333333333332,
+    "passRate": 0.3333333333333333,
+    "scoreWithout": 0.9,
+    "passRateWithout": 0,
+    "delta": 0.033333333333333215
+   }
+  },
+  {
+   "name": "own-dont-leak",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "bin-manifest-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "clippy-bans-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "code-buckets",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "code-main",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "no-clone-buckets",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-leak-buckets",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-leak-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-static-borrow-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-suppression-buckets",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-suppression-main",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 8,
+      "costUsd": 0.22102719999999992,
+      "judgeCostUsd": 0.014833799999999953,
+      "durationSeconds": 89,
+      "startedAt": "2026-10-25T14:38:12.265Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 13,
+      "costUsd": 0.3117113,
+      "judgeCostUsd": 0.010398900000000044,
+      "durationSeconds": 138,
+      "startedAt": "2026-10-25T14:38:20.776Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 11,
+      "costUsd": 0.24624300000000013,
+      "judgeCostUsd": 0.016970400000000108,
+      "durationSeconds": 89,
+      "startedAt": "2026-10-25T14:39:41.135Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 12,
+      "costUsd": 0.26899950000000006,
+      "judgeCostUsd": 0.018882300000000074,
+      "durationSeconds": 84,
+      "startedAt": "2026-10-25T14:39:47.428Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 8,
+      "costUsd": 0.22155790000000006,
+      "judgeCostUsd": 0.011427100000000023,
+      "durationSeconds": 84,
+      "startedAt": "2026-10-25T14:40:38.291Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 11,
+      "costUsd": 0.27033099999999993,
+      "judgeCostUsd": 0.010216199999999898,
+      "durationSeconds": 118,
+      "startedAt": "2026-10-25T14:41:10.120Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "bin-manifest-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "clippy-bans-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-clone-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-leak-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-static-borrow-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-buckets",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-main",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 1,
+    "passRate": 1,
+    "scoreWithout": 1,
+    "passRateWithout": 1,
+    "delta": 0
+   }
+  },
+  {
+   "name": "qa-kill-mutants",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-percent",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "mutants-config",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-skip-or-ignore",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-source-read",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "through-unchanged",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 13,
+      "costUsd": 0.3173748000000002,
+      "judgeCostUsd": 0.008217800000000164,
+      "durationSeconds": 378,
+      "startedAt": "2026-10-25T14:41:11.355Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 12,
+      "costUsd": 0.3173418000000001,
+      "judgeCostUsd": 0.009455800000000125,
+      "durationSeconds": 564,
+      "startedAt": "2026-10-25T14:42:02.042Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 13,
+      "costUsd": 0.3323516,
+      "judgeCostUsd": 0.014280799999999982,
+      "durationSeconds": 514,
+      "startedAt": "2026-10-25T14:43:08.406Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 11,
+      "costUsd": 0.27627670000000015,
+      "judgeCostUsd": 0.0113989000000001,
+      "durationSeconds": 667,
+      "startedAt": "2026-10-25T14:47:28.881Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 12,
+      "costUsd": 0.27527700000000016,
+      "judgeCostUsd": 0.0162308000000001,
+      "durationSeconds": 436,
+      "startedAt": "2026-10-25T14:51:25.837Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8333333333333334,
+      "passed": false,
+      "turns": 11,
+      "costUsd": 0.28011280000000005,
+      "judgeCostUsd": 0.008209600000000039,
+      "durationSeconds": 893,
+      "startedAt": "2026-10-25T14:51:41.973Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-percent",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "mutants-config",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-skip-or-ignore",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-source-read",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "through-unchanged",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.9444444444444445,
+    "passRate": 0.6666666666666666,
+    "scoreWithout": 0.888888888888889,
+    "passRateWithout": 0.3333333333333333,
+    "delta": 0.05555555555555558
+   }
+  },
+  {
+   "name": "research-note",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-note",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "domain-no-std-feature",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "domain-still-no-std",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "manifest-hash-kept",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "manifest-one-source",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "note-cites-cargo",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 0.5714285714285714,
+      "passed": false,
+      "turns": 44,
+      "costUsd": 2.2392595999999996,
+      "judgeCostUsd": 0.01760560000000011,
+      "durationSeconds": 735,
+      "startedAt": "2026-10-25T14:52:07.239Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.5714285714285714,
+      "passed": false,
+      "turns": 48,
+      "costUsd": 1.9776548,
+      "judgeCostUsd": 0.02210280000000009,
+      "durationSeconds": 829,
+      "startedAt": "2026-10-25T14:58:36.035Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.7142857142857143,
+      "passed": false,
+      "turns": 6,
+      "costUsd": 2.2374878,
+      "judgeCostUsd": 0.014717999999999898,
+      "durationSeconds": 672,
+      "startedAt": "2026-10-25T14:58:41.532Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 0.8571428571428571,
+      "passed": false,
+      "turns": 24,
+      "costUsd": 0.8438176,
+      "judgeCostUsd": 0.014023000000000008,
+      "durationSeconds": 268,
+      "startedAt": "2026-10-25T15:04:22.394Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 25,
+      "costUsd": 0.9116722000000002,
+      "judgeCostUsd": 0.014927800000000047,
+      "durationSeconds": 325,
+      "startedAt": "2026-10-25T15:06:35.074Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.8571428571428571,
+      "passed": false,
+      "turns": 19,
+      "costUsd": 0.8362250000000002,
+      "judgeCostUsd": 0.014540600000000015,
+      "durationSeconds": 258,
+      "startedAt": "2026-10-25T15:08:50.159Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-note",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-no-std-feature",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "domain-still-no-std",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-hash-kept",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "manifest-one-source",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "note-cites-cargo",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 0.6190476190476191,
+    "passRate": 0,
+    "scoreWithout": 0.9047619047619048,
+    "passRateWithout": 0.3333333333333333,
+    "delta": -0.2857142857142857
+   }
+  },
+  {
+   "name": "sans-io-retry",
+   "source": "mixed",
+   "runsPerCase": 3,
+   "timeoutSeconds": 900,
+   "maxTurns": 40,
+   "graders": [
+    {
+     "name": "code-chunk-invariance",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "code-machine",
+     "type": "llm",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "entry-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "event-no-clock",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "event-retry-millis",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "event-upstream-failed",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "machine-no-clock",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "main-prints-retry",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-suppression-chunk-invariance",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-suppression-machine",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "no-suppression-quantity",
+     "type": "regex",
+     "weight": 1,
+     "config": {}
+    },
+    {
+     "name": "skill-fired",
+     "type": "tool_used",
+     "weight": 1,
+     "config": {
+      "tool": "Skill",
+      "arm": "with-only"
+     }
+    },
+    {
+     "name": "verified",
+     "type": "llm",
+     "weight": 1,
+     "config": {
+      "focus": "trace"
+     }
+    }
+   ],
+   "arms": {
+    "with": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 47,
+      "costUsd": 1.3354176,
+      "judgeCostUsd": 0.019764400000000015,
+      "durationSeconds": 726,
+      "startedAt": "2026-10-25T15:09:53.918Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": false,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 36,
+      "costUsd": 1.2367182000000008,
+      "judgeCostUsd": 0.03220940000000028,
+      "durationSeconds": 826,
+      "startedAt": "2026-10-25T15:11:59.833Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 51,
+      "costUsd": 1.3629316,
+      "judgeCostUsd": 0.014226399999999972,
+      "durationSeconds": 486,
+      "startedAt": "2026-10-25T15:12:25.029Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "entry-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "skill-fired",
+        "passed": true,
+        "weight": 1,
+        "withOnly": true,
+        "scored": false
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ],
+    "without": [
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 43,
+      "costUsd": 1.2279207000000003,
+      "judgeCostUsd": 0.02379790000000026,
+      "durationSeconds": 746,
+      "startedAt": "2026-10-25T15:13:07.715Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 0.9090909090909091,
+      "passed": false,
+      "turns": 28,
+      "costUsd": 0.8073939000000002,
+      "judgeCostUsd": 0.019327500000000053,
+      "durationSeconds": 936,
+      "startedAt": "2026-10-25T15:20:31.188Z",
+      "error": "timed out after 900s",
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": false,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     },
+     {
+      "score": 1,
+      "passed": true,
+      "turns": 48,
+      "costUsd": 1.3817515,
+      "judgeCostUsd": 0.02016910000000005,
+      "durationSeconds": 689,
+      "startedAt": "2026-10-25T15:21:59.942Z",
+      "error": null,
+      "skippedPaidGraders": false,
+      "graders": [
+       {
+        "name": "code-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "code-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-retry-millis",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "event-upstream-failed",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "machine-no-clock",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "main-prints-retry",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-chunk-invariance",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-machine",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "no-suppression-quantity",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       },
+       {
+        "name": "verified",
+        "passed": true,
+        "weight": 1,
+        "withOnly": false,
+        "scored": true
+       }
+      ]
+     }
+    ]
+   },
+   "aggregates": {
+    "score": 1,
+    "passRate": 1,
+    "scoreWithout": 0.9696969696969697,
+    "passRateWithout": 0.6666666666666666,
+    "delta": 0.030303030303030276
+   }
+  }
+ ],
+ "aggregates": {
+  "casesTotal": 10,
+  "casesPassed": 3,
+  "overallScore": 0.8612210012210013,
+  "overallPassRate": 0.4666666666666666,
+  "meanDelta": 0.024587079587079584
+ }
+}

@@ -40,7 +40,9 @@ use std::time::{Duration, Instant};
 
 use anyhow::{Context, Result, bail, ensure};
 
+mod merge;
 mod plugin;
+mod state;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -102,6 +104,16 @@ enum Mode {
     Model,
     /// The plugin's own structure (`plugin.rs`); no case, no model.
     Plugin,
+    /// A `claude plugin eval` result rescored by `merge.rs`'s rules: every
+    /// score they do not reproduce. No model.
+    Rescore,
+    /// A with-arm-only result beside a baseline's without arm (`merge.rs`).
+    Merge,
+    /// Each run's time and one grader's evidence (`merge.rs`).
+    Evidence,
+    /// What each run of a `--keep-temp` suite left, kept; its directory
+    /// removed (`state.rs`).
+    Harvest,
 }
 
 #[derive(Debug)]
@@ -110,6 +122,8 @@ struct Opts {
     case: Option<String>,
     runs: usize,
     model: Option<String>,
+    /// The result files of `--rescore` and `--merge`.
+    files: Vec<PathBuf>,
 }
 
 fn opts() -> Result<Opts> {
@@ -119,6 +133,7 @@ fn opts() -> Result<Opts> {
         case: None,
         runs: 2,
         model: None,
+        files: Vec::new(),
     };
     let mut it = args.iter();
     while let Some(a) = it.next() {
@@ -130,6 +145,28 @@ fn opts() -> Result<Opts> {
             "--case" => o.case = Some(val()?.clone()),
             "--runs" => o.runs = val()?.parse()?,
             "--model" => o.model = Some(val()?.clone()),
+            "--rescore" => {
+                o.mode = Mode::Rescore;
+                o.files = vec![PathBuf::from(val()?)];
+            }
+            "--merge" => {
+                o.mode = Mode::Merge;
+                for _ in 0..3 {
+                    o.files.push(PathBuf::from(val()?));
+                }
+            }
+            "--evidence" => {
+                o.mode = Mode::Evidence;
+                for _ in 0..2 {
+                    o.files.push(PathBuf::from(val()?));
+                }
+            }
+            "--harvest" => {
+                o.mode = Mode::Harvest;
+                for _ in 0..3 {
+                    o.files.push(PathBuf::from(val()?));
+                }
+            }
             other => bail!("unknown option `{other}`"),
         }
     }
@@ -487,17 +524,40 @@ fn main() -> ExitCode {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
     let result = opts().and_then(|o| {
         let root = root.canonicalize().context("finding the repository root")?;
-        if o.mode == Mode::Plugin {
-            return Ok(if plugin::run(&root)? == 0 {
+        let ok = |pass: bool| {
+            if pass {
                 ExitCode::SUCCESS
             } else {
                 ExitCode::FAILURE
-            });
-        }
-        let cases = cases(&root, o.case.as_ref())?;
-        match o.mode {
-            Mode::Control | Mode::Solution => run_control(&root, &cases, o.mode),
-            Mode::Model | Mode::Plugin => run_models(&root, &cases, &o),
+            }
+        };
+        match (o.mode, o.files.as_slice()) {
+            (Mode::Plugin, _) => Ok(ok(plugin::run(&root)? == 0)),
+            (Mode::Rescore, [file]) => Ok(ok(merge::run_rescore(file)?)),
+            (Mode::Merge, [with, baseline, out]) => {
+                merge::run_merge(with, baseline, out)?;
+                Ok(ExitCode::SUCCESS)
+            }
+            (Mode::Evidence, [file, grader]) => {
+                merge::run_evidence(file, &grader.to_string_lossy())?;
+                Ok(ExitCode::SUCCESS)
+            }
+            (Mode::Harvest, [result, state_dir, export]) => {
+                let run_root = std::env::var_os("PE_RUN_ROOT")
+                    .map_or_else(|| PathBuf::from("/private/tmp"), PathBuf::from);
+                let unseal = std::env::var_os("PE_UNSEAL").is_some_and(|v| v == "1");
+                state::run_harvest(result, state_dir, export, &run_root, unseal)?;
+                Ok(ExitCode::SUCCESS)
+            }
+            (Mode::Rescore | Mode::Merge | Mode::Evidence | Mode::Harvest, _) => {
+                bail!(
+                    "--rescore takes one file, --merge three, --evidence a file and a grader, --harvest three"
+                )
+            }
+            (Mode::Control | Mode::Solution, _) => {
+                run_control(&root, &cases(&root, o.case.as_ref())?, o.mode)
+            }
+            (Mode::Model, _) => run_models(&root, &cases(&root, o.case.as_ref())?, &o),
         }
     });
     match result {
@@ -512,6 +572,22 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The shell half of the harness (lib.sh, plugin-eval.sh) checks itself
+    /// in test.sh; this runs it, so `cargo test` covers both halves.
+    #[test]
+    fn the_shell_scripts_pass_their_own_checks() {
+        let out = Command::new("sh")
+            .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("test.sh"))
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
 
     #[test]
     fn a_delta_inside_the_spread_is_no_result() {

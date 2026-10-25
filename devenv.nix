@@ -335,9 +335,11 @@ in
     # The plugin holds together on every machine and on claude.ai: skill names
     # match folders, frontmatter is what claude.ai accepts, descriptions are
     # quoted (YAML cuts an unquoted one at ` #`), files stay within their line
-    # limits, and no link leaves its skill (eval-harness/src/plugin.rs).
+    # limits, and no link leaves its skill (eval-harness/src/plugin.rs). The
+    # harness's own tests run first: they are the only check on the eval
+    # runner's scripts and scoring (eval-harness/test.sh, src/merge.rs).
     "test:plugin" = {
-      exec = "cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --plugin";
+      exec = "cargo test --quiet --manifest-path eval-harness/Cargo.toml && cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --plugin";
       after = [ "test:snippets" ];
     };
 
@@ -381,8 +383,17 @@ in
     # export of HEAD (eval-harness/plugin-eval.sh says why). Real model calls:
     # manual only. For other options (one case, a model, a cost ceiling) run
     # the script itself: `sh eval-harness/plugin-eval.sh --case own-dont-leak`.
-    "eval:plugin" = {
+    # Full: every case, each case's runs, both arms; the numbers to report.
+    # -j 4: 8 fixed-command sessions took 82-130 s at -j 8 and 97-124 s at
+    # -j 4: no gain its spread could separate (README, Evals).
+    "eval:full" = {
       exec = "sh eval-harness/plugin-eval.sh -j 4 --no-publish";
+    };
+
+    # Smoke: the cases whose prompt.md tags them smoke, one run per
+    # arm, -j 8 -- one wave. For iterating; never reported as a result.
+    "eval:smoke" = {
+      exec = "sh eval-harness/plugin-eval.sh --tag smoke --runs 1 -j 8 --no-publish";
     };
 
     # The graders themselves: each must pass on the reference solution and fail
