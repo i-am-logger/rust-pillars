@@ -9,9 +9,6 @@ all-features = true
 [licenses]
 # Every license a dependency may carry. A new one is a reviewed change here.
 allow = [
-  # The workspace's own crates: [licenses.private] below only covers crates
-  # that are never published, and these may be.
-  "CC-BY-NC-SA-4.0",
   "MIT",
   "Apache-2.0",
   "Apache-2.0 WITH LLVM-exception",
@@ -24,6 +21,23 @@ allow = [
   "MPL-2.0",
 ]
 confidence-threshold = 0.9
+
+# The workspace's own licence, CC-BY-NC-SA-4.0, is allowed for its own crates
+# only, never graph-wide: a dependency under a NonCommercial licence is a
+# reviewed change, not a pass. xtask and eval-harness are `publish = false`,
+# which [licenses.private] below covers; the crates under crates/ set no
+# `publish`, so each is named here.
+[[licenses.exceptions]]
+crate = "rust-code"
+allow = ["CC-BY-NC-SA-4.0"]
+
+[[licenses.exceptions]]
+crate = "rust-code-core"
+allow = ["CC-BY-NC-SA-4.0"]
+
+[[licenses.exceptions]]
+crate = "rust-code-domain"
+allow = ["CC-BY-NC-SA-4.0"]
 
 [licenses.private]
 ignore = true
