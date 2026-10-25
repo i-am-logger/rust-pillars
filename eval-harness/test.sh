@@ -298,6 +298,11 @@ same "a suite run hands its sessions the job cap for its -j" "$(pe_job_cap "$(pe
 pe -j 4 --json "$scratch/r1.json" >/dev/null
 pe -j 4 --json "$scratch/r2.json" >/dev/null
 pe -j 8 --json "$scratch/r3.json" >/dev/null
+(cd "$scratch" && pe -j 4 --json rel.json >/dev/null)
+same "a relative --json is the caller's, and its keys sit beside it" yes \
+  "$([ -s "$scratch/rel.keys" ] && echo yes)"
+same "and the runner is given it absolute" yes \
+  "$(cd "$scratch" && pe --json rel.json | grep -qx "arg=$(cd "$scratch" && pwd)/rel.json" && echo yes)"
 same "a run writes a key per case beside its result" "layering-fix own-dont-leak" \
   "$(cut -d' ' -f1 "$scratch/r1.keys" 2>/dev/null | sort | tr '\n' ' ' | sed 's/ $//')"
 same "the same run gets the same keys" "$(cat "$scratch/r1.keys" 2>/dev/null)" "$(cat "$scratch/r2.keys" 2>/dev/null)"

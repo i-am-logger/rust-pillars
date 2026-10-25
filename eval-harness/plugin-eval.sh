@@ -12,10 +12,16 @@
 # `git archive`, vendors every dependency any case can need -- the starting
 # state and the reference solution of each -- and sets cargo offline, so the
 # agent can build, lint and test exactly as it would at home. The export is
-# kept per commit, so the vendoring is paid once.
+# kept per commit; the vendoring and a prebuilt target are kept per content
+# key, so a commit that changes neither reuses both.
 #
-#   sh eval-harness/plugin-eval.sh [claude plugin eval options...]
+#   sh eval-harness/plugin-eval.sh [--keep-state] [--changed-since REV]
+#       [--reuse-baseline BASELINE.json OUT.json] [claude plugin eval options...]
 #   sh eval-harness/plugin-eval.sh --graders
+#   sh eval-harness/plugin-eval.sh --probe NAME CMDFILE [options...]
+#
+# The suite-run options are described where they are read, below; README.md
+# (Evals) says how to run each tier.
 #
 # --graders checks the graders, not the plugin: in a suite generated beside
 # the export, a haiku agent told to do nothing works once on the reference
@@ -28,6 +34,23 @@ set -eu
 repo=$(cd "$(dirname "$0")/.." && pwd)
 # shellcheck disable=SC1091 # lib.sh is checked as a file of its own
 . "$repo/eval-harness/lib.sh"
+# Output paths the caller gives relative to where it stands: made absolute,
+# since the runner runs in the export and the keys go beside the result.
+n=$#
+prev=""
+for a in "$@"; do
+  case $prev in
+  --json | --output-dir | --report)
+    case $a in
+    /* | -*) ;;
+    *) a=$PWD/$a ;;
+    esac
+    ;;
+  esac
+  set -- "$@" "$a"
+  prev=$a
+done
+shift "$n"
 cd "$repo"
 sha=$(git rev-parse --short HEAD)
 if [ -n "$(git status --porcelain -- evals skills commands agents hooks .claude-plugin crates xtask)" ]; then
