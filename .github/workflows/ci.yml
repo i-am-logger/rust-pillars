@@ -128,6 +128,10 @@ jobs:
           # hash has to live here.
           shared-key: devenv-${{ hashFiles('devenv.lock') }}
           workspaces: ". -> target"
+          # Restore everywhere, save only on master, as for the nix store
+          # above: a PR's save is scoped to its own ref, so it only spends
+          # the 10GB repo budget and evicts master's entries.
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Run format & lint checks
         run: devenv test
@@ -140,6 +144,9 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
     permissions:
       contents: read
+      # Codecov upload by OIDC: a short-lived token minted for this job, so
+      # no Codecov secret is stored. This job only.
+      id-token: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -150,6 +157,8 @@ jobs:
       - name: Install the stable toolchain
         run: rustup toolchain install stable --profile minimal --component llvm-tools-preview && rustup default stable
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
       - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
         with:
           tool: cargo-llvm-cov
@@ -158,8 +167,15 @@ jobs:
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           files: lcov.info
+          # Upload lcov.info only. The search otherwise also picked up
+          # xtask/src/coverage.rs, a source file, by its name.
+          disable_search: true
+          # Codecov rejects uploads for this repository while it is private,
+          # and that is not a failure of the code. Set this to true once the
+          # repository is public and the upload is seen succeeding, so a dead
+          # integration shows red rather than green.
           fail_ci_if_error: false
 
   # Tags vX.Y.Z and creates the GitHub release when a Release PR has been
