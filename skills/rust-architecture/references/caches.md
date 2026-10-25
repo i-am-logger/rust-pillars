@@ -186,8 +186,8 @@ pub const fn row_pitch(row: RowBytes, geo: CacheGeometry) -> Pitch {
 ## Bounded interning
 
 - Use power-of-two open addressing indexed by the *high* bits of a Fibonacci
-  hash: the low bits of `k * C mod 2^w` depend only on the low bits of `k`,
-  so keys that differ only in their high bits collide there.
+  hash: a multiplicative hash mixes into its high bits, and its low bits
+  repeat the low bits of the key, so keys that differ only higher up collide.
 - Inline the hit path. Put the miss path in a `#[cold] #[inline(never)]` fn.
 - Sweep tombstones before evicting.
 - Keep a write log so downstream consumers update incrementally.
@@ -205,9 +205,8 @@ pub const fn row_pitch(row: RowBytes, geo: CacheGeometry) -> Pitch {
 
 - Function placement alone can move a timing: identical code laid out at
   different addresses straddles fetch and cache-line boundaries differently.
-  When hot code is near a change, build every arm with the same
-  `-C llvm-args=-align-all-functions=6` against that noise (the
-  `rust-measure` skill).
+  Build every arm with `-C llvm-args=-align-all-functions=6` against that
+  noise (the `rust-measure` skill).
 - Data that nothing reads still moves the code and data after it, so adding
   it can change a hot loop's timing.
 - Rule: a timing delta smaller than the placement noise is no result. The

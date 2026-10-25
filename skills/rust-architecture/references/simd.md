@@ -165,8 +165,8 @@ fn the_neon_backend_agrees_with_the_spec_on_every_block() {
 }
 ```
 
-- The `#![cfg]` means this test does not exist on x86 CI, and a comparison
-  that skips itself reads as a pass.
+- The `#![cfg]` means this test does not exist on x86 CI, and "a comparison
+  that skips itself reads as a pass".
 - So list each platform-specific test with the CI job that runs it. The
   `platform-tests.toml` gate is planned; see the `rust-qa` skill. Each backend
   needs a runner of its own architecture.
