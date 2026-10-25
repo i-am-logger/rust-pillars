@@ -236,6 +236,15 @@ fn docs_cases(t: &Targets) -> Vec<Case> {
             cmd: cmd("cargo xtask docs"),
             reason: "over its budget".into(),
         },
+        Case {
+            name: "a plugin version that is not the workspace's",
+            edits: vec![Edit::Write(
+                ".claude-plugin/plugin.json".into(),
+                "{\"name\": \"planted\", \"version\": \"0.0.0-planted\"}\n".into(),
+            )],
+            cmd: cmd("cargo xtask docs"),
+            reason: "states version 0.0.0-planted".into(),
+        },
     ]
 }
 

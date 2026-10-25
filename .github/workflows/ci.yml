@@ -8,15 +8,16 @@ on:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  # master is exempt: it is the only ref that publishes, and release-plz
-  # publishes, tags and creates a GitHub release as separate steps. A cancel
-  # between them cannot be undone, so master runs queue instead.
+  # master is exempt: it is the only ref that releases, and release-plz tags
+  # and creates the GitHub release as separate steps. A cancel between them
+  # leaves a tag with no release, so master runs queue instead.
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
+# Read-only by default. Each job asks for what it needs and no more: the jobs
+# that run the repository's code (and every dependency's build script) never
+# hold a token that can push.
 permissions:
-  contents: write
-  pull-requests: write
-  actions: write
+  contents: read
 
 # `devenv-checks` runs `devenv test`, the same command a developer runs locally,
 # so the workflow is a thin wrapper over the tasks."test:*" set in devenv.nix.
@@ -42,24 +43,42 @@ jobs:
       # downloads every run. Set here rather than in Cargo.toml so a local build
       # keeps its debugger.
       CARGO_PROFILE_DEV_DEBUG: "0"
-    # Skip on release-plz's own Release PR and on the release commit it merges:
-    # both touch only Cargo.toml versions and CHANGELOG.md, and the checks
-    # already passed on the underlying commits.
+    permissions:
+      contents: read
+      # cache-nix-action's `purge:` deletes master's superseded nix caches
+      # through the Actions API, which needs this. The token goes to that
+      # action as an input, not to the run steps: checkout below does not
+      # persist it. A fork PR's token is read-only whatever this says.
+      actions: write
+    # Skip only on release-plz's own Release PR: it touches versions and
+    # CHANGELOG.md, and the checks passed on the commits it releases. Who
+    # opened the PR decides, never its title, which any author can set: the
+    # Actions bot, from a release-plz- branch of this repository (release-plz's
+    # default `pr_branch_prefix`). A PR opened with another token -- a GitHub
+    # App's, say -- has another login and is checked like any other.
+    #
+    # A push to master is never skipped. The release commit is checked like
+    # any other, and Release below runs only if it passed.
     if: |
       !(
-        (github.event_name == 'pull_request' && startsWith(github.event.pull_request.title, 'chore: release')) ||
-        (github.event_name == 'push' && startsWith(github.event.head_commit.message, 'chore: release'))
+        github.event_name == 'pull_request' &&
+        github.event.pull_request.user.login == 'github-actions[bot]' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        startsWith(github.head_ref, 'release-plz-')
       )
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # test:mutants-diff mutates the lines changed since the merge base
           # with the default branch; a shallow clone has no merge base.
           fetch-depth: 0
+          # `devenv test` runs the repository's code and its dependencies'
+          # build scripts; none of them needs to reach the remote.
+          persist-credentials: false
 
       - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@v22
+        uses: DeterminateSystems/nix-installer-action@ef8a148080ab6020fd15196c2084a2eea5ff2d25 # v22
         with:
           extra-conf: |
             extra-substituters = https://nix-community.cachix.org https://cache.nixos.org https://devenv.cachix.org
@@ -67,7 +86,7 @@ jobs:
 
       # The nix store: devenv, the rust toolchain, and every build input.
       - name: Restore and save Nix store
-        uses: nix-community/cache-nix-action@v7
+        uses: nix-community/cache-nix-action@7df957e333c1e5da7721f60227dbba6d06080569 # v7.0.2
         with:
           primary-key: nix-${{ runner.os }}-${{ hashFiles('**/*.nix', 'devenv.lock') }}
           # No lock hash in the prefix, so a lockfile bump still restores the
@@ -98,7 +117,7 @@ jobs:
 
       # ~/.cargo and ./target.
       - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           # cmd-format runs rust-cache's `rustc -vV` and `cargo metadata` probes
           # through devenv, so the key tracks the toolchain that actually
@@ -109,6 +128,10 @@ jobs:
           # hash has to live here.
           shared-key: devenv-${{ hashFiles('devenv.lock') }}
           workspaces: ". -> target"
+          # Restore everywhere, save only on master, as for the nix store
+          # above: a PR's save is scoped to its own ref, so it only spends
+          # the 10GB repo budget and evicts master's entries.
+          save-if: ${{ github.ref == 'refs/heads/master' }}
 
       - name: Run format & lint checks
         run: devenv test
@@ -119,40 +142,60 @@ jobs:
     needs: [devenv-checks]
     timeout-minutes: 30
     if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    permissions:
+      contents: read
+      # Codecov upload by OIDC: a short-lived token minted for this job, so
+      # no Codecov secret is stored. This job only.
+      id-token: write
     steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          components: llvm-tools-preview
-      - uses: Swatinem/rust-cache@v2
-      - uses: taiki-e/install-action@cargo-llvm-cov
+          persist-credentials: false
+      # rustup ships on the runner image. dtolnay/rust-toolchain publishes no
+      # versioned release to pin to a commit, so the toolchain comes from
+      # rustup directly rather than from a branch-tracking action.
+      - name: Install the stable toolchain
+        run: rustup toolchain install stable --profile minimal --component llvm-tools-preview && rustup default stable
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/master' }}
+      - uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.87.31
+        with:
+          tool: cargo-llvm-cov
       - name: Generate coverage
         run: cargo llvm-cov --lcov --output-path lcov.info
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v7
+        uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           files: lcov.info
+          # Upload lcov.info only. The search otherwise also picked up
+          # xtask/src/coverage.rs, a source file, by its name.
+          disable_search: true
+          # Codecov rejects uploads for this repository while it is private,
+          # and that is not a failure of the code. Set this to true once the
+          # repository is public and the upload is seen succeeding, so a dead
+          # integration shows red rather than green.
           fail_ci_if_error: false
 
-  # Publishes to crates.io, tags, and creates the GitHub release when a Release
-  # PR has been merged. `release_always = false` in release-plz.toml means this
-  # is a no-op on an ordinary feature merge — merging the Release PR is the act
-  # that authorises a publish.
+  # Tags vX.Y.Z and creates the GitHub release when a Release PR has been
+  # merged; nothing goes to crates.io (release-plz.toml). `release_always =
+  # false` means this is a no-op on an ordinary feature merge -- merging the
+  # Release PR is the act that authorises a release.
   release-plz-release:
     name: Release
     runs-on: ubuntu-latest
     needs: [devenv-checks]
     timeout-minutes: 30
-    # `!cancelled()`, not `always()`: this job publishes to an IMMUTABLE
-    # registry, so running it from a cancelled workflow is the one thing that
-    # cannot be undone. `skipped` is accepted because devenv-checks skips on
-    # the release commit itself (see its `if`).
+    # `!cancelled()`, not `always()`: a tag and a release are public the moment
+    # they exist, so this never runs from a cancelled workflow. Only `success`
+    # counts: devenv-checks never skips on a
+    # push, so a skipped or failed check means nothing was proven.
     if: |
       !cancelled() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master' &&
-      (needs.devenv-checks.result == 'success' || needs.devenv-checks.result == 'skipped')
+      needs.devenv-checks.result == 'success'
     permissions:
       contents: write
       pull-requests: read
@@ -160,19 +203,22 @@ jobs:
       releases_created: ${{ steps.release-plz.outputs.releases_created }}
       releases: ${{ steps.release-plz.outputs.releases }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # release-plz diffs against the previous tag, so it needs full history.
           fetch-depth: 0
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: release-plz/action@v0.5.131
+      - name: Install the stable toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5.146
         id: release-plz
         with:
           command: release
+          # The release-plz whose config docs release-plz.toml was written
+          # against; also this action version's default.
+          version: 0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   # Opens/updates the Release PR that bumps the version and writes CHANGELOG.md.
   # MUST run after release-plz-release — see the anti-loop note at the top.
@@ -181,14 +227,22 @@ jobs:
     runs-on: ubuntu-latest
     needs: [devenv-checks, release-plz-release]
     timeout-minutes: 20
-    # Requires Release to have SUCCEEDED: a failed publish leaves no new tag,
+    # Requires Release to have SUCCEEDED: a failed release leaves no new tag,
     # which would re-trigger the same redundant-PR loop. On an ordinary feature
     # merge Release succeeds as a no-op, so this never blocks the first PR.
+    #
+    # Off until the repository variable RELEASE_PR is 'true'. Opening a PR
+    # with the workflow token needs the owner's repository setting "Allow
+    # GitHub Actions to create and approve pull requests" (Settings > Actions >
+    # General). Without it release-plz pushes its branch, then fails with a
+    # 403 on the PR, leaving master red and a stray release-plz-* branch on
+    # every push. Turn the setting on first, then set the variable.
     if: |
+      vars.RELEASE_PR == 'true' &&
       !cancelled() &&
       github.event_name == 'push' &&
       github.ref == 'refs/heads/master' &&
-      (needs.devenv-checks.result == 'success' || needs.devenv-checks.result == 'skipped') &&
+      needs.devenv-checks.result == 'success' &&
       needs.release-plz-release.result == 'success'
     permissions:
       contents: write
@@ -197,15 +251,16 @@ jobs:
       group: release-plz-pr-${{ github.ref }}
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: release-plz/action@v0.5.131
+      - name: Install the stable toolchain
+        run: rustup toolchain install stable --profile minimal && rustup default stable
+      - uses: release-plz/action@b2baf303c463c223526d52a8a91b0777f052cf3f # v0.5.146
         id: release-plz
         with:
           command: release-pr
+          version: 0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

@@ -31,7 +31,8 @@ cargo xtask <gate>
   layers    pillar 3: every dependency edge against layers.toml
   budgets   pillars 1, 4, 6: counted constructs against budgets.toml
             (--print shows the current counts)
-  docs      links, named paths, compile_fail twins, the CLAUDE.md budget
+  docs      links, named paths, compile_fail twins, the CLAUDE.md budget,
+            the plugin manifest's version against the workspace's
   sources   the research sources manifest and every source citation
   tests     tests that can fail: no skips, exact floors, listed ignores
   coverage  every public fn of domain and core is called by some test

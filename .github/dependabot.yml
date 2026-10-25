@@ -1,0 +1,32 @@
+# Version updates. Every action is pinned to a commit with its release in a
+# comment (ci.yml, scorecard.yml); Dependabot moves the commit and the comment
+# together, so the pins do not rot.
+#
+# https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    # A new release waits this long before it is proposed, so a hijacked tag
+    # has time to be noticed and pulled first. A judgement, not a measurement.
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The workspace, and the eval harness, which is a workspace of its own with
+  # its own Cargo.lock.
+  - package-ecosystem: cargo
+    directories:
+      - /
+      - /eval-harness
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      cargo:
+        patterns: ["*"]
