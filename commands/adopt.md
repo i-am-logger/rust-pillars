@@ -25,8 +25,7 @@ file written and other command asks.
    not agree, stop here: copy nothing.
 3. Bring in the gates from rust-template: `xtask/`, `.cargo/config.toml`'s
    `xtask` alias, `clippy.toml` and the crate-local ones for domain and core,
-   `[workspace.lints]`, `deny.toml`, and the devenv tasks, with rust-template's
-   licence notice beside them. Show the diff.
+   `[workspace.lints]`, `deny.toml`, and the devenv tasks. Show the diff.
 4. Run `cargo xtask init` (every budget 0, so every violation fails a gate --
    what adopting the pillars means) or, with `--ratchet` in `$ARGUMENTS`,
    `cargo xtask init --ratchet` (today's counts, which may only shrink).
