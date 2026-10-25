@@ -1,12 +1,11 @@
-# rust-pillars
+# rust-code
 
-rust-pillars is a Claude Code plugin that teaches Claude how to write Rust. It
-follows the style of BeautifulRust (morganlinton, MIT, commit 6b3a96c), with
-two differences. First, its rules are enforced by the gates of the companion
-template rust-template (`devenv test`, the same tasks CI runs), not just
-written down. The gates are on rust-template's `feat/pillars` branch, not its
-master; the table below was checked against that branch's head at commit
-`a076f93`, and the branch can move on. Second, it is split into six skills whose short SKILL.md files load
+rust-code is a Claude Code plugin that teaches Claude how to write Rust in the
+owner's projects. It follows the style of BeautifulRust (morganlinton, MIT,
+commit 6b3a96c), with two differences. First, its rules are enforced by the
+gates of the companion template rust-template (`devenv test`, the same tasks CI
+runs; checked at branch `feat/pillars`, commit `d3b9d83`), not just written
+down. Second, it is split into six skills whose short SKILL.md files load
 reference files only when a task needs them. Each rule names its reason and the
 gate that holds it, or says "review" when no gate does. Where a rule leaves
 BeautifulRust or a guideline, it says "DEPARTS from <source>: <why>". Every
@@ -33,13 +32,13 @@ fact carries a label: measured, by-reading or inferred.
 | rust-idioms | everyday idiom adapted from BeautifulRust and scoped per crate role; errors, suppressions, naming, docs | `test:clippy` (`-D warnings`, `allow_attributes`), budgets `expect_attr`, `test:doc` |
 
 Every skill stands alone: none needs a skill this plugin does not ship, and
-none links outside its own folder. The `rust-pillars` skill fires on any Rust
+none links outside its own folder. The `rust-code` skill fires on any Rust
 work and routes to the one the task needs.
 
 ## Which skill owns what
 
 Each rule lives in one skill, and the others point to it:
-- the hand-back checklist and which skill to load: rust-pillars
+- the hand-back checklist and which skill to load: rust-code
 - domain types: rust-domain
 - layering, sans-IO, zero-copy, caches, `no_std` and `unsafe`: rust-architecture
 - error types, lint suppression and general idiom: rust-idioms
@@ -47,5 +46,5 @@ Each rule lives in one skill, and the others point to it:
 - tests and the code-side refuter: rust-qa
 - research, judges, records and the verdict schema: rust-research
 
-A "planned" gate is in the rust-pillars plan but not yet in the template. Never
+A "planned" gate is in the rust-code plan but not yet in the template. Never
 cite one as passing.
