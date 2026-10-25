@@ -8,8 +8,10 @@
 //! written by `plugin-eval.sh` beside each result as `<result>.keys` -- is the
 //! same in both runs: the key covers everything the without arm depends on
 //! (what the scaffold copies, the case's prompt, graders, fixture and
-//! solution, the captured toolchain, the pinned model and judge, the claude
-//! version, the job caps).
+//! solution, the captured toolchain, the claude version, the job cap, and
+//! every runner argument that can change a run -- model, judge, `--runs`,
+//! tools, cost ceiling, mocks, case selection, concurrency -- but where the
+//! result goes and `--ablation`: lib.sh, `pe_key_args`).
 //!
 //! Scoring follows the docs ("Score against the no-plugin baseline"): in a
 //! two-arm run every `tool_used` grader on `Skill` and every grader marked

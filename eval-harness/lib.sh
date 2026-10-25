@@ -103,6 +103,40 @@ pe_jobs() {
   printf '%s\n' "$_pe_value"
 }
 
+# pe_key_args ARGS...: the runner arguments a reused without arm must share,
+# one word per line, in order: every argument but those that only say where
+# the result and report go or whether temp dirs are kept (--json [path],
+# --output-dir, --report, --no-publish, --publish-report, --keep-temp) and
+# --ablation, which --reuse-baseline itself changes to run the with arm alone
+# (merge.rs checks the arms). `--opt=v` is written `--opt v`, and the
+# concurrency (-j, --concurrency, in any spelling) is one `jobs N` line,
+# its default included. Everything else -- --runs, --allow-tools,
+# --disallow-tools, --max-cost-usd, --mocks, --allow-real-servers, --case,
+# --tag, --threshold, the model and judge -- is kept, so a smoke baseline
+# with --runs 1 never stands in for a --runs 3 run.
+pe_key_args() {
+  echo "jobs $(pe_jobs "$@")"
+  _pe_skip=""
+  for _pe_a in "$@"; do
+    if [ -n "$_pe_skip" ]; then
+      _pe_v=$_pe_skip
+      _pe_skip=""
+      case $_pe_v:$_pe_a in
+      json:-*) ;;
+      *) continue ;;
+      esac
+    fi
+    case $_pe_a in
+    --json | --output-dir | --report | --ablation) _pe_skip=${_pe_a#--} ;;
+    -j | --concurrency) _pe_skip="jobs" ;;
+    --json=* | --output-dir=* | --report=* | --ablation=* | -j=* | -j[0-9]* | --concurrency=*) ;;
+    --no-publish | --publish-report | --keep-temp) ;;
+    --*=*) printf '%s\n%s\n' "${_pe_a%%=*}" "${_pe_a#*=}" ;;
+    *) printf '%s\n' "$_pe_a" ;;
+    esac
+  done
+}
+
 # pe_ncpu: this machine's logical cores.
 pe_ncpu() {
   sysctl -n hw.ncpu 2>/dev/null || nproc 2>/dev/null || getconf _NPROCESSORS_ONLN 2>/dev/null || echo 1

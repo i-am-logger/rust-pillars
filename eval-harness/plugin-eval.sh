@@ -299,7 +299,9 @@ run_suite() {
 # everything a run of that case without the plugin depends on -- the base
 # working copy and the vendored dependencies (base-key), the captured
 # environment, the scripts that build the run, the case's own files, the
-# model, the judge, the claude version, and the concurrency and job cap (a
+# claude version, the job cap, and every runner argument that can change a
+# run (lib.sh, pe_key_args): the model, the judge, --runs, the tools, the
+# cost ceiling, the mocks, the case selection and the concurrency (a
 # timed-out run is still graded, and contention decides timeouts: run 4's
 # only timed-out sans-io-retry run without the plugin scored 0.91, its two
 # others 1.0). merge.rs reuses a without arm only under an equal key.
@@ -317,8 +319,8 @@ write_keys() {
       cat "$out/base-key"
       pe_sha256 <"$export_dir/evals/_scaffold/devenv.env"
       git -C "$repo" rev-parse HEAD:evals/_scaffold HEAD:eval-harness/plugin-eval.sh HEAD:eval-harness/lib.sh
-      echo "model $(pe_opt_value --model "" "$@") judge $(pe_opt_value --judge-model "" "$@")"
-      echo "claude $(claude --version 2>/dev/null | head -1) jobs $(pe_jobs "$@") cap $EVAL_JOB_CAP"
+      echo "claude $(claude --version 2>/dev/null | head -1) cap $EVAL_JOB_CAP"
+      pe_key_args "$@"
     } | pe_sha256
   )
   for c in "$export_dir"/evals/*/; do

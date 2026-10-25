@@ -166,7 +166,11 @@ writes `<result>.keys` beside its JSON: a key per case over everything the
 arm without the plugin depends on. `--reuse-baseline` runs the arm with the
 plugin alone and takes a two-arm baseline's other arm for every case whose
 key is unchanged; any change to the workspace, the scripts, the toolchain,
-the model, the judge, the claude version or `-j` refuses it. So after the
+the claude version or any runner option that can change a run (the model,
+the judge, `--runs`, the tools, `--max-cost-usd`, `--mocks`, `--tag`,
+`--case`, `-j`: lib.sh, `pe_key_args`) refuses it, so a with-arm run must
+repeat the baseline's options but `--json`, `--output-dir`, `--report` and
+the publishing flags. So after the
 runner changes of this release, the next full run must be a two-arm one.
 `--changed-since` picks the cases whose `evals/<case>/` changed, or all of
 them after any other change. `--keep-state` keeps every run's full trace and

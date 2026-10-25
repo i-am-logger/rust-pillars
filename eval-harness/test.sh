@@ -392,6 +392,26 @@ same "a run writes a key per case beside its result" "layering-fix own-dont-leak
 same "the same run gets the same keys" "$(cat "$scratch/r1.keys" 2>/dev/null)" "$(cat "$scratch/r2.keys" 2>/dev/null)"
 same "another -j gets other keys" yes \
   "$([ -s "$scratch/r3.keys" ] && ! cmp -s "$scratch/r1.keys" "$scratch/r3.keys" && echo yes)"
+# keyed ARGS...: the keys a run with ARGS writes.
+keyed() {
+  rm -f "$scratch/k.keys"
+  pe "$@" --json "$scratch/k.json" >/dev/null
+  cat "$scratch/k.keys" 2>/dev/null
+}
+kbase=$(keyed -j 4 --runs 3)
+for opt in "--runs 1" "--allow-tools Read" "--disallow-tools Agent" "--max-cost-usd 5" \
+  "--mocks off" "--allow-real-servers" "--tag smoke" "--threshold 0.5" "--model sonnet"; do
+  # shellcheck disable=SC2086 # one word per option and value
+  same "$opt changes the keys" yes \
+    "$(k=$(keyed -j 4 --runs 3 $opt) && [ -n "$k" ] && [ "$k" != "$kbase" ] && echo yes)"
+done
+same "--runs=3 is --runs 3, and -j4 is -j 4" "$kbase" "$(keyed -j4 --runs=3)"
+same "a result or report path and --no-publish leave the keys" "$kbase" \
+  "$(keyed -j 4 --runs 3 --no-publish --report "$scratch/r.html" --json "$scratch/other.json")"
+same "-j 1 is the default concurrency" "$(keyed --runs 3)" "$(keyed -j 1 --runs 3)"
+pe --reuse-baseline "$scratch/r1.json" "$scratch/m.json" -j 4 >/dev/null
+same "a with-arm run of --reuse-baseline keys as the two-arm run it reuses" \
+  "$(cat "$scratch/r1.keys")" "$(cat "$scratch/m.keys" 2>/dev/null)"
 same "--reuse-baseline runs the arm with the plugin only" yes \
   "$(run --reuse-baseline "$scratch/r1.json" "$scratch/m.json" -j 4 | grep -q -- '--ablation none --json .*-with.json' && echo yes)"
 same "--reuse-baseline needs a baseline with keys" "" \
