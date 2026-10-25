@@ -62,7 +62,7 @@ requirement"), the measuring rust-measure's.
 
 ## Constructors
 
-- `new` is the primary constructor. Add `with_capacity`, `try_new` and `from_<source>` as needed (C-CTOR). Why: readers find constructors by name. Domain entry seams are named per source (`of`, `from_host`, `threshold_ms`) and counted (`seam`).
+- `new` is the primary constructor. Add `with_capacity`, `try_new` and `from_<source>` as needed (C-CTOR). Why: readers find constructors by name. In domain, bytes enter by the derived `FromBytes::read_from_bytes`; a constructor taking a primitive is a counted seam, whatever its name (rust-domain).
 - A zero-argument `new` comes with an agreeing `Default`. Why: generic code reaches for `Default`. Gate: clippy `new_without_default`. Domain quantities have neither and expose a named `ZERO`, so the empty value is named at each use.
 - Use `with_*` for one or two optional settings. Use a `FooBuilder` with `&mut self` setters and `build() -> Result` otherwise (C-BUILDER). Why: one validation point, and no telescoping `new`.
 - Group four or more loose arguments into a type. Why: positional arguments of one type swap silently. Gate: clippy `too_many_arguments` (more than 7); below that, review.
