@@ -1,6 +1,11 @@
 # Notice
 
-rust-code is licensed CC-BY-NC-SA-4.0 (see [LICENSE](LICENSE)).
+Copyright (c) 2026 i-am-logger
+
+rust-code is licensed under the Creative Commons
+Attribution-NonCommercial-ShareAlike 4.0 International License
+(CC-BY-NC-SA-4.0). [LICENSE](LICENSE) is that licence's legal code, verbatim
+from <https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.txt>.
 
 The `rust-idioms` skill adapts rules from
 [BeautifulRust](https://github.com/morganlinton/BeautifulRust) (commit
