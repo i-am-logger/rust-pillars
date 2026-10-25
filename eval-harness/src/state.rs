@@ -111,26 +111,36 @@ fn fresh_start(export: &Path, case: &str, scratch: &Path) -> Option<PathBuf> {
 }
 
 /// The changes of one run's working copy kept in `dest`, after giving the
-/// owner back the rights on its directory, which is then removed.
-fn unseal_and_remove(dir: &Path, dest: &Path, export: &Path, case: &str) -> Result<()> {
+/// owner back the rights on its directory, which is then removed -- only
+/// once the changes are kept: a run whose working copy or case cannot be
+/// found keeps its directory (false).
+fn unseal_and_remove(dir: &Path, dest: &Path, export: &Path, case: &str) -> Result<bool> {
     let status = Command::new("chmod")
         .args(["-R", "u+rwX"])
         .arg(dir)
         .status()?;
     ensure!(status.success(), "chmod -R u+rwX {} failed", dir.display());
     let scratch = dest.join(".start");
+    let mut kept = false;
     if let (Some(start), Some(cwd)) = (fresh_start(export, case, &scratch), working_copy(dir)) {
         let diff = Command::new("diff")
             .args(["-ruN", "-x", "target", "-x", ".devenv.env"])
             .arg(&start)
             .arg(&cwd)
             .output()?;
-        fs::write(dest.join("changes.diff"), &diff.stdout)?;
+        // diff exits 0 (the same) or 1 (different); 2 is trouble.
+        if diff.status.code().is_some_and(|c| c < 2) {
+            fs::write(dest.join("changes.diff"), &diff.stdout)?;
+            kept = true;
+        }
     }
     if scratch.exists() {
         fs::remove_dir_all(&scratch)?;
     }
-    fs::remove_dir_all(dir).with_context(|| format!("removing {}", dir.display()))
+    if kept {
+        fs::remove_dir_all(dir).with_context(|| format!("removing {}", dir.display()))?;
+    }
+    Ok(kept)
 }
 
 /// `--harvest <result.json> <state dir> <export root>`, runs under
@@ -178,8 +188,7 @@ pub fn run_harvest(
                     run["error"].as_str().unwrap_or("")
                 )?;
                 kept += 1;
-                if unseal {
-                    unseal_and_remove(&dir, &dest, export, name)?;
+                if unseal && unseal_and_remove(&dir, &dest, export, name)? {
                     removed += 1;
                 } else {
                     writeln!(left, "{}", dir.display())?;
@@ -296,6 +305,28 @@ mod tests {
         assert!(state.join("c/with-0/trace.jsonl").is_file());
         let tsv = fs::read_to_string(state.join("runs.tsv")).unwrap();
         assert!(tsv.contains("c\twith\t0\t9\t7\t"), "{tsv}");
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn unsealed_a_run_whose_working_copy_cannot_be_found_is_kept() {
+        let (root, runs, export, result, _) = setup("nocopy");
+        let run = runs.join("e-abc123");
+        let _ = Command::new("chmod")
+            .args(["-R", "u+rwX"])
+            .arg(&run)
+            .status();
+        fs::rename(run.join("sealed/home"), run.join("sealed/elsewhere")).unwrap();
+        fs::remove_dir_all(run.join("sealed/elsewhere/cwd")).unwrap();
+        let state = root.join("state");
+        run_harvest(&result, &state, &export, &runs, true).unwrap();
+        assert!(run.exists(), "no changes kept, so the directory stays");
+        let listed = fs::read_to_string(state.join("kept-dirs.txt")).unwrap();
+        assert!(listed.contains("e-abc123"), "{listed}");
+        let _ = Command::new("chmod")
+            .args(["-R", "u+rwX"])
+            .arg(&root)
+            .status();
         fs::remove_dir_all(&root).unwrap();
     }
 
