@@ -3,10 +3,12 @@
 # the hook gates a .rs file inside the project, and runs nothing for a file
 # outside it, a relative path, a `..` or link escape, or a project nested under
 # another one's layers.toml. Each run is cut off after 3 s, so a walk that
-# never ends fails instead of hanging. On its own: sh hooks/test-gate-on-edit.sh
+# never ends fails instead of hanging. On its own:
+# sh eval-harness/test-gate-on-edit.sh (test:plugin runs it). It lives here,
+# not in hooks/, so it does not ship with the plugin.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-hook=$here/gate-on-edit.sh
+hook=$(cd "$here/../hooks" && pwd)/gate-on-edit.sh
 shell=$(command -v sh)
 
 failed=0

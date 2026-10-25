@@ -337,9 +337,11 @@ in
     # quoted (YAML cuts an unquoted one at ` #`), files stay within their line
     # limits, and no link leaves its skill (eval-harness/src/plugin.rs). The
     # harness's own tests run first: they are the only check on the eval
-    # runner's scripts and scoring (eval-harness/test.sh, src/merge.rs).
+    # runner's scripts and scoring (eval-harness/test.sh, src/merge.rs). Last,
+    # the gate_on_edit hook against a stand-in cargo: it must act only on a
+    # file inside the open project (eval-harness/test-gate-on-edit.sh).
     "test:plugin" = {
-      exec = "cargo test --quiet --manifest-path eval-harness/Cargo.toml && cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --plugin";
+      exec = "cargo test --quiet --manifest-path eval-harness/Cargo.toml && cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --plugin && sh eval-harness/test-gate-on-edit.sh";
       after = [ "test:snippets" ];
     };
 

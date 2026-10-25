@@ -8,7 +8,8 @@
 # `cargo xtask` runs the project's own code (its xtask, build scripts and
 # cargo config), so the hook acts only on a file inside the open project
 # ($CLAUDE_PROJECT_DIR), after resolving links and `..`, and looks for the
-# gates no higher than the project's root. Checked by test-gate-on-edit.sh.
+# gates no higher than the project's root. Checked by
+# eval-harness/test-gate-on-edit.sh.
 set -u
 
 [ "${CLAUDE_PLUGIN_OPTION_GATE_ON_EDIT:-false}" = "true" ] || exit 0
