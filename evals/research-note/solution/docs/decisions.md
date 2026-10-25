@@ -7,8 +7,8 @@ that departs from a governing text says so and names the text.
 
 A decision the evidence does not settle goes to the judge protocol (the
 `rust-research` skill): two independent asks with the options reordered,
-0.9 confidence both times, otherwise one re-ask with more context, then the
-owner, who holds a veto.
+0.9 confidence both times, otherwise research what is missing and re-ask;
+the owner, who holds a veto, gets only what no fact settles.
 
 <!-- ### D1. <claim>
 **Evidence:** ...
