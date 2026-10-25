@@ -540,6 +540,22 @@ fn main() -> ExitCode {
 mod tests {
     use super::*;
 
+    /// The shell half of the harness (lib.sh, plugin-eval.sh) checks itself
+    /// in test.sh; this runs it, so `cargo test` covers both halves.
+    #[test]
+    fn the_shell_scripts_pass_their_own_checks() {
+        let out = Command::new("sh")
+            .arg(Path::new(env!("CARGO_MANIFEST_DIR")).join("test.sh"))
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}{}",
+            String::from_utf8_lossy(&out.stdout),
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
     #[test]
     fn a_delta_inside_the_spread_is_no_result() {
         assert!(verdict(&[5, 7], &[5, 5]).starts_with("no result"));

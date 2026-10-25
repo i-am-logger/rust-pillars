@@ -335,9 +335,11 @@ in
     # The plugin holds together on every machine and on claude.ai: skill names
     # match folders, frontmatter is what claude.ai accepts, descriptions are
     # quoted (YAML cuts an unquoted one at ` #`), files stay within their line
-    # limits, and no link leaves its skill (eval-harness/src/plugin.rs).
+    # limits, and no link leaves its skill (eval-harness/src/plugin.rs). The
+    # harness's own tests run first: they are the only check on the eval
+    # runner's scripts and scoring (eval-harness/test.sh, src/merge.rs).
     "test:plugin" = {
-      exec = "cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --plugin";
+      exec = "cargo test --quiet --manifest-path eval-harness/Cargo.toml && cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --plugin";
       after = [ "test:snippets" ];
     };
 

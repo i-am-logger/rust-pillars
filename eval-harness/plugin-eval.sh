@@ -26,6 +26,8 @@
 set -eu
 
 repo=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck disable=SC1091 # lib.sh is checked as a file of its own
+. "$repo/eval-harness/lib.sh"
 cd "$repo"
 sha=$(git rev-parse --short HEAD)
 if [ -n "$(git status --porcelain -- evals skills commands agents hooks .claude-plugin crates xtask)" ]; then
@@ -111,13 +113,18 @@ if [ "${1:-}" = --graders ]; then
   cd "$export_dir"
   for state in solution start; do
     echo "== graders on the $state state"
+    # shellcheck disable=SC2046 # the pins are single words
     claude plugin eval . --eval-dir "graders-$state" --scaffold --trust-plugin \
       --ablation none --model haiku --no-publish --threshold 0 \
-      --json "$out/graders-$state.json" --report "$out/graders-$state.html" "$@" || true
+      --json "$out/graders-$state.json" --report "$out/graders-$state.html" "$@" \
+      $(pe_pin_args --model haiku "$@") || true
   done
   echo "reports: $out/graders-solution.html $out/graders-start.html"
   exit 0
 fi
 
+# Both models pinned unless the caller pins them (lib.sh says why).
+# shellcheck disable=SC2046 # the pins are single words
+set -- "$@" $(pe_pin_args "$@")
 cd "$export_dir"
 exec claude plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write "$@"
