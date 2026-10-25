@@ -62,6 +62,31 @@ it tags `vX.Y.Z` from the `rust-code` package and creates a GitHub release.
 Nothing is published to crates.io: the plugin ships as this repository. Do
 not change the version outside a release PR.
 
+## Contribution terms
+
+The repository is licensed under [CC BY-NC-SA 4.0](LICENSE), and the
+maintainer also grants separate commercial licences
+([FUNDING.md](FUNDING.md#commercial-use)). So that a commercial licence can
+still cover the whole project once other people's work is in it, a
+contribution (a pull request, a patch, or code or text in an issue meant to be
+merged) is accepted on these terms:
+
+- You license your contribution to everyone under CC BY-NC-SA 4.0, like the
+  rest of the repository.
+- You also grant the maintainer (GitHub
+  [@i-am-logger](https://github.com/i-am-logger)) a perpetual, worldwide,
+  non-exclusive, royalty-free, irrevocable licence to use, copy, modify and
+  distribute your contribution, and to license it to others under other terms,
+  commercial licences included.
+- You keep your copyright, and you may use your own contribution in any other
+  way you like.
+- You confirm that the contribution is your own work, or that you have the
+  right to submit it on these terms, and you say in the PR if any part of it
+  comes under someone else's licence.
+
+Opening a pull request means you agree to these terms. If you cannot, say so
+in the PR, and it will not be merged.
+
 ## Code of Conduct
 
 This project follows the [Code of Conduct](CODE_OF_CONDUCT.md).
