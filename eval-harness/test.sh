@@ -101,6 +101,11 @@ same "the lockfile changes the vendor key" changed "$k2"
 # Tiers and the changed-cases selector.
 same "a smoke case's tags" "tags: [smoke, case-layering-fix]" "$(pe_tags layering-fix)"
 same "another case's tags" "tags: [case-no-std-port]" "$(pe_tags no-std-port)"
+same "a case's own tags are kept and ours added" "tags: [slow, case-no-std-port]" \
+  "$(pe_tags_merge no-std-port 'tags: [slow]')"
+same "and not repeated" "tags: [smoke, case-own-dont-leak]" \
+  "$(pe_tags_merge own-dont-leak 'tags: [smoke, case-own-dont-leak]')"
+same "an empty list" "tags: [case-x]" "$(pe_tags_merge x 'tags: []')"
 mkdir -p "$g/evals/d" && echo one >"$g/evals/d/prompt.md" && commit addcase
 k=$(git -C "$g" rev-parse HEAD)
 echo four >"$g/evals/c/fixture/crates/b/Cargo.toml" && echo two >"$g/evals/d/prompt.md" && commit cases
@@ -217,6 +222,9 @@ same "they go to the store, and cargo is pointed at the store path" \
 same "the store holds what cargo vendor made" yes \
   "$([ -f "$scratch/store/vendored-crates-$(pe_vendor_key "$f" HEAD)/dep" ] && echo yes)"
 fenv=$fbase/$fsha/root/evals/_scaffold/devenv.env
+same "the export tags its copy of each case" "tags: [case-c]" \
+  "$(sed -n '2p' "$fbase/$fsha/root/evals/c/prompt.md" 2>/dev/null)"
+same "and leaves the case's own files alone" "name: c" "$(sed -n '2p' "$f/evals/c/prompt.md")"
 same "the export's environment carries the lighter dev profile" yes \
   "$(grep -q '^export CARGO_PROFILE_DEV_DEBUG=line-tables-only CARGO_INCREMENTAL=0$' "$fenv" 2>/dev/null && echo yes)"
 # shellcheck disable=SC2016 # expanded by the inner shells

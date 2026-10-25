@@ -26,6 +26,21 @@ pe_tags() {
   esac
 }
 
+# pe_tags_merge NAME LINE: a case's own inline tags line (`tags: [a, b]`)
+# with pe_tags' tags added where missing, so a case that tags itself keeps
+# its tags and can still be picked as case-NAME.
+pe_tags_merge() {
+  _pe_value=$(printf '%s\n' "$2" | sed -n 's/^tags:[[:space:]]*\[\(.*\)\][[:space:]]*$/\1/p')
+  for _pe_a in $(pe_tags "$1" | sed 's/^tags: \[\(.*\)\]$/\1/' | tr ',' ' '); do
+    case ", $_pe_value, " in
+    *", $_pe_a, "*) ;;
+    ", , ") _pe_value=$_pe_a ;;
+    *) _pe_value="$_pe_value, $_pe_a" ;;
+    esac
+  done
+  printf 'tags: [%s]\n' "$_pe_value"
+}
+
 # pe_changed_cases REPO REV: the cases to run after the changes REV..HEAD,
 # one per line, or `all`. A case is picked when its own files under
 # evals/<case>/ changed; any other change picks every case, since every

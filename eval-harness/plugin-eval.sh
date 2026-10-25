@@ -219,14 +219,23 @@ EOF
   share_dir "target-$tkey" prebuild_into
   echo "$base/target-$tkey/target" >"$export_dir/evals/_scaffold/target-dir"
   # Tags in the export's copy of each case (lib.sh, pe_tags), so --tag can
-  # pick a tier or any set of cases. A case that has tags of its own keeps
-  # them, untouched.
+  # pick a tier or any set of cases. A case's own inline tags are kept, ours
+  # added (pe_tags_merge); a block list is left as it is.
   for c in "$export_dir"/evals/*/; do
     n=$(basename "$c")
-    [ -f "$c/prompt.md" ] && [ "$(sed -n '1p' "$c/prompt.md")" = --- ] || continue
-    sed -n '2,/^---$/p' "$c/prompt.md" | grep -q '^tags:' && continue
-    { sed -n '1p' "$c/prompt.md" && pe_tags "$n" && sed '1d' "$c/prompt.md"; } >"$c/prompt.md.new"
-    mv "$c/prompt.md.new" "$c/prompt.md"
+    p=$c/prompt.md
+    [ -f "$p" ] && [ "$(sed -n '1p' "$p")" = --- ] || continue
+    own=$(sed -n '2,/^---$/p' "$p" | grep '^tags:' || true)
+    if [ -z "$own" ]; then
+      { sed -n '1p' "$p" && pe_tags "$n" && sed '1d' "$p"; } >"$p.new"
+    elif printf '%s\n' "$own" | grep -q '\]'; then
+      new=$(pe_tags_merge "$n" "$own")
+      awk -v new="$new" 'NR > 1 && !done && /^tags:/ { print new; done = 1; next } { print }' "$p" >"$p.new"
+    else
+      echo "plugin-eval: $n lists its tags as a block; --tag case-$n will not pick it" >&2
+      continue
+    fi
+    mv "$p.new" "$p"
   done
   touch "$out/.ready"
 fi
