@@ -37,6 +37,7 @@ payload:
 
 ```rust
 #![no_std]
+# extern crate std; // a doctest is a binary: std supplies its panic handler and entry point
 
 use core::fmt;
 
@@ -96,6 +97,11 @@ impl PayloadLen {
         }
     }
 }
+# fn main() {
+#     assert_eq!(PayloadLen::parse(Bytes::of(&[0, 16, 9])), Ok(PayloadLen(16)));
+#     assert_eq!(PayloadLen::parse(Bytes::of(&[4])), Err(ParseHeaderError::Short));
+#     assert_eq!(PayloadLen::parse(Bytes::of(&[4, 1])), Err(ParseHeaderError::TooLong));
+# }
 ```
 
 What this enum does and why:

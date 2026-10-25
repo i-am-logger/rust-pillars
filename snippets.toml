@@ -1,0 +1,6 @@
+# The crate names the project's Markdown code blocks import, mapped to its
+# own crates (`cargo xtask snippets`). The skills are written against the
+# template's names, which every project starts with.
+[extern]
+my_project_domain = "rust-code-domain"
+my_project_core = "rust-code-core"

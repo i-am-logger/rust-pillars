@@ -17,9 +17,12 @@
 //! own runs is its A/A noise: a difference between the arms counts only when
 //! it is larger than that spread. Anything else is reported as no result.
 //!
-//! `--control` runs no model: it checks every check against the untouched
-//! base, where a task's own checks must fail -- a check the base already
-//! passes would grade nothing. Every other run is a real model call.
+//! Two modes run no model, and between them prove each case can grade:
+//! `--control` runs every check against the untouched base, where a task's
+//! own checks must fail (a check the base already passes grades nothing), and
+//! `--solution` runs them against the base plus the case's reference
+//! `solution/`, where every check must pass (a check nothing can pass grades
+//! nothing either). Every other run is a real model call.
 //!
 //! Run it from the devenv shell: `cargo run --manifest-path
 //! evals/harness/Cargo.toml -- [--control] [--case NAME] [--runs N]
@@ -81,10 +84,15 @@ impl Arm {
     }
 }
 
-/// Whether to run the model or only the control.
+/// What to run.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Mode {
+    /// Every check against the untouched base: task checks must fail.
     Control,
+    /// Every check against the base plus the case's reference `solution/`:
+    /// all must pass, or the case could never be passed at all.
+    Solution,
+    /// The model, with and without the plugin.
     Model,
 }
 
@@ -109,6 +117,7 @@ fn opts() -> Result<Opts> {
         let mut val = || it.next().with_context(|| format!("{a} needs a value"));
         match a.as_str() {
             "--control" => o.mode = Mode::Control,
+            "--solution" => o.mode = Mode::Solution,
             "--case" => o.case = Some(val()?.clone()),
             "--runs" => o.runs = val()?.parse()?,
             "--model" => o.model = Some(val()?.clone()),
@@ -307,6 +316,29 @@ fn control(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
     Ok(wrong)
 }
 
+/// The base plus the case's reference solution must pass every check.
+fn solution(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
+    let name = case.file_name().and_then(|n| n.to_str()).unwrap_or("case");
+    let reference = case.join("solution");
+    if !reference.is_dir() {
+        return Ok(vec![format!(
+            "{name}: no solution/ -- nothing shows its checks can be passed"
+        )]);
+    }
+    let work = fresh(root, case, "solution")?;
+    copy_dir(&reference, &work)?;
+    let mut wrong = Vec::new();
+    for c in &checks.check {
+        if run_check(root, case, &work, c)? != (c.expect == Expect::Pass) {
+            wrong.push(format!(
+                "{name}: `{}` is not {:?} with the reference solution",
+                c.name, c.expect
+            ));
+        }
+    }
+    Ok(wrong)
+}
+
 /// Runs the model once in a fresh working copy; returns the copy.
 fn attempt(
     root: &Path,
@@ -405,16 +437,26 @@ fn checks_of(case: &Path) -> Result<Checks> {
         .with_context(|| format!("parsing {}", path.display()))
 }
 
-fn run_control(root: &Path, cases: &[PathBuf]) -> Result<ExitCode> {
+fn run_control(root: &Path, cases: &[PathBuf], mode: Mode) -> Result<ExitCode> {
     let mut wrong = Vec::new();
     for case in cases {
-        wrong.extend(control(root, case, &checks_of(case)?)?);
+        let checks = checks_of(case)?;
+        wrong.extend(if mode == Mode::Solution {
+            solution(root, case, &checks)?
+        } else {
+            control(root, case, &checks)?
+        });
     }
     for w in &wrong {
         eprintln!("{w}");
     }
+    let against = if mode == Mode::Solution {
+        "the reference solution"
+    } else {
+        "the untouched base"
+    };
     eprintln!(
-        "{} cases against the untouched base: {} wrong",
+        "{} cases against {against}: {} wrong",
         cases.len(),
         wrong.len()
     );
@@ -471,7 +513,7 @@ fn main() -> ExitCode {
         let root = root.canonicalize().context("finding the repository root")?;
         let cases = cases(&root, o.case.as_ref())?;
         match o.mode {
-            Mode::Control => run_control(&root, &cases),
+            Mode::Control | Mode::Solution => run_control(&root, &cases, o.mode),
             Mode::Model => run_models(&root, &cases, &o),
         }
     });

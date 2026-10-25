@@ -43,7 +43,9 @@ Count what the output path writes for a pinned input, exactly. In the
 template's bin, `drain` takes any `impl Write`, so a counting sink measures it
 without touching the core:
 
-```rust
+Not compiled here: it is a test for the bin crate (planned), and `use super::*` means `crates/<name>/src/main.rs`, where it would compile.
+
+```rust,ignore
 // crates/<name>/src/main.rs
 #[cfg(test)]
 mod tests {
