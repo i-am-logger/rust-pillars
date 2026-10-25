@@ -1,26 +1,31 @@
-//! What each run of a `--keep-temp` suite left behind, kept small and the
-//! run's directory removed after (plugin-eval.sh `--keep-state`).
+//! What each run of a `--keep-temp` suite left behind, kept small
+//! (plugin-eval.sh `--keep-state`).
 //!
 //! The runner deletes every run's directory -- the working copy the graders
 //! read and the full trace -- and has no command graders (docs: "There are
 //! no custom-code graders"), so a regex grader's verdict keeps no evidence.
 //! Under `--keep-temp` it keeps them all, about 1.4 GB per run (measured),
-//! until something removes them. This keeps, per run listed in the result:
-//! the full trace, the working copy's changes against a fresh scaffold of
-//! its case (build output left out), and the seconds from the run's start to
-//! its first trace event; then it removes that run's directory -- only a
-//! directory the result names, under the run root, named `e-*`, holding
-//! `out/trace.jsonl` and `home/cwd`.
+//! sealed: the run directory read-only and `sealed/` (where the home with
+//! the working copy goes) mode 000 (measured).
+//!
+//! This keeps, per run listed in the result, the full trace and the seconds
+//! from the run's start to its first trace event, which need no change to
+//! the sealed directory. With `unseal` it also gives the owner back the
+//! rights on that one directory (`chmod -R u+rwX`), keeps the working copy's
+//! changes against a fresh scaffold of its case (build output left out), and
+//! removes the directory -- only a directory the result names, under the run
+//! root, named `e-*`, holding `out/trace.jsonl`. Without `unseal` the kept
+//! directories are listed in `kept-dirs.txt` and left in place.
 
 use std::fmt::Write as _;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use serde_json::Value;
 
-/// The run directory a trace path belongs to, if it is one this may remove.
+/// The run directory a trace path belongs to, if it is one this may touch.
 fn run_dir(trace: &Path, run_root: &Path) -> Option<PathBuf> {
     if trace.file_name()? != "trace.jsonl" || trace.parent()?.file_name()? != "out" {
         return None;
@@ -31,8 +36,26 @@ fn run_dir(trace: &Path, run_root: &Path) -> Option<PathBuf> {
     let ok = name.starts_with("e-")
         && name.len() > 2
         && parent == run_root.canonicalize().ok()?
-        && dir.join("home/cwd").is_dir();
+        && trace.is_file()
+        && (dir.join("home").exists() || dir.join("sealed").exists());
     ok.then(|| dir.to_path_buf())
+}
+
+/// The working copy inside a run directory whose rights are back: the live
+/// layout's `home/cwd`, or the one under `sealed/`.
+fn working_copy(dir: &Path) -> Option<PathBuf> {
+    [dir.join("home/cwd"), dir.join("sealed/home/cwd")]
+        .into_iter()
+        .find(|p| p.is_dir())
+        .or_else(|| {
+            fs::read_dir(dir.join("sealed"))
+                .ok()?
+                .flatten()
+                .find_map(|e| {
+                    let p = e.path().join("cwd");
+                    p.is_dir().then_some(p)
+                })
+        })
 }
 
 /// Seconds from `startedAt` to the first timestamped event of the trace.
@@ -87,14 +110,44 @@ fn fresh_start(export: &Path, case: &str, scratch: &Path) -> Option<PathBuf> {
         .then_some(cwd)
 }
 
+/// The changes of one run's working copy kept in `dest`, after giving the
+/// owner back the rights on its directory, which is then removed.
+fn unseal_and_remove(dir: &Path, dest: &Path, export: &Path, case: &str) -> Result<()> {
+    let status = Command::new("chmod")
+        .args(["-R", "u+rwX"])
+        .arg(dir)
+        .status()?;
+    ensure!(status.success(), "chmod -R u+rwX {} failed", dir.display());
+    let scratch = dest.join(".start");
+    if let (Some(start), Some(cwd)) = (fresh_start(export, case, &scratch), working_copy(dir)) {
+        let diff = Command::new("diff")
+            .args(["-ruN", "-x", "target", "-x", ".devenv.env"])
+            .arg(&start)
+            .arg(&cwd)
+            .output()?;
+        fs::write(dest.join("changes.diff"), &diff.stdout)?;
+    }
+    if scratch.exists() {
+        fs::remove_dir_all(&scratch)?;
+    }
+    fs::remove_dir_all(dir).with_context(|| format!("removing {}", dir.display()))
+}
+
 /// `--harvest <result.json> <state dir> <export root>`, runs under
-/// `run_root` (`$PE_RUN_ROOT`, default /private/tmp).
-pub fn run_harvest(result: &Path, state: &Path, export: &Path, run_root: &Path) -> Result<()> {
+/// `run_root` (`$PE_RUN_ROOT`, default /private/tmp); `unseal` as above.
+pub fn run_harvest(
+    result: &Path,
+    state: &Path,
+    export: &Path,
+    run_root: &Path,
+    unseal: bool,
+) -> Result<()> {
     let doc: Value = serde_json::from_str(
         &fs::read_to_string(result).with_context(|| format!("reading {}", result.display()))?,
     )?;
     fs::create_dir_all(state)?;
     let mut table = String::from("case\tarm\trun\tdurationSeconds\tstartDelaySeconds\terror\n");
+    let mut left = String::new();
     let (mut kept, mut removed) = (0, 0);
     for case in doc["cases"].as_array().into_iter().flatten() {
         let name = case["name"].as_str().unwrap_or("case");
@@ -105,7 +158,7 @@ pub fn run_harvest(result: &Path, state: &Path, export: &Path, run_root: &Path) 
                 };
                 let Some(dir) = run_dir(&trace, run_root) else {
                     eprintln!(
-                        "harvest: {} is not a run directory to remove; left alone",
+                        "harvest: {} is not a run directory of this result; left alone",
                         trace.display()
                     );
                     continue;
@@ -114,18 +167,6 @@ pub fn run_harvest(result: &Path, state: &Path, export: &Path, run_root: &Path) 
                 fs::create_dir_all(&dest)?;
                 let text = fs::read_to_string(&trace).unwrap_or_default();
                 fs::write(dest.join("trace.jsonl"), &text)?;
-                let scratch = dest.join(".start");
-                if let Some(start) = fresh_start(export, name, &scratch) {
-                    let diff = Command::new("diff")
-                        .args(["-ruN", "-x", "target", "-x", ".devenv.env"])
-                        .arg(&start)
-                        .arg(dir.join("home/cwd"))
-                        .output()?;
-                    fs::write(dest.join("changes.diff"), &diff.stdout)?;
-                }
-                if scratch.exists() {
-                    fs::remove_dir_all(&scratch)?;
-                }
                 let delay = run["startedAt"]
                     .as_str()
                     .and_then(|s| start_delay(s, &text))
@@ -137,15 +178,30 @@ pub fn run_harvest(result: &Path, state: &Path, export: &Path, run_root: &Path) 
                     run["error"].as_str().unwrap_or("")
                 )?;
                 kept += 1;
-                fs::remove_dir_all(&dir).with_context(|| format!("removing {}", dir.display()))?;
-                removed += 1;
+                if unseal {
+                    unseal_and_remove(&dir, &dest, export, name)?;
+                    removed += 1;
+                } else {
+                    writeln!(left, "{}", dir.display())?;
+                }
             }
         }
     }
     fs::write(state.join("runs.tsv"), &table)?;
+    if !left.is_empty() {
+        fs::write(state.join("kept-dirs.txt"), &left)?;
+    }
     println!(
-        "harvest: kept {kept} run(s) in {}, removed {removed} run directory(ies)",
-        state.display()
+        "harvest: kept {kept} run(s) in {}; removed {removed} run directory(ies){}",
+        state.display(),
+        if left.is_empty() {
+            String::new()
+        } else {
+            format!(
+                "; the rest are listed in {}",
+                state.join("kept-dirs.txt").display()
+            )
+        }
     );
     print!("{table}");
     Ok(())
@@ -154,10 +210,14 @@ pub fn run_harvest(result: &Path, state: &Path, export: &Path, run_root: &Path) 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::os::unix::fs::PermissionsExt as _;
 
     fn tmp(name: &str) -> PathBuf {
         let d = std::env::temp_dir().join(format!("harvest-test-{name}-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&d);
+        if d.exists() {
+            let _ = Command::new("chmod").args(["-R", "u+rwX"]).arg(&d).status();
+            let _ = fs::remove_dir_all(&d);
+        }
         fs::create_dir_all(&d).unwrap();
         d
     }
@@ -167,32 +227,41 @@ mod tests {
         let a = timestamp("2026-10-25T13:54:09.745Z").unwrap();
         let b = timestamp("2026-10-25T14:08:04.745Z").unwrap();
         assert!((b - a - 835.0).abs() < 1e-6);
-        assert!(
-            timestamp("2026-03-01T00:00:00Z").unwrap() - timestamp("2026-02-28T00:00:00Z").unwrap()
-                == 86_400.0
-        );
+        let day =
+            timestamp("2026-03-01T00:00:00Z").unwrap() - timestamp("2026-02-28T00:00:00Z").unwrap();
+        assert!((day - 86_400.0).abs() < 1e-6);
     }
 
-    #[test]
-    fn a_listed_run_is_kept_small_and_its_directory_removed() {
-        let root = tmp("root");
-        let runs = root.join("runs");
-        let run = runs.join("e-abc123");
+    /// A run directory as the runner keeps it: read-only, the home under a
+    /// mode-000 `sealed/`.
+    fn sealed_run(runs: &Path, name: &str) -> PathBuf {
+        let run = runs.join(name);
+        let cwd = run.join("sealed/home/cwd");
         fs::create_dir_all(run.join("out")).unwrap();
-        fs::create_dir_all(run.join("home/cwd/target")).unwrap();
-        fs::write(run.join("home/cwd/a.txt"), "after\n").unwrap();
-        fs::write(run.join("home/cwd/target/big"), "build output").unwrap();
+        fs::create_dir_all(cwd.join("target")).unwrap();
+        fs::write(cwd.join("a.txt"), "after\n").unwrap();
+        fs::write(cwd.join("target/big"), "build output").unwrap();
         let trace = run.join("out/trace.jsonl");
         fs::write(
             &trace,
             "{\"type\":\"system\"}\n{\"type\":\"assistant\",\"timestamp\":\"2026-10-25T10:00:07.000Z\"}\n",
         )
         .unwrap();
+        fs::set_permissions(run.join("sealed"), fs::Permissions::from_mode(0o000)).unwrap();
+        fs::set_permissions(&run, fs::Permissions::from_mode(0o500)).unwrap();
+        trace
+    }
+
+    fn setup(name: &str) -> (PathBuf, PathBuf, PathBuf, PathBuf, PathBuf) {
+        let root = tmp(name);
+        let runs = root.join("runs");
+        fs::create_dir_all(&runs).unwrap();
+        let trace = sealed_run(&runs, "e-abc123");
         // An export whose case c scaffolds a.txt as "before".
         let export = root.join("export");
         fs::create_dir_all(export.join("evals/c")).unwrap();
         fs::write(export.join("evals/c/scaffold.sh"), "echo before > a.txt\n").unwrap();
-        // A path that is not a run directory: never removed.
+        // A path that is not a run directory: never touched.
         let other = root.join("elsewhere/out");
         fs::create_dir_all(&other).unwrap();
         fs::write(other.join("trace.jsonl"), "").unwrap();
@@ -202,9 +271,18 @@ mod tests {
             "without": [{"tracePath": other.join("trace.jsonl"), "startedAt": "2026-10-25T10:00:00.000Z", "durationSeconds": 1, "error": null}]
         }}]});
         fs::write(&result, doc.to_string()).unwrap();
+        (root, runs, export, result, other)
+    }
+
+    #[test]
+    fn unsealed_a_listed_run_keeps_its_changes_and_its_directory_goes() {
+        let (root, runs, export, result, other) = setup("unseal");
         let state = root.join("state");
-        run_harvest(&result, &state, &export, &runs).unwrap();
-        assert!(!run.exists(), "the listed run directory is removed");
+        run_harvest(&result, &state, &export, &runs, true).unwrap();
+        assert!(
+            !runs.join("e-abc123").exists(),
+            "the listed run directory is removed"
+        );
         assert!(other.exists(), "a directory that is no run directory stays");
         let diff = fs::read_to_string(state.join("c/with-0/changes.diff")).unwrap();
         assert!(
@@ -218,6 +296,28 @@ mod tests {
         assert!(state.join("c/with-0/trace.jsonl").is_file());
         let tsv = fs::read_to_string(state.join("runs.tsv")).unwrap();
         assert!(tsv.contains("c\twith\t0\t9\t7\t"), "{tsv}");
+        fs::remove_dir_all(&root).unwrap();
+    }
+
+    #[test]
+    fn sealed_a_listed_run_keeps_its_trace_and_is_left_listed() {
+        let (root, runs, export, result, _) = setup("sealed");
+        let state = root.join("state");
+        run_harvest(&result, &state, &export, &runs, false).unwrap();
+        let run = runs.join("e-abc123");
+        assert!(run.exists(), "without unseal nothing is removed");
+        let mode = fs::metadata(run.join("sealed"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o777, 0, "nor unsealed");
+        assert!(state.join("c/with-0/trace.jsonl").is_file());
+        let listed = fs::read_to_string(state.join("kept-dirs.txt")).unwrap();
+        assert!(listed.contains("e-abc123"), "{listed}");
+        let _ = Command::new("chmod")
+            .args(["-R", "u+rwX"])
+            .arg(&root)
+            .status();
         fs::remove_dir_all(&root).unwrap();
     }
 }

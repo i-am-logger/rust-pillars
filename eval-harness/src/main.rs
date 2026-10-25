@@ -545,7 +545,8 @@ fn main() -> ExitCode {
             (Mode::Harvest, [result, state_dir, export]) => {
                 let run_root = std::env::var_os("PE_RUN_ROOT")
                     .map_or_else(|| PathBuf::from("/private/tmp"), PathBuf::from);
-                state::run_harvest(result, state_dir, export, &run_root)?;
+                let unseal = std::env::var_os("PE_UNSEAL").is_some_and(|v| v == "1");
+                state::run_harvest(result, state_dir, export, &run_root, unseal)?;
                 Ok(ExitCode::SUCCESS)
             }
             (Mode::Rescore | Mode::Merge | Mode::Evidence | Mode::Harvest, _) => {
