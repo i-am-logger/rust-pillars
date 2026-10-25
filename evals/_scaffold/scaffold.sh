@@ -42,3 +42,11 @@ mv docs/README.md.new docs/README.md
 if [ -d "$case_dir/fixture" ]; then
   cp -R "$case_dir/fixture/." .
 fi
+
+# Only in an eval export (eval-harness/plugin-eval.sh writes the file): HOME
+# is the run's own temp home, and the agent's shell rebuilds PATH from
+# /etc/zshenv with $HOME/.nix-profile/bin first, so the devenv profile goes
+# there -- for both arms alike.
+if [ -f "$root/evals/_scaffold/toolchain" ] && [ ! -e "$HOME/.nix-profile" ]; then
+  ln -s "$(cat "$root/evals/_scaffold/toolchain")" "$HOME/.nix-profile"
+fi
