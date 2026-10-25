@@ -136,6 +136,37 @@ jobs:
       - name: Run format & lint checks
         run: devenv test
 
+  # The one check for branch protection to require. Lint/UT reports one
+  # check per OS, and when its `if:` skips it (the Release PR), it reports
+  # under a name with no OS in it, so a required Lint/UT check would never
+  # arrive there. A skipped job reports "Success" and does not block a merge
+  # even when required (GitHub docs, "Using conditions to control job
+  # execution"; by reading), so this job never skips: `always()` runs it
+  # even on a cancelled run. It fails unless Lint/UT succeeded on every OS,
+  # or was skipped for exactly the Release PR the skip above is for.
+  ci-ok:
+    name: CI OK
+    runs-on: ubuntu-latest
+    needs: [devenv-checks]
+    if: always()
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Lint/UT passed, or was skipped on the Release PR
+        env:
+          RESULT: ${{ needs.devenv-checks.result }}
+          # The same condition as Lint/UT's `if:`, negated there.
+          RELEASE_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'github-actions[bot]' && github.event.pull_request.head.repo.full_name == github.repository && startsWith(github.head_ref, 'release-plz-') }}
+        run: |
+          case "$RESULT/$RELEASE_PR" in
+          success/*) echo "Lint/UT: success" ;;
+          skipped/true) echo "Lint/UT: skipped on release-plz's Release PR" ;;
+          *)
+            echo "Lint/UT: $RESULT (Release PR: $RELEASE_PR)" >&2
+            exit 1
+            ;;
+          esac
+
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
@@ -172,8 +203,10 @@ jobs:
           # Upload lcov.info only. The search otherwise also picked up
           # xtask/src/coverage.rs, a source file, by its name.
           disable_search: true
-          # Codecov rejects uploads for this repository while it is private,
-          # and that is not a failure of the code. Set this to true once the
+          # While the repository was private, Codecov rejected the old
+          # tokenless upload (measured). Whether this OIDC upload succeeds
+          # while it is private is unmeasured, and either way a failed upload
+          # is not a failure of the code. Set this to true once the
           # repository is public and the upload is seen succeeding, so a dead
           # integration shows red rather than green.
           fail_ci_if_error: false
@@ -215,7 +248,10 @@ jobs:
         with:
           command: release
           # The release-plz whose config docs release-plz.toml was written
-          # against; also this action version's default.
+          # against, pinned here so it stays that release whatever the
+          # action's own default becomes. Dependabot moves the action's SHA,
+          # not this input: raise it by hand, after checking release-plz.toml
+          # against the new release's docs.
           version: 0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -261,6 +297,7 @@ jobs:
         id: release-plz
         with:
           command: release-pr
+          # As in Release above: pinned, raised by hand.
           version: 0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
