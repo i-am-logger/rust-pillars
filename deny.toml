@@ -22,24 +22,13 @@ allow = [
 ]
 confidence-threshold = 0.9
 
-# The workspace's own licence, CC-BY-NC-SA-4.0, is allowed for its own crates
-# only, never graph-wide: a dependency under a NonCommercial licence is a
-# reviewed change, not a pass. xtask and eval-harness are `publish = false`,
-# which [licenses.private] below covers; the crates under crates/ set no
-# `publish`, so each is named here.
-[[licenses.exceptions]]
-crate = "rust-code"
-allow = ["CC-BY-NC-SA-4.0"]
-
-[[licenses.exceptions]]
-crate = "rust-code-core"
-allow = ["CC-BY-NC-SA-4.0"]
-
-[[licenses.exceptions]]
-crate = "rust-code-domain"
-allow = ["CC-BY-NC-SA-4.0"]
-
+# The workspace's own licence, CC-BY-NC-SA-4.0, is not in `allow`: a
+# dependency under a NonCommercial licence is a reviewed change, not a pass.
+# The workspace's own crates are exempt through [licenses.private] instead.
 [licenses.private]
+# Skip the licence check for every crate that sets `publish = false`. Every
+# crate in this workspace does (none goes to crates.io), so a new crate must
+# set it too, or its CC-BY-NC-SA-4.0 licence is rejected here.
 ignore = true
 
 [bans]
