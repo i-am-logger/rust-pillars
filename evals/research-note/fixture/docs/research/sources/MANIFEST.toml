@@ -23,3 +23,25 @@ status = "retrieved"
 file = "cargo-0f95863-features.md"
 bytes = 22491
 sha256 = "7dde8d4ec8faa1ab9fc06f185d88dada09bbfa5924a05f2fd303cd620a54c9d2"
+
+# The chapter's licence texts, from cargo at the same commit: MIT asks that
+# its notice go with every copy, and Apache-2.0 section 4(a) that recipients
+# get the licence.
+
+[sources.cargo-license-mit]
+title = "Cargo: LICENSE-MIT"
+url = "https://github.com/rust-lang/cargo/blob/0f958632a72dbd5505cd9815ad1d615b0eab4af9/LICENSE-MIT"
+license = "MIT"
+status = "retrieved"
+file = "cargo-0f95863-LICENSE-MIT"
+bytes = 1023
+sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[sources.cargo-license-apache]
+title = "Cargo: LICENSE-APACHE"
+url = "https://github.com/rust-lang/cargo/blob/0f958632a72dbd5505cd9815ad1d615b0eab4af9/LICENSE-APACHE"
+license = "Apache-2.0"
+status = "retrieved"
+file = "cargo-0f95863-LICENSE-APACHE"
+bytes = 10860
+sha256 = "8ada45cd9f843acf64e4722ae262c622a2b3b3007c7310ef36ac1061a30f6adb"

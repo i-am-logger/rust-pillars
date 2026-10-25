@@ -1,5 +1,6 @@
-# research-note: the fixture pins one retrieved source (the Cargo Book's
-# features chapter, key `cargo-features`) and ships the note TEMPLATE.md. A
+# research-note: the fixture pins one cited source (the Cargo Book's
+# features chapter, key `cargo-features`) with cargo's licence texts beside
+# it (pinned too, cited by nothing), and ships the note TEMPLATE.md. A
 # good solution writes a new note under docs/research/notes/ that cites that
 # key, carries a filled-in Status line, marks its options CONFORMING or
 # DEPARTS, and leaves the pinned chapter, its sha256 and every gate's config
@@ -57,7 +58,8 @@ on_base = "pass"
 name = "the pinned Cargo Book chapter and its sha256 in MANIFEST.toml unchanged"
 run = '''
 F=$EVAL_CASE/fixture/docs/research/sources
-pin=$(grep -x 'sha256 = "[0-9a-f]\{64\}"' "$F/MANIFEST.toml") &&
+pin=$(sed -n '/^\[sources\.cargo-features\]$/,/^$/p' "$F/MANIFEST.toml" |
+  grep -x 'sha256 = "[0-9a-f]\{64\}"') &&
 test "$(printf '%s\n' "$pin" | wc -l)" -eq 1 &&
 grep -qxF "$pin" docs/research/sources/MANIFEST.toml &&
 cmp docs/research/sources/cargo-0f95863-features.md "$F/cargo-0f95863-features.md"
