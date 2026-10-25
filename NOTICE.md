@@ -19,8 +19,10 @@ own.
 The files below are unmodified copies of other projects' files, kept as
 pinned research sources (each one's sha256 is in
 [docs/research/sources/MANIFEST.toml](docs/research/sources/MANIFEST.toml)).
-They are not under CC-BY-NC-SA-4.0: each stays under its own licence, whose
-text is committed beside it.
+They are not under CC-BY-NC-SA-4.0: each stays under its own licence. The
+licence texts, from each upstream at the same commit, are in
+[docs/research/sources](docs/research/sources/README.md) and cover every
+copy and quotation named here, wherever in this repository it sits.
 
 - [rust-lang/api-guidelines](https://github.com/rust-lang/api-guidelines) at
   `97a0969cb07fe4cabb0eed8a56234053f47d83dc`, under MIT OR Apache-2.0,
