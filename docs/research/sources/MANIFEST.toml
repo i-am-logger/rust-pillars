@@ -77,3 +77,70 @@ status = "retrieved"
 file = "clippy-43c0efc-lint-configuration.md"
 bytes = 43818
 sha256 = "97b3a84b1f9fd1c38803edf45ad7b2eaa3350bd7ee38b0814d049ab46d15721e"
+
+# The licence texts of the rust-lang copies above, from each upstream at the
+# commit its copy was read from. MIT asks that its notice go with every copy,
+# and Apache-2.0 section 4(a) that recipients get the licence.
+
+[sources.rust-api-guidelines-license-mit]
+title = "Rust API Guidelines: LICENSE-MIT"
+url = "https://github.com/rust-lang/api-guidelines/blob/97a0969cb07fe4cabb0eed8a56234053f47d83dc/LICENSE-MIT"
+license = "MIT"
+status = "retrieved"
+file = "rust-api-guidelines-97a0969-LICENSE-MIT"
+bytes = 1071
+sha256 = "29662666b44dff84977b46e05642cdef910bc3a93a17b5fd86e632bafa59cf21"
+
+[sources.rust-api-guidelines-license-apache]
+title = "Rust API Guidelines: LICENSE-APACHE"
+url = "https://github.com/rust-lang/api-guidelines/blob/97a0969cb07fe4cabb0eed8a56234053f47d83dc/LICENSE-APACHE"
+license = "Apache-2.0"
+status = "retrieved"
+file = "rust-api-guidelines-97a0969-LICENSE-APACHE"
+bytes = 10847
+sha256 = "a60eea817514531668d7e00765731449fe14d059d3249e0bc93b36de45f759f2"
+
+[sources.cargo-license-mit]
+title = "Cargo: LICENSE-MIT"
+url = "https://github.com/rust-lang/cargo/blob/0f958632a72dbd5505cd9815ad1d615b0eab4af9/LICENSE-MIT"
+license = "MIT"
+status = "retrieved"
+file = "cargo-0f95863-LICENSE-MIT"
+bytes = 1023
+sha256 = "23f18e03dc49df91622fe2a76176497404e46ced8a715d9d2b67a7446571cca3"
+
+[sources.cargo-license-apache]
+title = "Cargo: LICENSE-APACHE"
+url = "https://github.com/rust-lang/cargo/blob/0f958632a72dbd5505cd9815ad1d615b0eab4af9/LICENSE-APACHE"
+license = "Apache-2.0"
+status = "retrieved"
+file = "cargo-0f95863-LICENSE-APACHE"
+bytes = 10860
+sha256 = "8ada45cd9f843acf64e4722ae262c622a2b3b3007c7310ef36ac1061a30f6adb"
+
+[sources.clippy-license-mit]
+title = "Clippy: LICENSE-MIT"
+url = "https://github.com/rust-lang/rust-clippy/blob/43c0efca149bb15b9cd2bbf2ef34771cefa70a7e/LICENSE-MIT"
+license = "MIT"
+status = "retrieved"
+file = "clippy-43c0efc-LICENSE-MIT"
+bytes = 1081
+sha256 = "8d07f0c9c9966be0aaec4196d7863b56ade114e9714dbc31ebba576c0446d2fc"
+
+[sources.clippy-license-apache]
+title = "Clippy: LICENSE-APACHE"
+url = "https://github.com/rust-lang/rust-clippy/blob/43c0efca149bb15b9cd2bbf2ef34771cefa70a7e/LICENSE-APACHE"
+license = "Apache-2.0"
+status = "retrieved"
+file = "clippy-43c0efc-LICENSE-APACHE"
+bytes = 10848
+sha256 = "d8b56cd45661bfc7ccf4ce5722388cab275f9dabb9e471c922cc80e36bbf9caa"
+
+[sources.clippy-copyright]
+title = "Clippy: COPYRIGHT"
+url = "https://github.com/rust-lang/rust-clippy/blob/43c0efca149bb15b9cd2bbf2ef34771cefa70a7e/COPYRIGHT"
+license = "MIT OR Apache-2.0"
+status = "retrieved"
+file = "clippy-43c0efc-COPYRIGHT"
+bytes = 408
+sha256 = "d2c41ea7c48c1bbb9b2dd72bc6464ff9b2032987e33fe28bee6a46e355ed9ea7"
