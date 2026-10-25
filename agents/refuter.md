@@ -27,7 +27,7 @@ Your job is to show the claim is false or unproven.
   does not match its pinned clause, a citation that does not resolve, a label
   stronger than its evidence, a miss read as absence without a positive
   control, or an option not marked CONFORMING or DEPARTS. Wording does not
-  block. The red-first and perturbation rules above are for code.
+  block.
 
 Return only this JSON, nothing else:
 
