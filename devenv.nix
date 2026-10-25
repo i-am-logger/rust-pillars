@@ -377,6 +377,20 @@ in
       exec = "cargo run --quiet --manifest-path eval-harness/Cargo.toml -- --control";
     };
 
+    # The same cases under `claude plugin eval`, on a clean, vendored, offline
+    # export of HEAD (eval-harness/plugin-eval.sh says why). Real model calls:
+    # manual only. For other options (one case, a model, a cost ceiling) run
+    # the script itself: `sh eval-harness/plugin-eval.sh --case own-dont-leak`.
+    "eval:plugin" = {
+      exec = "sh eval-harness/plugin-eval.sh -j 4 --no-publish";
+    };
+
+    # The graders themselves: each must pass on the reference solution and fail
+    # on the untouched start. Haiku, two short turns per case.
+    "eval:graders" = {
+      exec = "sh eval-harness/plugin-eval.sh --graders";
+    };
+
     # Every mutant of domain and core, not only changed lines.
     "qa:mutants" = {
       exec = ''

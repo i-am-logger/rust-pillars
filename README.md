@@ -134,10 +134,16 @@ with sources pinned by hash, is
 
 Two layers, over the same ten cases in `evals/`:
 
-- **`claude plugin eval`** grades transcripts: did the expected skill fire,
-  did the entry skill, and how was the work done (`graders/`). Each case's
-  `scaffold.sh` builds the working copy, so run it with `--scaffold`:
-  `claude plugin eval . --scaffold --trust-plugin --allow-tools Bash Edit Write`.
+- **`claude plugin eval`** (`devenv tasks run eval:plugin`): did the expected
+  skill fire, did the entry skill, did the agent verify its change (graded
+  from the trace), and is the code right (graded file by file: the judge sees
+  one file whole, while a long trace has its middle elided). Run it through
+  `eval-harness/plugin-eval.sh`, not at the repository root: the runner loads
+  every directory named `evals` at any depth (the controls gate leaves a copy
+  under `target/`), and its sandbox has no network, so the script runs it on a
+  clean export of HEAD with every dependency vendored and cargo offline.
+  `devenv tasks run eval:graders` checks the graders themselves: each must
+  pass on the reference solution and fail on the untouched start.
 - **`eval-harness/`** runs each case headless with and without the plugin and
   scores what was left on disk with `checks.toml`: it builds, lints, tests and
   gates the code. Each arm runs twice, and a difference counts only if it is

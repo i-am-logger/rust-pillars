@@ -25,7 +25,9 @@ for entry in "$root"/* "$root"/.[!.]*; do
   [ -e "$entry" ] || continue
   name=$(basename "$entry")
   case $name in
-  target | .git | skills | evals | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md) continue ;;
+  # The plugin's own parts stay out, or the no-plugin arm could read them;
+  # graders-* are the grader self-check suites (eval-harness/plugin-eval.sh).
+  target | .git | skills | commands | agents | hooks | evals | graders-* | eval-harness | .claude-plugin | .claude | .direnv | .devenv* | .pre-commit-config.yaml | README.md | NOTICE.md) continue ;;
   esac
   cp -R "$entry" .
 done

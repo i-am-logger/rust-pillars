@@ -1,0 +1,9 @@
+---
+type: regex
+pattern: '\bHeat\b'
+match: not_contains
+target:
+  source: file
+  path: crates/rust-code-core/src/lib.rs
+---
+The core crate root does not mention `Heat`: the thermostat was not wired into the core.
