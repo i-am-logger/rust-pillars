@@ -205,8 +205,9 @@ pub const fn row_pitch(row: RowBytes, geo: CacheGeometry) -> Pitch {
 
 - Function placement alone can move a timing: identical code laid out at
   different addresses straddles fetch and cache-line boundaries differently.
-  Build every arm with `-C llvm-args=-align-all-functions=6` against that
-  noise (the `rust-measure` skill).
+  When hot code is near a change, build every arm with the same
+  `-C llvm-args=-align-all-functions=6` against that noise (the
+  `rust-measure` skill).
 - Data that nothing reads still moves the code and data after it, so adding
   it can change a hot loop's timing.
 - Rule: a timing delta smaller than the placement noise is no result. The

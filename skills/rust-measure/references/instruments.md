@@ -43,8 +43,8 @@ the identification is repeatable after an OS or tool update.
   versions.
 - **Never assign a counter from its magnitude** ("this column is about the
   size I expect cache misses to be, so it is cache misses"). An
-  identification from magnitude alone is a guess that a later control
-  usually withdraws.
+  identification from magnitude alone is a guess: a control program that
+  exercises the event decides what a column counts.
 - Counters are per-run evidence, like timings: same host, both arms, A/A arm.
 - For CI, take instruction counts from an instruction-counting simulator,
   not from the PMU (ci-counters.md): a simulator needs no hardware counter
