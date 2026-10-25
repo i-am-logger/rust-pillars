@@ -136,7 +136,7 @@ BeautifulRust copy pinned at commit 6b3a96c:
 | In-session enforcement | none | opt-in hook runs the gates after each `.rs` edit |
 | Commands, agents | none | `/rust-code:gate`, `/rust-code:adopt`, a refuter agent |
 | Code in the skills | examples | every Rust block compiles and runs (`cargo xtask snippets`) |
-| Context cost | ~160 tokens always-on, ~7.3k every time it fires (unmeasured: bytes / 4 over the pinned SKILL.md's 650-byte frontmatter and 504-line body) | ~980 always-on; ~1.6k for the entry skill, plus only the specialist a task needs (~3.9k-7.1k) (`claude plugin details` estimates, claude 2.1.303) |
+| Context cost | ~160 tokens always-on, ~7.3k every time it fires (unmeasured: bytes / 4 over the pinned SKILL.md's 650-byte frontmatter and 504-line body) | ~982 always-on; ~1.6k for the entry skill, plus only the specialist a task needs (~3.9k-7.1k) (`claude plugin details` estimates, claude 2.1.303) |
 
 It costs more context up front -- one description per skill and command --
 and less when it works, because no task loads all of it. The idioms are
@@ -150,7 +150,8 @@ with sources pinned by hash, is
 ## Evals
 
 Ten cases in `evals/`, scored two ways. `claude plugin eval`, run through
-`eval-harness/plugin-eval.sh` on a sandboxed, offline export of HEAD, grades
+`eval-harness/plugin-eval.sh` in the runner's sandbox on an offline export of
+HEAD, grades
 whether the expected skill fired and whether the code is right. The Rust
 harness in `eval-harness/` runs each case headless with and without the
 plugin and scores what was left on disk by building, linting, testing and
