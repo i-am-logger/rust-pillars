@@ -218,7 +218,7 @@ EOF
   # empty environment (no operator variable leaks in), with the repository's
   # path left as __ROOT__; the scaffold loads it into the run's ~/.zshenv.
   : "${DEVENV_PROFILE:?run inside devenv shell}"
-  env -i HOME="$HOME" USER="$USER" PATH=/usr/bin:/bin "$(command -v devenv)" shell -- \
+  env -i HOME="$HOME" USER="${USER:-$(id -un)}" PATH=/usr/bin:/bin "$(command -v devenv)" shell -- \
     sh -c 'unset HOME USER SHELL PWD OLDPWD SHLVL TMPDIR TMP TEMP TERM LOGNAME DEVENV_RUNTIME _; export -p' \
     2>/dev/null | sed -n '/^export /,$p' | sed "s|$repo|__ROOT__|g" >"$export_dir/evals/_scaffold/devenv.env"
   grep -q '^export RUSTFLAGS=' "$export_dir/evals/_scaffold/devenv.env" ||
@@ -282,7 +282,7 @@ run_suite() {
       sleep 15 &
       s=$!
       wait "$s"
-      pe_reap "$runroot" "$marker"
+      pe_reap "$runroot" "$marker" "$$"
     done
   ) >&2 &
   reaper=$!
@@ -291,7 +291,7 @@ run_suite() {
   code=$?
   set -e
   kill "$reaper" 2>/dev/null || true
-  pe_reap "$runroot" "$marker"
+  pe_reap "$runroot" "$marker" "$$"
   rm -f "$marker" "$marker.seen"
   return "$code"
 }

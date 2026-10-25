@@ -105,13 +105,40 @@ echo "$rr/e-gone" >"$scratch/marker.seen"
 rm -rf "$runs/e-gone" "$runs/e-othergone"
 sleep 1
 same "an orphan exists before the reap" alive "$(alive dead)"
-pe_reap "$rr" "$scratch/marker" >/dev/null
+pe_reap "$rr" "$scratch/marker" "$$" >/dev/null
 sleep 1
 same "the reaper ends an orphan of a dead session" gone "$(alive dead)"
 same "and one of its own runs the runner already removed" gone "$(alive gone)"
 same "but not one of a removed run it never saw" alive "$(alive othergone)"
 same "and leaves a live session's process" alive "$(alive live)"
 same "and a run older than this invocation" alive "$(alive old)"
+same "and leaves no file of its own behind" "" \
+  "$(cd "$scratch" && ls -d marker.cwd marker.ps marker.adopters marker.procs marker.roots 2>/dev/null)"
+pe_reap "$scratch/nothing" "$scratch/marker" "$$" >/dev/null
+same "nor when no process is in a run directory" "" "$(cd "$scratch" && ls -d marker.cwd 2>/dev/null)"
+# Where the parent of an orphan's dead parent goes: PID 1 on macOS, but on
+# Linux the nearest subreaper above it (systemd --user, tini, a task runner),
+# which is an ancestor of the invocation, not PID 1. Here the invocation is
+# a shell one below this one, so this shell stands for that subreaper.
+runs3=$scratch/runs3
+mkdir -p "$runs3"
+touch "$scratch/marker3"
+sleep 1
+mkdir -p "$runs3/e-adopted/home/cwd" "$runs3/e-other/home/cwd"
+(cd "$runs3/e-adopted/home/cwd" && exec sleep 300 >/dev/null 2>&1) &
+echo $! >"$scratch/pids/adopted"
+# A concurrent invocation's live session: its parent is that invocation's
+# runner, which is no ancestor of this one.
+# shellcheck disable=SC2016 # expanded by the inner shell
+sh -c '(cd "$1" && exec sleep 300 >/dev/null 2>&1) & echo $! >"$2"; wait' sh \
+  "$runs3/e-other/home/cwd" "$scratch/pids/other" &
+sleep 1
+rr3=$(cd "$runs3" && pwd -P)
+# shellcheck disable=SC2016 # expanded by the inner shell
+sh -c '. "$1"; pe_reap "$2" "$3" "$$"' sh "$here/lib.sh" "$rr3" "$scratch/marker3" >/dev/null
+sleep 1
+same "an orphan a subreaper above the invocation adopted is ended" gone "$(alive adopted)"
+same "a concurrent invocation's live session is left" alive "$(alive other)"
 name=mine value=mine a=mine tab=mine
 pe_opt_value --json x --json y >/dev/null
 pe_has_opt --json --json y && pe_vendor_key "$repo" HEAD >/dev/null

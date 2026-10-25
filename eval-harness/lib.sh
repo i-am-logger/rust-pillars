@@ -124,32 +124,40 @@ pe_job_cap() {
   printf '%s\n' "$_pe_value"
 }
 
-# pe_cwds: `p<pid>` and `n<cwd>` lines for this user's processes, from lsof
-# where there is one, else from /proc (a removed directory's " (deleted)"
-# mark dropped, as lsof shows it).
+# pe_cwds: `p<pid>` and `n<cwd>` lines for this user's processes: from
+# /proc where it names a cwd (Linux; a removed directory's " (deleted)" mark
+# dropped, as lsof shows it), else from lsof (macOS).
 pe_cwds() {
-  if command -v lsof >/dev/null 2>&1; then
-    lsof -a -d cwd -u "$(id -u)" -Fpn 2>/dev/null
-  elif [ -d /proc/self ]; then
+  if [ -n "$(readlink /proc/self/cwd 2>/dev/null)" ]; then
     for _pe_a in /proc/[0-9]*; do
       _pe_value=$(readlink "$_pe_a/cwd" 2>/dev/null) || continue
       printf 'p%s\nn%s\n' "${_pe_a#/proc/}" "${_pe_value% (deleted)}"
     done
+  else
+    lsof -a -d cwd -u "$(id -u)" -Fpn 2>/dev/null
   fi
 }
 
-# pe_reap RUNROOT MARKER: ends what timed-out sessions left running. The
-# runner kills a session's claude process but not the commands it started:
-# they live on, reparented to launchd (PPID 1), with their working directory
-# inside the run's directory RUNROOT/e-*/ (measured), taking cores from the
-# runs that follow. For each run directory of this invocation -- newer than
-# MARKER, or seen so by an earlier call (MARKER.seen) and since removed by
-# the runner -- the processes whose cwd is inside it are grouped; their
-# roots are those whose parent is not among them. A live session's root is
-# its claude process, whose parent is the runner; a dead one's roots have
-# PPID 1. Only a directory with no live root is reaped: every process whose
-# cwd is inside it gets SIGTERM (its TMPDIR is inside it too, so a
-# cargo-mutants copy is found). Prints what it ended.
+# pe_reap RUNROOT MARKER OWNER: ends what timed-out sessions of the
+# invocation OWNER (its PID) left running. The runner kills a session's
+# claude process but not the commands it started: they live on with their
+# working directory inside the run's directory RUNROOT/e-*/ (measured),
+# taking cores from the runs that follow.
+#
+# For each run directory of this invocation -- newer than MARKER, or seen so
+# by an earlier call (MARKER.seen) and since removed by the runner -- the
+# processes whose cwd is inside it are grouped; their roots are those whose
+# parent is not among them. A session's root is its claude process, whose
+# parent is a runner. When a process's parent dies, the kernel hands it to
+# an ancestor of that parent: PID 1 (launchd, init) or, on Linux, the
+# nearest subreaper above it (systemd --user, tini, a task runner) -- so
+# never to anything below OWNER, and never to another invocation's runner.
+# A directory is dead when every root's parent is PID 1 or a strict ancestor
+# of OWNER: no runner holds any of it. Only then is every process whose cwd
+# is inside it sent SIGTERM (its TMPDIR is inside it too, so a cargo-mutants
+# copy is found). A live session's root has a runner as its parent, which is
+# no ancestor of OWNER, so no process of a live session -- of this
+# invocation or a concurrent one -- is ever ended. Prints what it ended.
 pe_reap() {
   pe_cwds |
     awk -v root="$1/e-" '
@@ -158,12 +166,21 @@ pe_reap() {
              if (index(path, root) == 1) {
                rest = substr(path, length(root) + 1); sub(/\/.*/, "", rest)
                print pid, root rest } }' >"$2.cwd"
-  [ -s "$2.cwd" ] || return 0
+  [ -s "$2.cwd" ] || {
+    rm -f "$2.cwd"
+    return 0
+  }
   ps -A -o pid=,ppid= >"$2.ps"
+  # OWNER's strict ancestors, and PID 1: the parents an orphan can have.
+  awk -v owner="$3" '{ pp[$1] = $2 } END { print 1
+         for (a = pp[owner]; a != "" && a != 0 && !(a in seen); a = pp[a]) { seen[a]; print a } }' \
+    "$2.ps" >"$2.adopters"
   awk 'NR == FNR { dir[$1] = $2; next } ($1 in dir) { print $1, $2, dir[$1] }' "$2.cwd" "$2.ps" >"$2.procs"
   # One line per directory with a root: the directory, then "live" or "dead".
-  awk '{ d[$1] = $3; pp[$1] = $2 } END { for (p in d) if (!(pp[p] in d) || d[pp[p]] != d[p])
-         print d[p], (pp[p] == 1 ? "dead" : "live") }' "$2.procs" | sort -u >"$2.roots"
+  awk 'NR == FNR { adopter[$1]; next }
+       { d[$1] = $3; pp[$1] = $2 }
+       END { for (p in d) if (!(pp[p] in d) || d[pp[p]] != d[p])
+         print d[p], ((pp[p] in adopter) ? "dead" : "live") }' "$2.adopters" "$2.procs" | sort -u >"$2.roots"
   # This invocation's directories, remembered while they exist, so one the
   # runner removed is still known as ours (lsof keeps naming a removed cwd).
   cut -d' ' -f1 "$2.roots" | sort -u | while read -r dir; do
@@ -180,7 +197,7 @@ pe_reap() {
       kill -TERM "$pid" 2>/dev/null && echo "plugin-eval: ended $pid, left running in $dir"
     done
   done
-  rm -f "$2.cwd" "$2.ps" "$2.procs" "$2.roots"
+  rm -f "$2.cwd" "$2.ps" "$2.adopters" "$2.procs" "$2.roots"
 }
 
 # pe_sha256: the SHA-256 of stdin, in hex.
