@@ -1,6 +1,7 @@
 ---
 name: own-dont-leak
 description: Clippy rejects a Box::leak'd startup lookup table in the binary; fix it properly, keeping output identical and the table zero-copy.
+tags: [smoke]
 runs: 3
 max_turns: 40
 timeout_seconds: 900

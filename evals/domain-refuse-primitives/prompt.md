@@ -1,6 +1,7 @@
 ---
 name: domain-refuse-primitives
 description: Add a thermostat vocabulary (sensor reading, setpoint, a Heat decision) to the domain crate, with tests, without widening the domain's primitive-carrying API.
+tags: [smoke]
 runs: 3
 max_turns: 40
 timeout_seconds: 900
