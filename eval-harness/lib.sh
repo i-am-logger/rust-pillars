@@ -124,6 +124,20 @@ pe_job_cap() {
   printf '%s\n' "$_pe_value"
 }
 
+# pe_cwds: `p<pid>` and `n<cwd>` lines for this user's processes, from lsof
+# where there is one, else from /proc (a removed directory's " (deleted)"
+# mark dropped, as lsof shows it).
+pe_cwds() {
+  if command -v lsof >/dev/null 2>&1; then
+    lsof -a -d cwd -u "$(id -u)" -Fpn 2>/dev/null
+  elif [ -d /proc/self ]; then
+    for _pe_a in /proc/[0-9]*; do
+      _pe_value=$(readlink "$_pe_a/cwd" 2>/dev/null) || continue
+      printf 'p%s\nn%s\n' "${_pe_a#/proc/}" "${_pe_value% (deleted)}"
+    done
+  fi
+}
+
 # pe_reap RUNROOT MARKER: ends what timed-out sessions left running. The
 # runner kills a session's claude process but not the commands it started:
 # they live on, reparented to launchd (PPID 1), with their working directory
@@ -137,7 +151,7 @@ pe_job_cap() {
 # cwd is inside it gets SIGTERM (its TMPDIR is inside it too, so a
 # cargo-mutants copy is found). Prints what it ended.
 pe_reap() {
-  lsof -a -d cwd -u "$(id -u)" -Fpn 2>/dev/null |
+  pe_cwds |
     awk -v root="$1/e-" '
       /^p/ { pid = substr($0, 2) }
       /^n/ { path = substr($0, 2)
