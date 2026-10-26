@@ -173,10 +173,9 @@ job = "Lint/UT (macos-latest)"
 ```
 The gate (planned) fails when a `#[cfg(target_os = ..)]` test is missing from
 the file, or the named job does not exist in `.github/workflows/ci.yml`.
-`ci.yml` declares an `ubuntu-latest` + `macos-latest` matrix running
-`devenv test`, so a macOS-only test has a place to run. CI triggers on
-pushes and PRs to `master`; branch `feat/pillars` has no upstream yet, so
-the matrix has not run these gates.
+`ci.yml` runs `devenv test` on an `ubuntu-latest` matrix. A project with a
+macOS-only test adds `macos-latest` to it, which gives the entry's job a
+place to run. CI triggers on pushes and PRs to `master`.
 
 ## 4. Ignored tests (shipped: `cargo xtask tests`, `ignores.toml`)
 - Every `#[ignore]`d test is listed in `ignores.toml` as `file`, `test`,

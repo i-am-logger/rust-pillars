@@ -154,4 +154,4 @@ rust-pillars plan only. Never cite a planned gate as passing. Evidence labels
 | `cargo xtask snippets`: every Rust block in the Markdown runs (`rustdoc --test --cfg test`); `.claude/workflows/lanes.js` | |
 | `cargo xtask tests`: no skips, exact floors, `ignores.toml` | `qa:fuzz`, `qa:miri`, `qa:sanitize` |
 | `test:mutants-diff`, `qa:mutants` (`.cargo/mutants.toml`) | `test:loom`, `qa:kani`, `qa:shuffle` |
-| `ci.yml`: ubuntu + macos matrix, informational coverage (branch not pushed yet) | |
+| `ci.yml`: `devenv test` on ubuntu, informational coverage | |

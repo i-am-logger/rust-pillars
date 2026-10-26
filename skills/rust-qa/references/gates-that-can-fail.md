@@ -158,8 +158,8 @@ fn the_metal_backend_agrees_with_the_cpu() {
 Rules:
 - Select platforms at compile time (`#[cfg(..)]` on the whole test); inside,
   a missing resource panics. Where it runs is listed (planned
-  `platform-tests.toml`) and the CI matrix runs it (ubuntu + macos in
-  `ci.yml`; not yet run, nothing pushed).
+  `platform-tests.toml`) and the CI matrix runs it: `ci.yml` is
+  ubuntu-only by default, so a macOS-only test needs `macos-latest` added.
 - Shipped gate, `cargo xtask tests` (`xtask/src/tests_gate.rs`, task
   `test:tests`): in every `#[test]` fn under each member's `src/` and
   `tests/`, it rejects a `return` inside an `if` whose condition probes the
