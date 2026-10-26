@@ -249,9 +249,9 @@ jobs:
           command: release
           # The release-plz whose config docs release-plz.toml was written
           # against, pinned here so it stays that release whatever the
-          # action's own default becomes. Dependabot moves the action's SHA,
-          # not this input: raise it by hand, after checking release-plz.toml
-          # against the new release's docs.
+          # action's own default becomes. Raise it by hand, with the action's
+          # SHA, after checking release-plz.toml against the new release's
+          # docs.
           version: 0.4.1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
