@@ -10,7 +10,7 @@ A test earns its place by going red when the code is wrong, for the reason it
 names. Every rule below serves that. Depth is in `references/`; load the one
 you need.
 
-Status labels refer to the companion `rust-template` at commit `a076f93`
+Status labels refer to the companion `rust-template` at commit `67e068d`
 (branch `feat/pillars`): **shipped** = committed there; **planned** = in the
 rust-pillars plan only. Never cite a planned gate as passing. Evidence labels
 (measured / by-reading / inferred / unmeasured) are rust-research's.
@@ -117,7 +117,7 @@ rust-pillars plan only. Never cite a planned gate as passing. Evidence labels
   changed line in domain/core must be caught (`test:mutants-diff`, in
   `devenv test`); `qa:mutants` mutates all of domain and core. Both pin the
   proptest seed so the verdict is reproducible. (shipped) Template evidence
-  (commit `c0f4705` message): the first run found 10 survivors, one a byte
+  (commit `44736e5` message): the first run found 10 survivors, one a byte
   table tested against its own generator; after the fix, 0 survive.
 - Line coverage is informational only: a high line percentage says nothing
   about what was checked. DEPARTS from the
@@ -144,7 +144,7 @@ rust-pillars plan only. Never cite a planned gate as passing. Evidence labels
   and triage are rust-research's (`references/refuter-brief.md`); this skill
   owns the code-side refuter rules R1-R8.
 
-## Shipped vs planned in rust-template (commit a076f93)
+## Shipped vs planned in rust-template (commit 67e068d)
 
 | shipped | planned |
 |---|---|

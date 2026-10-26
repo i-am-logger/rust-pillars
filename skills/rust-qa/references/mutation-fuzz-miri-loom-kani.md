@@ -3,7 +3,7 @@
 Load this when judging a suite's strength, fuzzing a parser, testing a
 quarantine crate, testing a cross-thread hand-off, or proving arithmetic total.
 
-Status in rust-template (commit `a076f93`): `test:mutants-diff` and
+Status in rust-template (commit `67e068d`): `test:mutants-diff` and
 `qa:mutants` are **shipped**; `cargo-mutants` and `cargo-llvm-cov` are in
 `devenv.nix` `packages`; every other task below is **planned**. Checked here: cargo-mutants flags against its
 27.0.0 `--help`; the loom example under clippy `-D warnings` and loom 0.7.2
@@ -35,7 +35,7 @@ missed) and `test_tool = "nextest"`. Results land in `mutants.out/`:
 `mutants.out/` out of git (`.gitignore`): it is a run's output, not a
 fixture.
 
-Template evidence (commit `c0f4705` message): the first run found 10
+Template evidence (commit `44736e5` message): the first run found 10
 survivors, among them a byte-table test that compared the table with the
 definition it was compiled from; after the fixes, 0 survive.
 
@@ -44,7 +44,7 @@ Rules:
   proptest seed and case count exactly as the unit gate does. Why: an
   unpinned seed makes the missed count change between runs of one commit.
   Pass the unit gate's `--all-features` too: the shipped tasks do not, so a
-  mutant behind `alloc` would go untested (none exists at `d3b9d83`).
+  mutant behind `alloc` would go untested (none exists at `403c836`).
 - Changed lines: zero missed (the shipped gate). A tree that starts with
   survivors ratchets the missed count like `budgets.toml`: exact, only goes
   down, raised only in a commit of its own that says why.

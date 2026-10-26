@@ -52,7 +52,7 @@ Shipped: `cargo xtask controls` (`xtask/src/controls.rs`), run by
 `target/controls`, requires `cargo xtask all` green on the unplanted copy,
 then applies each of its 32 cases and requires the gate's output to contain
 the case's expected text. A gate that fails for any other reason is reported
-**WRONG**, not red. Commit `a076f93` reports 33 of 33 failing as planted (the
+**WRONG**, not red. Commit `67e068d` reports 33 of 33 failing as planted (the
 newest plants a Rust block in the docs that does not compile, for `cargo
 xtask snippets`). Their commands cover the xtask gates,
 check, clippy, bare, features and trybuild; `test:fmt`, `test:doc`,
@@ -81,7 +81,7 @@ own planted run, 2026-10-24) found two things worth keeping as lessons:
 - The leak bans in `clippy.toml` were written under `std::` paths only; in
   the no_std domain and core a `std::` path names nothing, so clippy banned
   nothing, silently. Only a plant revealed it; `clippy.toml` now lists the
-  `alloc::` and `core::` paths too (commit `c31655b`).
+  `alloc::` and `core::` paths too (commit `206088c`).
 - The doubled-position-advance plant passed the split property and failed
   the model property ([properties-and-oracles.md](properties-and-oracles.md)).
   `controls` plants no behavioural defect under a property or the alloc
@@ -92,7 +92,7 @@ own planted run, 2026-10-24) found two things worth keeping as lessons:
 Run each plant through the command the gate runs (the devenv task's `exec`
 line), not a cargo invocation chosen for the plant. Why: a plant red under
 `cargo test -p my-project-core --features alloc --test alloc` proves the
-test, not the gate. Before commit `65a3876`, `test:unit` passed no feature
+test, not the gate. Before commit `27fcd17`, `test:unit` passed no feature
 flags and no member enables `my-project-core/alloc` (by-reading
 `devenv.nix` and the manifests), so an allocation behind `alloc` was
 invisible to the gate; that commit added `--all-features`.

@@ -218,7 +218,7 @@ Per metric, per arm: median and range (min..max) over the kept rounds.
 ## 7. Instrument self-checks
 
 Before trusting a new harness (or after changing it), run these controls.
-The template's commit `c0f4705` reports 1 and 2 for `bench` (a planted 30 ms
+The template's commit `44736e5` reports 1 and 2 for `bench` (a planted 30 ms
 sleep read as disjoint, slower by 45 ms). 3 and 4 are not automated. `arms`
 printing "byte-identical" for two equal revisions does not prove 3: `arms`
 reuses one `CARGO_TARGET_DIR` for both revisions, so a skipped rebuild would

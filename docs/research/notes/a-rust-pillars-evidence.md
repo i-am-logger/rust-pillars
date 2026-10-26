@@ -103,7 +103,7 @@ evaluation cases graded by a model and tuned against themselves; nothing on
   1024-slot queue holds and 7447 of 23832 lines were missing from the output
   (refused and counted, so visible -- but lost). The driver now feeds each read
   in queue-sized slices; a test is red on the old loop and green on the new
-  (rust-template `a076f93`). Refuse-and-count was right in the core; the
+  (rust-template `67e068d`). Refuse-and-count was right in the core; the
   driver's job was not to overflow it.
 - **A description is not enough to get a skill loaded.** Measured headless
   (`claude -p`, Sonnet, one run each): asked to write a small semver crate,

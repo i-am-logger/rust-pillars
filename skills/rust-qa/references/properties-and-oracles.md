@@ -46,7 +46,7 @@ Rules:
 - When the generator leaves something out, say why in a comment and test it
   by hand. The template leaves out `0x0b` because `std`'s
   `split_ascii_whitespace` does not treat it as a separator while the machine
-  does. Since commit `c0f4705` the domain's exhaustive byte-table test names
+  does. Since commit `44736e5` the domain's exhaustive byte-table test names
   `0x0b` as space in its independent definition; before it, nothing pinned
   the difference although the generator's comment said it was "tested by
   hand". An omission is covered only when a test you can name covers it.

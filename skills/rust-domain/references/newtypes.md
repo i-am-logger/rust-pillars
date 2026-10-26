@@ -234,4 +234,4 @@ Put `#[must_use]` on all of them. `Option` is not `#[must_use]` by itself, and d
 
 In a trait impl, the methods' primitives, seams and callbacks are not counted, because the trait fixes those signatures. Their `bool` parameters and any `unsafe fn` are still counted. The impl's own generic arguments and its associated types are counted too.
 
-Since rust-template `ea24734` the scanner also counts `pub const`, `pub static`, a free `pub type`, and a primitive inside `impl Trait`, `dyn` or `fn(..)` (`-> impl Iterator<Item = u8>`), all as `primitive_api`. A `bool` nested in another type (`Option<bool>`) is still review's.
+Since rust-template `b4d5da6` the scanner also counts `pub const`, `pub static`, a free `pub type`, and a primitive inside `impl Trait`, `dyn` or `fn(..)` (`-> impl Iterator<Item = u8>`), all as `primitive_api`. A `bool` nested in another type (`Option<bool>`) is still review's.

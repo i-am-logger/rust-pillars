@@ -3,7 +3,7 @@
 Load this when deciding what kind of test to write and where it goes.
 
 Labels: **shipped** = committed in the companion `rust-template`
-(branch `feat/pillars`, commit `a076f93`); **planned** = in the rust-pillars
+(branch `feat/pillars`, commit `67e068d`); **planned** = in the rust-pillars
 plan only.
 
 ## 1. Where a test lives
@@ -85,7 +85,7 @@ Why the count: `for b in 0..u8::MAX` misses 255 and every per-item assertion
 still passes. The count is written as a literal, not computed from the same
 range, so the two can disagree.
 
-Why `independent`, not the table's generator: until commit `c0f4705` this
+Why `independent`, not the table's generator: until commit `44736e5` this
 test compared the table with `reference`, the `const fn` it is compiled
 from, so a wrong `reference` passed. cargo-mutants found it among the first
 run's 10 survivors (template commit message). An exhaustive sweep is still
@@ -148,7 +148,7 @@ profiler starts; then 1000 rounds of events must leave `total_blocks` and
 `curr_bytes` unchanged. dhat is a safe global allocator, so the test needs no
 `unsafe impl GlobalAlloc` (pillar 6). Without the `alloc` feature the core
 cannot allocate at all, so the test only bites with the feature on:
-`test:unit` runs `--all-features` (shipped, commit `65a3876`). Before that
+`test:unit` runs `--all-features` (shipped, commit `27fcd17`). Before that
 commit `test:unit` passed no feature flags and no member enables
 `my-project-core/alloc` (by-reading the manifests), so code behind `alloc`
 was never tested by the gate; see
