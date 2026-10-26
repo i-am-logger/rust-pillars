@@ -19,7 +19,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use anyhow::{Context, Result, ensure};
+use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 
 use crate::report::Report;
@@ -118,10 +118,7 @@ fn test(
     }
     let text =
         String::from_utf8_lossy(&out.stdout).to_string() + &String::from_utf8_lossy(&out.stderr);
-    let log = scratch.join(format!(
-        "{}.log",
-        doc.to_string_lossy().replace(['/', '\\'], "_")
-    ));
+    let log = log_path(doc, scratch);
     fs::write(&log, &text)?;
     // rustdoc names a failing block `<file> - <heading> (line N)`.
     let lines: Vec<String> = text
@@ -180,6 +177,14 @@ pub(crate) fn run(ws: &Workspace, r: &mut Report) -> Result<()> {
     Ok(())
 }
 
+/// Where `test` keeps rustdoc's output for a failing document.
+fn log_path(doc: &Path, scratch: &Path) -> PathBuf {
+    scratch.join(format!(
+        "{}.log",
+        doc.to_string_lossy().replace(['/', '\\'], "_")
+    ))
+}
+
 /// The positive control: a broken block must fail, and a sound one pass.
 fn control(externs: &[(String, PathBuf)], deps: &Path, scratch: &Path) -> Result<()> {
     let good = scratch.join("control-good.md");
@@ -189,10 +194,11 @@ fn control(externs: &[(String, PathBuf)], deps: &Path, scratch: &Path) -> Result
         "```rust\nlet n: u32 = 2;\nassert_eq!(n + 1, 3);\n```\n",
     )?;
     fs::write(&bad, "```rust\nlet n: u32 = \"not a number\";\n```\n")?;
-    ensure!(
-        test(&good, externs, deps, scratch)?.is_none(),
-        "positive control failed: a sound block did not pass rustdoc --test"
-    );
+    if test(&good, externs, deps, scratch)?.is_some() {
+        // Say why: without rustdoc's output a red control is a dead end.
+        let why = fs::read_to_string(log_path(&good, scratch)).unwrap_or_default();
+        bail!("positive control failed: a sound block did not pass rustdoc --test:\n{why}");
+    }
     ensure!(
         test(&bad, externs, deps, scratch)?.is_some(),
         "positive control failed: a broken block passed rustdoc --test"
