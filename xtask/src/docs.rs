@@ -8,8 +8,7 @@
 //! * CLAUDE.md is exactly at its byte budget: it is loaded into every agent
 //!   session whole, so it may only shrink, and a raise is its own commit;
 //! * a Claude Code plugin manifest, if the project has one, states the
-//!   workspace's version: the plugin and the crates are one release, and
-//!   release-plz bumps only Cargo.toml.
+//!   workspace's version: the plugin and the crates are one release.
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -37,6 +36,7 @@ const ROOT_FILES: &[&str] = &[
     "CONTRIBUTING.md",
     "MEASUREMENTS.md",
     "release-plz.toml",
+    "release-please-config.json",
 ];
 
 #[derive(Debug, Deserialize)]
@@ -164,7 +164,7 @@ fn plugin_version(ws: &Workspace, r: &mut Report) -> Result<usize> {
             GATE,
             PLUGIN_MANIFEST,
             format!(
-                "states version {v}, but the workspace is {workspace}: they are one release, and release-plz bumps only Cargo.toml -- set it to {workspace}"
+                "states version {v}, but the workspace is {workspace}: they are one release -- set it to {workspace}"
             ),
         ),
         None => r.fail(

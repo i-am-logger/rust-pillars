@@ -42,24 +42,26 @@ trust -- not on a branch whose `evals/` you have not read. See
 
 ## Commit messages
 
-[Conventional Commits](https://www.conventionalcommits.org/). release-plz reads
-them to compute the next version and write `CHANGELOG.md`. Its rules
-([next_version](https://github.com/release-plz/release-plz/blob/f126c0e32b6c431e1e57eb000204537364e3fac1/crates/next_version/src/lib.rs)),
-while the version is `0.x`:
+[Conventional Commits](https://www.conventionalcommits.org/). release-please
+reads them to compute the next version and write `CHANGELOG.md`
+(`release-please-config.json`). While the version is `0.x`:
 
 - `feat!:` / `BREAKING CHANGE:` in the body → minor (major from 1.0)
 - `feat:` → patch (minor from 1.0)
-- `fix:` and any other commit → patch
+- `fix:` → patch
 
-`chore: release` commits are skipped (`release-plz.toml`).
+A release needs a commit that reaches the changelog: `docs:`, `chore:`,
+`ci:` and the like on their own open no release PR.
 
 ## Releases
 
 There is one version: the workspace version in `Cargo.toml`.
 `.claude-plugin/plugin.json` must carry the same version, and a check fails
-when the two differ, so the release PR changes both. release-plz opens that
-`chore: release` PR: it bumps the version and writes `CHANGELOG.md`. Merging
-it tags `vX.Y.Z` from the `rust-pillars` package and creates a GitHub release.
+when the two differ. release-please opens the release PR, which sets both
+(and the two internal crates' version pins in `Cargo.toml`) and writes
+`CHANGELOG.md`. Merging it tags `vX.Y.Z` and creates a GitHub release.
+`Cargo.lock` keeps the old version for the workspace's own crates until the
+next cargo build; commit that one-line change.
 Nothing is published to crates.io: the plugin ships as this repository. Do
 not change the version outside a release PR.
 

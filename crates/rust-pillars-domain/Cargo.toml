@@ -7,7 +7,7 @@ rust-version.workspace = true
 authors.workspace = true
 license.workspace = true
 repository.workspace = true
-# Not on crates.io: the repository releases as a git tag (release-plz.toml).
+# Not on crates.io: the repository releases as a git tag (release-please-config.json).
 publish = false
 
 [features]
