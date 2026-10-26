@@ -40,3 +40,6 @@ evals/results/
 
 # Claude Code worktrees (other checkouts, with gates of their own)
 .claude/worktrees/
+
+# dhat profiles a failing allocation test writes beside the crate
+dhat-heap.json
