@@ -4,9 +4,8 @@ rust-pillars is a Claude Code plugin that teaches Claude how to write Rust. It
 follows the style of BeautifulRust (morganlinton, MIT, commit 6b3a96c), with
 two differences. First, its rules are enforced by the gates of the companion
 template rust-template (`devenv test`, the same tasks CI runs), not just
-written down. The gates are on rust-template's `feat/pillars` branch, not its
-master; the table below was checked against that branch's head at commit
-`67e068d`, and the branch can move on. Second, it is split into six skills whose short SKILL.md files load
+written down. The gates are in rust-template; the table below was checked against its
+`feat/pillars` branch at commit `67e068d`, and the template can move on. Second, it is split into six skills whose short SKILL.md files load
 reference files only when a task needs them. Each rule names its reason and the
 gate that holds it, or says "review" when no gate does. Where a rule leaves
 BeautifulRust or a guideline, it says "DEPARTS from <source>: <why>". Every

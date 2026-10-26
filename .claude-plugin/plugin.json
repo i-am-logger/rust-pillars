@@ -1,7 +1,7 @@
 {
   "name": "rust-pillars",
   "version": "0.1.0",
-  "description": "A Claude Code plugin that teaches Claude to write Rust on six enforced pillars: a domain type system that refuses primitives, event-driven sans-IO cores, layered crates, zero-copy, no_std and no unsafe -- plus the research, measurement and QA method behind them. Its idioms are adapted from BeautifulRust. Pairs with the feat/pillars branch of rust-template, whose gates enforce the pillars.",
+  "description": "A Claude Code plugin that teaches Claude to write Rust on six enforced pillars: a domain type system that refuses primitives, event-driven sans-IO cores, layered crates, zero-copy, no_std and no unsafe -- plus the research, measurement and QA method behind them. Its idioms are adapted from BeautifulRust. Pairs with rust-template, whose gates enforce the pillars.",
   "author": {
     "name": "i-am-logger"
   },

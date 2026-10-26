@@ -14,8 +14,7 @@
 > sans-IO cores, layered crates, zero-copy, `no_std`, no `unsafe` -- and how
 > to research, measure and test that code. Every rule is also a gate that
 > fails the build: the gates run in this repository, and a new project gets
-> them from the
-> [`feat/pillars` branch of rust-template](https://github.com/i-am-logger/rust-template/tree/feat/pillars).
+> them from [rust-template](https://github.com/i-am-logger/rust-template).
 > The idioms are adapted from
 > [BeautifulRust](https://github.com/morganlinton/BeautifulRust) under its MIT
 > license.
@@ -28,11 +27,10 @@ Two halves, versioned separately:
   `SKILL.md` with references loaded on demand, two commands, a refuter
   agent, and evals that score the skills by building and gating the code they
   produce.
-- **rust-template** -- the enforcement: workspace lints, `cargo xtask`
-  gates, devenv tasks that are CI. The gates are on its
-  [`feat/pillars` branch](https://github.com/i-am-logger/rust-template/tree/feat/pillars)
-  today, not on its `master`. A project made from that branch enables this
-  plugin for everyone in it through its Claude Code project settings. This
+- **[rust-template](https://github.com/i-am-logger/rust-template)** -- the
+  enforcement: workspace lints, `cargo xtask` gates, devenv tasks that are
+  CI. A project made from it enables this plugin for everyone in it through
+  its Claude Code project settings. This
   repository carries the same gates (`xtask/`), and every gate applies here
   too.
 
@@ -114,8 +112,8 @@ ShareAlike): it says so and asks before it copies anything.
 
 ## The pillars and their gates
 
-The gates are `cargo xtask` commands in this repository and on rust-template's
-[`feat/pillars` branch](https://github.com/i-am-logger/rust-template/tree/feat/pillars).
+The gates are `cargo xtask` commands in this repository and in
+[rust-template](https://github.com/i-am-logger/rust-template).
 
 | # | Pillar | Gate |
 |---|---|---|
@@ -141,7 +139,7 @@ BeautifulRust copy pinned at commit 6b3a96c:
 | Install from a marketplace, invoke by slash command | yes | yes |
 | claude.ai upload | a zipped skill folder | the whole plugin, or any one skill on its own (`dist:package`) |
 | Evals under `claude plugin eval` | 3 cases, graded by a model | 10 cases with scaffolds and transcript graders, **plus** executable checks that build, lint, test and gate what was written, each case proven to fail on an untouched project and pass with a reference solution |
-| Rules enforced | none: prose | every rule is a gate, here and on rust-template's `feat/pillars` branch, and every gate is seen failing for its reason |
+| Rules enforced | none: prose | every rule is a gate, here and in rust-template, and every gate is seen failing for its reason |
 | Getting loaded | its description only | its descriptions, plus a nudge on any Rust prompt (one run per condition: it turned a crate-writing task that loaded no skill into one that loaded the entry skill first) |
 | In-session enforcement | none | opt-in hook runs the gates after each `.rs` edit |
 | Commands, agents | none | `/rust-pillars:gate`, `/rust-pillars:adopt`, a refuter agent |
