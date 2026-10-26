@@ -1,10 +1,13 @@
+<div align="center">
+
 # rust-pillars
 
 [![CI](https://img.shields.io/github/actions/workflow/status/i-am-logger/rust-pillars/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/i-am-logger/rust-pillars/actions/workflows/ci.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/i-am-logger/rust-pillars/badge)](https://scorecard.dev/viewer/?uri=github.com/i-am-logger/rust-pillars)
 [![Nix](https://img.shields.io/badge/Nix-2b2b2b?logo=nixos&logoColor=white)](https://nixos.org)
 [![devenv](https://img.shields.io/badge/devenv-2b2b2b?logo=nixos&logoColor=white)](https://devenv.sh)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/CC%20BY--NC--SA%204.0-2b2b2b?logo=creativecommons&logoColor=white)](LICENSE)
+
+</div>
 
 > A Claude Code plugin that teaches Claude to write Rust on six enforced
 > pillars -- a domain type system that refuses primitives, event-driven

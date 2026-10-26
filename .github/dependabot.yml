@@ -1,5 +1,5 @@
 # Version updates. Every action is pinned to a commit with its release in a
-# comment (ci.yml, scorecard.yml); Dependabot moves the commit and the comment
+# comment (ci.yml); Dependabot moves the commit and the comment
 # together, so the pins do not rot.
 #
 # https://docs.github.com/en/code-security/dependabot/working-with-dependabot/dependabot-options-reference
