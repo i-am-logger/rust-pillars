@@ -68,8 +68,8 @@ an exponential number of configurations and test cases to be 100% covered".
 
 | rule | where | says |
 |---|---|---|
-| no_std | `crates/rust-code-domain/src/lib.rs` line 25 | `#![no_std]` |
-| features | `crates/rust-code-domain/Cargo.toml` lines 12-15 | `default = []`, `alloc = []`; "it is never on by default, and `test:bare` builds with it off" |
+| no_std | `crates/rust-pillars-domain/src/lib.rs` line 25 | `#![no_std]` |
+| features | `crates/rust-pillars-domain/Cargo.toml` lines 12-15 | `default = []`, `alloc = []`; "it is never on by default, and `test:bare` builds with it off" |
 | arch gate | `xtask/src/arch.rs` `pure()`, lines 105-130 | fails if `lib.rs` lacks `#![no_std]`, or if `default` names anything containing `alloc` or `std` |
 | layering | `layers.toml` `[roles.domain]`, lines 21-24 | no internal dependency; the only external one is `zerocopy` |
 | additive | `CLAUDE.md` pillar 3 | "Features are additive." |
@@ -112,7 +112,7 @@ stabilised `core::error::Error`, which edition 2024 rules out.
   searched with `grep -n`. Positive control: `grep -n '^## '` hit every
   section heading, including "Feature unification" at line 263.
 - **No error types in the domain crate (by-reading).** Ran
-  `grep -rnE 'Error|Display' crates/rust-code-domain/src`: 0 hits. Positive
+  `grep -rnE 'Error|Display' crates/rust-pillars-domain/src`: 0 hits. Positive
   control, same method: `grep -rn ByteClass` hits `class.rs` 15 times and
   `line.rs` 11 times. So the miss is an absence, not a broken search.
 - **The no-feature design works on a host (measured; rustc and cargo 1.94.1

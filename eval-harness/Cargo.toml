@@ -3,7 +3,7 @@
 # so the workspace an eval copies -- crates, gates, layers.toml -- is exactly a
 # rust-template project, with nothing in it that names the eval.
 [package]
-name = "rust-code-eval"
+name = "rust-pillars-eval"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"

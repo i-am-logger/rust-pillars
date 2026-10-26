@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: '^\s*rust-code-scan\s*=\s*"core"'
+pattern: '^\s*rust-pillars-scan\s*=\s*"core"'
 flags: m
 match: contains
 target:

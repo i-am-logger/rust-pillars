@@ -48,7 +48,7 @@ out=$(
   cargo xtask arch 2>&1
 )
 if printf '%s' "$out" | grep -q 'finding(s)'; then
-  printf 'rust-code gates after editing %s:\n%s\n' "$file" "$(printf '%s' "$out" | grep -E '^\[|finding')" >&2
+  printf 'rust-pillars gates after editing %s:\n%s\n' "$file" "$(printf '%s' "$out" | grep -E '^\[|finding')" >&2
   exit 2
 fi
 exit 0

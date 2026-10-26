@@ -137,7 +137,7 @@ assert_eq!(size_of::<String>(), 3 * size_of::<usize>());
 - The core uses no hash map at all. It is `no_std` with `external = []`, and a
   bounded array or a domain index is cheaper and has no hasher to choose.
   DEPARTS from BeautifulRust: it offers the faster hasher wherever keys are
-  trusted, but in rust-code's core the map itself is the cost.
+  trusted, but in rust-pillars's core the map itself is the cost.
 - A randomly seeded map iterates in a different order each run, so never let
   that order reach output or a test (sort it first).
 
@@ -176,7 +176,7 @@ assert_eq!(shared.lock().expect("lock poisoned").len(), 86);
   in the allocator crate. That crate is still an `unsafe` dependency (and
   mimalloc builds C code), so name it in review.
 - DEPARTS from BeautifulRust: it says applications may set a global
-  allocator, and rust-code requires the winning A/B first. A program that allocates nothing per
+  allocator, and rust-pillars requires the winning A/B first. A program that allocates nothing per
   event, as the core is built to, may gain nothing from a faster allocator.
 - The dhat allocator in `crates/<name>-core/tests/alloc.rs` is its own test
   binary, so it does not clash with a bin's allocator.

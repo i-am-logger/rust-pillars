@@ -2,7 +2,7 @@
 type: llm
 focus:
   source: file
-  path: crates/rust-code-core/tests/chunk_invariance.rs
+  path: crates/rust-pillars-core/tests/chunk_invariance.rs
 ---
 This is the core's split-invariance property test file after the task. The task asked for a new property next to the existing ones, named `chunk_invariance_...`, that feeds the same bytes, ticks and upstream failures with the bytes split into reads differently and checks the effects come out the same. Judge from this file alone:
 

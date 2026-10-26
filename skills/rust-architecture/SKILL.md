@@ -44,7 +44,7 @@ Never present an inferred claim as measured.
 - Every buffer is bounded. On overflow, refuse and count (`Queued::Dropped` → `Refusals`); never grow, block or drop silently. Gate: `crates/<name>-core/tests/alloc.rs` plus unit tests that fill each bound.
 - `const`-assert each message size against its buffer, and take capacities from the protocol's maximum. Gate: the build.
 - State lives on the struct between events, so a token split across reads stays in fields.
-- Every core ships a `chunk_invariance_*` property: any split equals the whole, and one-byte reads equal an **independent** model. A planted doubled advance passed split equality alone (measured, rust-code's own planted run). Gate: `cargo xtask arch` checks the marker; independence is review. Writing the property and the model: rust-qa.
+- Every core ships a `chunk_invariance_*` property: any split equals the whole, and one-byte reads equal an **independent** model. A planted doubled advance passed split equality alone (measured, rust-pillars's own planted run). Gate: `cargo xtask arch` checks the marker; independence is review. Writing the property and the model: rust-qa.
 - The core is not `async`, so any executor, a test or a bare-metal loop can drive it. Its error types: rust-idioms (errors).
 
 ## Zero-copy, own don't leak ([zero-copy.md](references/zero-copy.md))

@@ -2,9 +2,9 @@
 type: llm
 focus:
   source: file
-  path: crates/rust-code-domain/src/percent.rs
+  path: crates/rust-pillars-domain/src/percent.rs
 ---
-Judge this file, `crates/rust-code-domain/src/percent.rs`, from its contents alone. Before the task, everything above `#[cfg(test)]` read exactly as below, and the test module held a single test, that 200 of 100 is `Percent::FULL`:
+Judge this file, `crates/rust-pillars-domain/src/percent.rs`, from its contents alone. Before the task, everything above `#[cfg(test)]` read exactly as below, and the test module held a single test, that 200 of 100 is `Percent::FULL`:
 
 ```rust
 impl Percent {

@@ -1,12 +1,12 @@
 {
-  "name": "rust-code",
-  "description": "rust-code: Rust skills built on six enforced pillars, with the research, measurement and QA method behind them.",
+  "name": "rust-pillars",
+  "description": "rust-pillars: Rust skills built on six enforced pillars, with the research, measurement and QA method behind them.",
   "owner": {
     "name": "i-am-logger"
   },
   "plugins": [
     {
-      "name": "rust-code",
+      "name": "rust-pillars",
       "source": ".",
       "description": "Six Rust skills -- domain types, architecture, idioms, research, measurement, QA -- enforced by the gates on rust-template's feat/pillars branch.",
       "license": "CC-BY-NC-SA-4.0"

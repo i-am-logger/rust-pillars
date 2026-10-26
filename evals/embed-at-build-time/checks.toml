@@ -1,9 +1,9 @@
-# embed-at-build-time: the bin reads crates/rust-code/assets/stopwords.txt
+# embed-at-build-time: the bin reads crates/rust-pillars/assets/stopwords.txt
 # from a cwd-relative path at every launch. A good solution embeds the asset
 # itself at build time, so the binary runs from any directory and with the
 # file gone, and an edit to the asset reaches the next build.
 #
-# The binary is $PWD/target/debug/rust-code: the devenv shell sets
+# The binary is $PWD/target/debug/rust-pillars: the devenv shell sets
 # CARGO_TARGET_DIR=./target, relative to the working copy. Every behaviour
 # check runs it from a scratch directory under target/evalchk/ (where the
 # cwd-relative asset path does not resolve), never from $TMPDIR, with stdin
@@ -18,10 +18,10 @@
 [[check]]
 name = "stopwords subcommand works from another directory and reports the asset's count"
 run = '''
-cargo build -q -p rust-code || exit 1
-b="$PWD/target/debug/rust-code"
+cargo build -q -p rust-pillars || exit 1
+b="$PWD/target/debug/rust-pillars"
 d="$PWD/target/evalchk/cwd1"; rm -rf "$d"; mkdir -p "$d" || exit 1
-want=$(grep -Ecv '^[[:space:]]*(#|$)' crates/rust-code/assets/stopwords.txt)
+want=$(grep -Ecv '^[[:space:]]*(#|$)' crates/rust-pillars/assets/stopwords.txt)
 got=$(cd "$d" && timeout 60 "$b" stopwords </dev/null) || exit 1
 test "$(printf %s "$got" | tr -dc 0-9)" = "$want"
 '''
@@ -31,8 +31,8 @@ on_base = "fail"
 [[check]]
 name = "counting stdin works from another directory"
 run = '''
-cargo build -q -p rust-code || exit 1
-b="$PWD/target/debug/rust-code"
+cargo build -q -p rust-pillars || exit 1
+b="$PWD/target/debug/rust-pillars"
 d="$PWD/target/evalchk/cwd2"; rm -rf "$d"; mkdir -p "$d" || exit 1
 out=$(cd "$d" && printf 'the cat sat\non a mat\n' | timeout 60 "$b") || exit 1
 test -n "$out"
@@ -43,10 +43,10 @@ on_base = "fail"
 [[check]]
 name = "built binary does not need the asset on disk at run time"
 run = '''
-cargo build -q -p rust-code || exit 1
-b="$PWD/target/debug/rust-code"
+cargo build -q -p rust-pillars || exit 1
+b="$PWD/target/debug/rust-pillars"
 d="$PWD/target/evalchk/cwd3"; rm -rf "$d"; mkdir -p "$d" || exit 1
-a=crates/rust-code/assets/stopwords.txt
+a=crates/rust-pillars/assets/stopwords.txt
 mv "$a" "$a.away" || exit 1
 (cd "$d" && timeout 60 "$b" stopwords </dev/null >/dev/null); r=$?
 mv "$a.away" "$a"
@@ -60,14 +60,14 @@ on_base = "fail"
 # test in src/ that reads the asset back from disk.
 [[check]]
 name = "no run-time read of the asset in the bin's source"
-run = "! grep -rqE 'read_to_string|File::open|fs::read' crates/rust-code/src"
+run = "! grep -rqE 'read_to_string|File::open|fs::read' crates/rust-pillars/src"
 expect = "pass"
 on_base = "fail"
 
 [[check]]
 name = "exactly one build-time embed (include!/include_str!/include_bytes!) in the bin crate"
 run = '''
-n=$(grep -rhE --include='*.rs' '^[[:space:]]*([^/[:space:]].*)?\binclude(_str|_bytes)?!' crates/rust-code | wc -l)
+n=$(grep -rhE --include='*.rs' '^[[:space:]]*([^/[:space:]].*)?\binclude(_str|_bytes)?!' crates/rust-pillars | wc -l)
 test "$n" -eq 1
 '''
 expect = "pass"
@@ -77,16 +77,16 @@ on_base = "fail"
 [[check]]
 name = "an edit to the asset reaches the next build (no drifting copy)"
 run = '''
-cargo build -q -p rust-code || exit 1
-b="$PWD/target/debug/rust-code"
-a=crates/rust-code/assets/stopwords.txt
+cargo build -q -p rust-pillars || exit 1
+b="$PWD/target/debug/rust-pillars"
+a=crates/rust-pillars/assets/stopwords.txt
 d="$PWD/target/evalchk/cwd4"; rm -rf "$d"; mkdir -p "$d" || exit 1
 cp "$a" "$d/keep" || exit 1
 n1=$(cd "$d" && timeout 60 "$b" stopwords </dev/null | tr -dc 0-9) && test -n "$n1" &&
-  printf 'zyzzyva\n' >> "$a" && cargo build -q -p rust-code &&
+  printf 'zyzzyva\n' >> "$a" && cargo build -q -p rust-pillars &&
   n2=$(cd "$d" && timeout 60 "$b" stopwords </dev/null | tr -dc 0-9); r=$?
 cp "$d/keep" "$a"
-cargo build -q -p rust-code
+cargo build -q -p rust-pillars
 test "$r" -eq 0 && test -n "$n2" && test "$n2" -eq $((n1 + 1))
 '''
 expect = "pass"
@@ -96,7 +96,7 @@ on_base = "fail"
 
 [[check]]
 name = "the asset is still there, unchanged"
-run = "cmp crates/rust-code/assets/stopwords.txt $EVAL_CASE/fixture/crates/rust-code/assets/stopwords.txt"
+run = "cmp crates/rust-pillars/assets/stopwords.txt $EVAL_CASE/fixture/crates/rust-pillars/assets/stopwords.txt"
 expect = "pass"
 on_base = "pass"
 
@@ -132,7 +132,7 @@ on_base = "pass"
 
 [[check]]
 name = "domain and core still build for bare metal"
-run = "cargo build -q -p rust-code-domain -p rust-code-core --target x86_64-unknown-none"
+run = "cargo build -q -p rust-pillars-domain -p rust-pillars-core --target x86_64-unknown-none"
 expect = "pass"
 on_base = "pass"
 
@@ -144,10 +144,10 @@ run = '''
 R=$EVAL_ROOT
 test -f "$R/Cargo.toml" || exit 1
 for f in layers.toml budgets.toml clippy.toml deny.toml ignores.toml .cargo/config.toml \
-         crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+         crates/rust-pillars-domain/clippy.toml crates/rust-pillars-core/clippy.toml; do
   cmp -s "$f" "$R/$f" || exit 1
 done
-test ! -e crates/rust-code/clippy.toml && test -z "$(find . -name .clippy.toml -not -path './target/*')"
+test ! -e crates/rust-pillars/clippy.toml && test -z "$(find . -name .clippy.toml -not -path './target/*')"
 '''
 expect = "pass"
 on_base = "pass"
@@ -164,8 +164,8 @@ on_base = "pass"
 [[check]]
 name = "the bin crate still inherits the workspace lints, with no suppression"
 run = '''
-grep -A1 '^\[lints\]' crates/rust-code/Cargo.toml | grep -qx 'workspace = true' &&
-! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code/src
+grep -A1 '^\[lints\]' crates/rust-pillars/Cargo.toml | grep -qx 'workspace = true' &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-pillars/src
 '''
 expect = "pass"
 on_base = "pass"
@@ -181,6 +181,6 @@ on_base = "pass"
 # until the fixture is regenerated from the new root files and these updated.
 [[check]]
 name = "fixture-overlays-match-base"
-run = 'test "$(cksum < $EVAL_ROOT/crates/rust-code/src/main.rs)" = "1658020495 4935"'
+run = 'test "$(cksum < $EVAL_ROOT/crates/rust-pillars/src/main.rs)" = "848397690 4938"'
 expect = "pass"
 on_base = "pass"

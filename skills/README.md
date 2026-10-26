@@ -1,6 +1,6 @@
-# rust-code
+# rust-pillars
 
-rust-code is a Claude Code plugin that teaches Claude how to write Rust. It
+rust-pillars is a Claude Code plugin that teaches Claude how to write Rust. It
 follows the style of BeautifulRust (morganlinton, MIT, commit 6b3a96c), with
 two differences. First, its rules are enforced by the gates of the companion
 template rust-template (`devenv test`, the same tasks CI runs), not just
@@ -33,13 +33,13 @@ fact carries a label: measured, by-reading or inferred.
 | rust-idioms | everyday idiom adapted from BeautifulRust and scoped per crate role; errors, suppressions, naming, docs | `test:clippy` (`-D warnings`, `allow_attributes`), budgets `expect_attr`, `test:doc` |
 
 Every skill stands alone: none needs a skill this plugin does not ship, and
-none links outside its own folder. The `rust-code` skill fires on any Rust
+none links outside its own folder. The `rust-pillars` skill fires on any Rust
 work and routes to the one the task needs.
 
 ## Which skill owns what
 
 Each rule lives in one skill, and the others point to it:
-- the hand-back checklist and which skill to load: rust-code
+- the hand-back checklist and which skill to load: rust-pillars
 - domain types: rust-domain
 - layering, sans-IO, zero-copy, caches, `no_std` and `unsafe`: rust-architecture
 - error types, lint suppression and general idiom: rust-idioms
@@ -47,5 +47,5 @@ Each rule lives in one skill, and the others point to it:
 - tests and the code-side refuter: rust-qa
 - research, judges, records and the verdict schema: rust-research
 
-A "planned" gate is in the rust-code plan but not yet in the template. Never
+A "planned" gate is in the rust-pillars plan but not yet in the template. Never
 cite one as passing.

@@ -6,4 +6,4 @@ runs: 3
 max_turns: 40
 timeout_seconds: 900
 ---
-`cargo clippy -p rust-code -- -D warnings` fails on the startup table I added in the binary (the bucket labels in `crates/rust-code/src/buckets.rs`). Can you fix it properly? Keep the behaviour exactly as it is (same output for the same input), and keep it zero-copy: the table is built once, so no cloning it per use.
+`cargo clippy -p rust-pillars -- -D warnings` fails on the startup table I added in the binary (the bucket labels in `crates/rust-pillars/src/buckets.rs`). Can you fix it properly? Keep the behaviour exactly as it is (same output for the same input), and keep it zero-copy: the table is built once, so no cloning it per use.

@@ -12,7 +12,7 @@ you need.
 
 Status labels refer to the companion `rust-template` at commit `a076f93`
 (branch `feat/pillars`): **shipped** = committed there; **planned** = in the
-rust-code plan only. Never cite a planned gate as passing. Evidence labels
+rust-pillars plan only. Never cite a planned gate as passing. Evidence labels
 (measured / by-reading / inferred / unmeasured) are rust-research's.
 
 ## Placement and taxonomy — [references/test-taxonomy.md](references/test-taxonomy.md)
@@ -49,7 +49,7 @@ rust-code plan only. Never cite a planned gate as passing. Evidence labels
 - Generate VALID inputs from an alphabet of atoms, not `any::<u8>()`. Why:
   random bytes mostly exercise the first rejection branch.
 - Check against an INDEPENDENT model (std, a spec table, a vendored
-  reference), never only code vs code. Worked lesson (measured: rust-code's
+  reference), never only code vs code. Worked lesson (measured: rust-pillars's
   own planted run on the template): a doubled position advance passed
   `chunk_invariance_any_split_gives_the_same_effects` (code vs code) and was
   caught by `chunk_invariance_one_byte_reads_agree_with_the_model` (vs std).

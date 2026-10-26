@@ -33,12 +33,12 @@
 //! network as the runner, with the runner's Claude login. It is kept rather
 //! than narrowed to a tool allowlist, which would change what the agent can
 //! do, so a score would no longer mean what it meant before. So the harness
-//! refuses a model run unless `RUST_CODE_EVAL_UNSANDBOXED=1` is set: run one
+//! refuses a model run unless `RUST_PILLARS_EVAL_UNSANDBOXED=1` is set: run one
 //! only on a tree you trust, ideally in a VM or container.
 //! `eval-harness/plugin-eval.sh` runs the same cases in `claude plugin
 //! eval`'s sandbox.
 //!
-//! Run it from the devenv shell: `[RUST_CODE_EVAL_UNSANDBOXED=1] cargo run
+//! Run it from the devenv shell: `[RUST_PILLARS_EVAL_UNSANDBOXED=1] cargo run
 //! --manifest-path eval-harness/Cargo.toml -- [--control] [--case NAME]
 //! [--runs N] [--model M]` (the `eval:run` task).
 
@@ -238,7 +238,7 @@ fn copy_dir(from: &Path, to: &Path) -> Result<()> {
 
 /// Where working copies and the plugin copy go: outside the repository.
 fn scratch() -> PathBuf {
-    std::env::temp_dir().join("rust-code-eval")
+    std::env::temp_dir().join("rust-pillars-eval")
 }
 
 /// A copy of the plugin alone, for the arm with the plugin.
@@ -370,9 +370,9 @@ fn solution(root: &Path, case: &Path, checks: &Checks) -> Result<Vec<String>> {
 }
 
 /// The variable a model run needs set to `1`: see [`unsandboxed`].
-const UNSANDBOXED: &str = "RUST_CODE_EVAL_UNSANDBOXED";
+const UNSANDBOXED: &str = "RUST_PILLARS_EVAL_UNSANDBOXED";
 
-/// Whether a model run may start, given `$RUST_CODE_EVAL_UNSANDBOXED`.
+/// Whether a model run may start, given `$RUST_PILLARS_EVAL_UNSANDBOXED`.
 ///
 /// [`attempt`] runs `claude -p --permission-mode bypassPermissions` with no
 /// sandbox: kept because a tool allowlist would change what the agent can

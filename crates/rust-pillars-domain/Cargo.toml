@@ -1,0 +1,27 @@
+[package]
+name = "rust-pillars-domain"
+description = "The type system: every quantity is a type (role: domain)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+# Not on crates.io: the repository releases as a git tag (release-plz.toml).
+publish = false
+
+[features]
+# Pillar 5: no_std. `alloc` exists for hosts that have one; it is never on by
+# default, and `test:bare` builds with it off.
+default = []
+alloc = []
+
+[dependencies]
+zerocopy.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+trybuild.workspace = true
+
+[lints]
+workspace = true

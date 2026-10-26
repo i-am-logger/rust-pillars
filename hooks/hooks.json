@@ -21,7 +21,7 @@
             "command": "sh",
             "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/gate-on-edit.sh"],
             "timeout": 300,
-            "statusMessage": "rust-code gates"
+            "statusMessage": "rust-pillars gates"
           }
         ]
       }

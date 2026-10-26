@@ -16,20 +16,20 @@ names = ["get", "of", "from_host", "threshold_ms"]
 # Bytes of CLAUDE.md, which every agent session loads whole: it may only
 # shrink, and is lowered with it.
 [docs]
-claude_md_bytes = 2038
+claude_md_bytes = 2047
 
-[crates.rust-code-domain]
+[crates.rust-pillars-domain]
 seam = 8
 # BytePos::saturating_advance (usize -> u64) and the class table's index.
 as_cast = 2
 
-[crates.rust-code-core]
+[crates.rust-pillars-core]
 
-[crates.rust-code-scan]
+[crates.rust-pillars-scan]
 # first_newline takes a host buffer and returns an index into it: the
 # reader calls it on raw bytes before they become a Wire.
 primitive_api = 1
 
-[crates.rust-code]
+[crates.rust-pillars]
 
 [crates.xtask]

@@ -1,5 +1,5 @@
 ---
-description: Adopt the rust-code gates (CC BY-NC-SA 4.0 files from rust-template) in an existing Rust workspace, strictly or as a ratchet
+description: Adopt the rust-pillars gates (CC BY-NC-SA 4.0 files from rust-template) in an existing Rust workspace, strictly or as a ratchet
 argument-hint: "[--ratchet]"
 allowed-tools: Bash(cargo metadata:*), Bash(cargo xtask all:*), Read, Grep, Glob
 ---

@@ -1,0 +1,29 @@
+[package]
+name = "rust-pillars-scan"
+description = "Fast byte scans for the reader (role: core)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+# Not on crates.io: the repository releases as a git tag (release-plz.toml).
+publish = false
+
+[features]
+default = []
+
+[dependencies]
+
+[dev-dependencies]
+proptest.workspace = true
+
+# The SIMD fast path needs `unsafe` for the vector loads, and the workspace
+# lints forbid it, so this crate keeps its own lints instead of inheriting them.
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+unused = { level = "deny", priority = -1 }
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+undocumented_unsafe_blocks = "deny"

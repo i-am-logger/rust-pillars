@@ -2,9 +2,9 @@
 type: llm
 focus:
   source: file
-  path: crates/rust-code/src/stopwords.rs
+  path: crates/rust-pillars/src/stopwords.rs
 ---
-This is the stopword module of the `rust-code` binary. The task was to stop reading `crates/rust-code/assets/stopwords.txt` from disk at run time and embed it at build time instead, so the asset stays the one copy people edit and an edit to it reaches the next build. Judge from this file alone.
+This is the stopword module of the `rust-pillars` binary. The task was to stop reading `crates/rust-pillars/assets/stopwords.txt` from disk at run time and embed it at build time instead, so the asset stays the one copy people edit and an edit to it reaches the next build. Judge from this file alone.
 
 1. The module does not read the list from disk at run time: no `fs::read_to_string`, `File::open`, `fs::read` or similar on the load path, whether by a relative path or an absolute one built at run time. A read inside a `#[cfg(test)]` test that compares the embed with the asset is fine.
 2. The list's text comes from a build-time embed of the asset file itself. Any of these counts: `include_str!`/`include_bytes!` of `assets/stopwords.txt` (a relative path or one built with `concat!(env!("CARGO_MANIFEST_DIR"), ...)`), an `include!` of a build-script output in `OUT_DIR`, or text handed in by the caller (for example from `main.rs`), where this module embeds nothing itself. It FAILS if the words are pasted into Rust source as a hand-maintained array, string or `const` copy that would not change when the asset is edited.

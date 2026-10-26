@@ -77,7 +77,7 @@ on_base = "pass"
 
 [[check]]
 name = "domain and core still build for a target with no std"
-run = "cargo build --quiet --no-default-features --target x86_64-unknown-none -p rust-code-domain -p rust-code-core"
+run = "cargo build --quiet --no-default-features --target x86_64-unknown-none -p rust-pillars-domain -p rust-pillars-core"
 expect = "pass"
 on_base = "pass"
 
@@ -106,8 +106,8 @@ name = "gate configs unchanged (layers, budgets, clippy x3, deny, ignores, cargo
 run = '''
 R=$EVAL_ROOT
 test -f "$R/Cargo.toml" || exit 1
-for f in Cargo.toml layers.toml budgets.toml clippy.toml crates/rust-code-domain/clippy.toml \
-         crates/rust-code-core/clippy.toml deny.toml ignores.toml .cargo/config.toml; do
+for f in Cargo.toml layers.toml budgets.toml clippy.toml crates/rust-pillars-domain/clippy.toml \
+         crates/rust-pillars-core/clippy.toml deny.toml ignores.toml .cargo/config.toml; do
   cmp -s "$f" "$R/$f" || exit 1
 done
 '''

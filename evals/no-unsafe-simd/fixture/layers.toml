@@ -13,10 +13,10 @@
 #              (pillar 6); add one only by adding it here
 
 [crates]
-rust-code-domain = "domain"
-rust-code-core = "core"
-rust-code-scan = "core"
-rust-code = "bin"
+rust-pillars-domain = "domain"
+rust-pillars-core = "core"
+rust-pillars-scan = "core"
+rust-pillars = "bin"
 xtask = "tool"
 
 [roles.domain]

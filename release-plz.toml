@@ -7,12 +7,12 @@
 [workspace]
 # The repository has one version, [workspace.package] version in Cargo.toml,
 # and one release: a `vX.Y.Z` tag, a changelog and a GitHub release. Nothing
-# goes to crates.io: every crate sets `publish = false`, and the name
-# `rust-code` there belongs to an unrelated project.
+# goes to crates.io: every crate sets `publish = false`. The name
+# `rust-pillars` was unregistered there on 2026-10-25, and anyone may take it.
 #
 # git_only: the previous release is the newest matching git tag, not the
 # registry. Without it release-plz downloads the crates.io package of the same
-# name as its baseline -- for `rust-code`, someone else's crate -- and
+# name as its baseline -- a crate this repository does not own -- and
 # `publish = false` packages are not released at all. No matching tag means a
 # first release. It also skips `cargo publish`.
 git_only = true
@@ -40,7 +40,7 @@ release_always = false
 semver_check = false
 
 # A release is triggered by changes to the released package's files
-# (`cargo package --list -p rust-code` lists them).
+# (`cargo package --list -p rust-pillars` lists them).
 
 # Filterable in the GitHub UI as `is:pr label:release`, and excludable from
 # "needs human review" queries with `-label:automated`.
@@ -52,7 +52,7 @@ pr_labels = ["release", "automated"]
 # eval-harness/ is a workspace of its own, which release-plz does not see (an
 # entry naming it would fail release-plz's check for overrides it cannot find).
 [[package]]
-name = "rust-code"
+name = "rust-pillars"
 release = true
 
 [changelog]

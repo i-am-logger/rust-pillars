@@ -291,5 +291,5 @@ assert_eq!(rc_example_double(-1), -1); // panicked, caught, reported: no abort
 - CONFORMS to BeautifulRust's FFI list (`repr(C)`, `CString`/`CStr`, same-side
   free, RAII, null to `Result`, `catch_unwind`, bindgen `-sys`).
 - DEPARTS from BeautifulRust: it allows FFI in any module that keeps its
-  invariant, and rust-code allows it only inside a declared quarantine crate
+  invariant, and rust-pillars allows it only inside a declared quarantine crate
   with counted expects, because a finite audit needs one place to look.

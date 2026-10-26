@@ -1,5 +1,5 @@
 ---
-description: Run every rust-code gate on this project (which runs its own build, xtask and test code) and report what fails, by pillar
+description: Run every rust-pillars gate on this project (which runs its own build, xtask and test code) and report what fails, by pillar
 argument-hint: "[gate]  e.g. budgets, arch, layers, tests, coverage, snippets"
 allowed-tools: Bash(devenv test:*), Bash(cargo xtask:*), Bash(cargo fmt --check:*), Bash(cargo clippy:*), Bash(cargo test:*), Read, Grep, Glob
 ---
@@ -12,7 +12,7 @@ Run the project's gates and report the result by pillar.
 2. If the project has no `xtask` gates (it was not made from rust-template),
    say so, run `cargo fmt --check`, `cargo clippy --all-targets --all-features
    -- -D warnings` and `cargo test --all-features`, and suggest
-   `/rust-code:adopt`.
+   `/rust-pillars:adopt`.
 3. Report each failing gate with its findings, grouped by pillar (type system,
    event-driven, layering, zero-copy, no_std, no unsafe, tests, docs), and for
    each the smallest fix that keeps the rule. Never propose raising a budget or

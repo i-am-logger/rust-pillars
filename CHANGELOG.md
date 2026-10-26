@@ -11,10 +11,10 @@ First public release.
 
 ### Added
 
-- Seven skills: the `rust-code` entry skill, which routes to six specialists
+- Seven skills: the `rust-pillars` entry skill, which routes to six specialists
   (`rust-domain`, `rust-architecture`, `rust-idioms`, `rust-measure`,
   `rust-qa`, `rust-research`).
-- Two commands, `/rust-code:gate` and `/rust-code:adopt`, and the `refuter`
+- Two commands, `/rust-pillars:gate` and `/rust-pillars:adopt`, and the `refuter`
   agent.
 - Two hooks: a one-line nudge to load the skills on a Rust prompt (on by
   default), and the opt-in `gate_on_edit` hook, which runs the project's

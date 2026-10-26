@@ -361,7 +361,7 @@ in
         mkdir -p target/dist/skills target/dist/terms
         git show HEAD:LICENSE >target/dist/terms/LICENSE
         git show HEAD:NOTICE.md >target/dist/terms/NOTICE.md
-        git archive --format=zip -o target/dist/rust-code-plugin.zip HEAD \
+        git archive --format=zip -o target/dist/rust-pillars-plugin.zip HEAD \
           .claude-plugin skills commands agents hooks LICENSE NOTICE.md README.md
         for d in skills/*/; do
           n=$(basename "$d")
@@ -369,7 +369,7 @@ in
             --add-file=target/dist/terms/LICENSE --add-file=target/dist/terms/NOTICE.md \
             -o "target/dist/skills/$n.zip" "HEAD:skills/$n"
         done
-        for z in target/dist/rust-code-plugin.zip target/dist/skills/*.zip; do
+        for z in target/dist/rust-pillars-plugin.zip target/dist/skills/*.zip; do
           case $z in */skills/*) p=$(basename "$z" .zip)/ ;; *) p= ;; esac
           ${pkgs.unzip}/bin/unzip -Z1 "$z" >target/dist/terms/list
           for f in LICENSE NOTICE.md; do
@@ -387,15 +387,15 @@ in
     # Claude Code's own manifest check (needs the claude CLI).
     "qa:validate" = {
       # Not --strict: the one warning is the repository's own CLAUDE.md, which
-      # is for working on rust-code, not context the plugin ships.
+      # is for working on rust-pillars, not context the plugin ships.
       exec = "claude plugin validate .";
     };
 
     # The plugin's evals, scored by building and gating what the model wrote
     # (eval-harness/). Every run is a real model call: manual only. It runs
     # `claude` with bypassPermissions and no sandbox, so it refuses to start
-    # unless RUST_CODE_EVAL_UNSANDBOXED=1 is set in the environment
-    # (`RUST_CODE_EVAL_UNSANDBOXED=1 devenv tasks run eval:run`: a task sees
+    # unless RUST_PILLARS_EVAL_UNSANDBOXED=1 is set in the environment
+    # (`RUST_PILLARS_EVAL_UNSANDBOXED=1 devenv tasks run eval:run`: a task sees
     # the caller's environment, measured with a probe task).
     # `eval:control` runs no model: each check against the untouched base.
     "eval:run" = {

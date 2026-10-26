@@ -45,7 +45,7 @@ From the devenv shell:
 | plugin side only, against a stored baseline | `sh eval-harness/plugin-eval.sh --reuse-baseline <base.json> <out.json> -j 4 --no-publish` |
 | keep each run's full trace | `sh eval-harness/plugin-eval.sh --keep-state …` |
 | one fixed command in a haiku session | `sh eval-harness/plugin-eval.sh --probe <name> <cmdfile>` |
-| free what older commits left under `$TMPDIR/rust-code-plugin-eval` | `sh eval-harness/plugin-eval.sh --prune` |
+| free what older commits left under `$TMPDIR/rust-pillars-plugin-eval` | `sh eval-harness/plugin-eval.sh --prune` |
 
 Smoke numbers are for iterating, never reported. Every run pins
 `--model claude-opus-5-5 --judge-model haiku` unless you pass your own, and

@@ -44,7 +44,7 @@ on_base = "fail"
 
 [[check]]
 name = "the default is still 64 KiB unless the record says disjoint and faster"
-run = "cargo build -q -p rust-code && timeout 60 target/debug/rust-code --help </dev/null | grep -q 'default: 65536' || grep -qi 'disjoint: faster' MEASUREMENTS.md"
+run = "cargo build -q -p rust-pillars && timeout 60 target/debug/rust-pillars --help </dev/null | grep -q 'default: 65536' || grep -qi 'disjoint: faster' MEASUREMENTS.md"
 expect = "pass"
 on_base = "pass"
 
@@ -84,7 +84,7 @@ run = '''
 R=$EVAL_ROOT
 test -f "$R/Cargo.toml" || exit 1
 for f in layers.toml budgets.toml clippy.toml deny.toml ignores.toml .cargo/config.toml CLAUDE.md \
-         crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+         crates/rust-pillars-domain/clippy.toml crates/rust-pillars-core/clippy.toml; do
   cmp -s "$f" "$R/$f" || exit 1
 done
 '''

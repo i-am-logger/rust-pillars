@@ -30,7 +30,7 @@ Two consequences shape everything below.
   passing to shared state".
 
 DEPARTS from BeautifulRust: it advises a library to take `impl Read` or `impl AsyncRead` from
-the caller. A rust-code core takes neither. It takes bytes as events, and only the adapter
+the caller. A rust-pillars core takes neither. It takes bytes as events, and only the adapter
 reads, which keeps the core identical under every runtime and under none.
 
 ## 2. `async fn`, and when to write `-> impl Future` instead
@@ -295,5 +295,5 @@ or it takes the `JoinSet` or spawner it should use. Why: starting a runtime, or 
 for threads. Only the bin knows which runtime it is using. Gate: review. In domain and core, `std::thread::spawn`
 is a `disallowed_methods` error through the crate-local `clippy.toml`.
 
-This is BeautifulRust's rule. rust-code places it on the layering: the bin owns the runtime,
+This is BeautifulRust's rule. rust-pillars places it on the layering: the bin owns the runtime,
 adapters lend it work, and the core has nothing to schedule.

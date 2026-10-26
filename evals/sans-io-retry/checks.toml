@@ -12,19 +12,19 @@
 
 [[check]]
 name = "event-and-effect-named-in-the-prompt-exist"
-run = "grep -rqw 'UpstreamFailed' crates/rust-code-domain/src crates/rust-code-core/src && grep -rqE 'Retry\\(' crates/rust-code-domain/src crates/rust-code-core/src"
+run = "grep -rqw 'UpstreamFailed' crates/rust-pillars-domain/src crates/rust-pillars-core/src && grep -rqE 'Retry\\(' crates/rust-pillars-domain/src crates/rust-pillars-core/src"
 expect = "pass"
 on_base = "fail"
 
 [[check]]
 name = "a-chunk-invariance-property-drives-failures"
-run = 'for f in crates/rust-code-core/tests/*.rs; do grep -q "UpstreamFailed" "$f" && grep -q "fn chunk_invariance_" "$f" && exit 0; done; exit 1'
+run = 'for f in crates/rust-pillars-core/tests/*.rs; do grep -q "UpstreamFailed" "$f" && grep -q "fn chunk_invariance_" "$f" && exit 0; done; exit 1'
 expect = "pass"
 on_base = "fail"
 
 [[check]]
 name = "original-chunk-invariance-properties-kept"
-run = "grep -q 'fn chunk_invariance_any_split_gives_the_same_effects' crates/rust-code-core/tests/chunk_invariance.rs && grep -q 'fn chunk_invariance_one_byte_reads_agree_with_the_model' crates/rust-code-core/tests/chunk_invariance.rs"
+run = "grep -q 'fn chunk_invariance_any_split_gives_the_same_effects' crates/rust-pillars-core/tests/chunk_invariance.rs && grep -q 'fn chunk_invariance_one_byte_reads_agree_with_the_model' crates/rust-pillars-core/tests/chunk_invariance.rs"
 expect = "pass"
 on_base = "pass"
 
@@ -42,7 +42,7 @@ on_base = "pass"
 
 [[check]]
 name = "core-tests-pass"
-run = "cargo test --quiet -p rust-code-core"
+run = "cargo test --quiet -p rust-pillars-core"
 expect = "pass"
 on_base = "pass"
 
@@ -54,13 +54,13 @@ on_base = "pass"
 
 [[check]]
 name = "core-builds-bare-no-std"
-run = "cargo build --quiet -p rust-code-core --no-default-features --target x86_64-unknown-none"
+run = "cargo build --quiet -p rust-pillars-core --no-default-features --target x86_64-unknown-none"
 expect = "pass"
 on_base = "pass"
 
 [[check]]
 name = "domain-builds-bare-no-std"
-run = "cargo build --quiet -p rust-code-domain --no-default-features --target x86_64-unknown-none"
+run = "cargo build --quiet -p rust-pillars-domain --no-default-features --target x86_64-unknown-none"
 expect = "pass"
 on_base = "pass"
 
@@ -87,8 +87,8 @@ name = "gate-configs-unchanged"
 run = '''
 R=$EVAL_ROOT
 test -f "$R/Cargo.toml" || exit 1
-for f in Cargo.toml layers.toml budgets.toml clippy.toml crates/rust-code-core/clippy.toml \
-         crates/rust-code-domain/clippy.toml deny.toml ignores.toml .cargo/config.toml; do
+for f in Cargo.toml layers.toml budgets.toml clippy.toml crates/rust-pillars-core/clippy.toml \
+         crates/rust-pillars-domain/clippy.toml deny.toml ignores.toml .cargo/config.toml; do
   cmp -s "$f" "$R/$f" || exit 1
 done
 '''
@@ -98,7 +98,7 @@ on_base = "pass"
 [[check]]
 name = "domain-and-core-keep-workspace-lints-without-suppression"
 run = '''
-for c in rust-code-domain rust-code-core; do
+for c in rust-pillars-domain rust-pillars-core; do
   grep -A3 '^\[lints\]' "crates/$c/Cargo.toml" | grep -Eq '^workspace *= *true' || exit 1
   ! grep -rqE '#!?\[(allow|expect)\(|#\[ignore' "crates/$c/src" "crates/$c/tests" || exit 1
 done
@@ -117,11 +117,11 @@ on_base = "pass"
 [[check]]
 name = "hidden-backoff-contract"
 run = '''
-f=crates/rust-code-core/tests/zz_eval_retry_contract.rs
+f=crates/rust-pillars-core/tests/zz_eval_retry_contract.rs
 cat > "$f" <<'EOF'
 //! Written and removed by the eval check; the contract the prompt states.
 
-use rust_code_core::{Effect, Elapsed, Event, Machine, Millis, Wire};
+use rust_pillars_core::{Effect, Elapsed, Event, Machine, Millis, Wire};
 
 const N: usize = 64;
 
@@ -228,7 +228,7 @@ fn eval_many_failures_owe_one_capped_retry() {
     assert_delays(&times, 0, &[1600]);
 }
 EOF
-timeout 900 cargo test --quiet -p rust-code-core --test zz_eval_retry_contract </dev/null
+timeout 900 cargo test --quiet -p rust-pillars-core --test zz_eval_retry_contract </dev/null
 s=$?
 rm -f "$f"
 exit $s

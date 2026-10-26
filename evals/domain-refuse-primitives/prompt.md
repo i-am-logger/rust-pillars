@@ -21,7 +21,7 @@ sensor's format: two bytes, little-endian tenths. I need:
   takes a reading and a setpoint and returns a `Heat`: heat when the reading
   is below the setpoint, otherwise don't.
 
-Put it in `crates/rust-code-domain`, in the same style as the rest of that
+Put it in `crates/rust-pillars-domain`, in the same style as the rest of that
 crate, and export it from the crate root. Add tests that pin the behaviour
 (below, at and above the setpoint, and negative temperatures). Don't wire it
 into the core or the binary yet.

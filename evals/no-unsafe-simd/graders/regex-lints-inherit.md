@@ -5,6 +5,6 @@ flags: m
 match: contains
 target:
   source: file
-  path: crates/rust-code-scan/Cargo.toml
+  path: crates/rust-pillars-scan/Cargo.toml
 ---
 The scan crate inherits the workspace lints (`[lints] workspace = true`).

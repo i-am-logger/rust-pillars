@@ -1,12 +1,12 @@
 {
-  "name": "rust-code",
+  "name": "rust-pillars",
   "version": "0.1.0",
   "description": "A Claude Code plugin that teaches Claude to write Rust on six enforced pillars: a domain type system that refuses primitives, event-driven sans-IO cores, layered crates, zero-copy, no_std and no unsafe -- plus the research, measurement and QA method behind them. Its idioms are adapted from BeautifulRust. Pairs with the feat/pillars branch of rust-template, whose gates enforce the pillars.",
   "author": {
     "name": "i-am-logger"
   },
-  "homepage": "https://github.com/i-am-logger/rust-code",
-  "repository": "https://github.com/i-am-logger/rust-code",
+  "homepage": "https://github.com/i-am-logger/rust-pillars",
+  "repository": "https://github.com/i-am-logger/rust-pillars",
   "license": "CC-BY-NC-SA-4.0",
   "icon": "./.claude-plugin/icon.svg",
   "keywords": [
@@ -29,7 +29,7 @@
     "nudge": {
       "type": "boolean",
       "title": "Remind Claude to load the Rust skills",
-      "description": "When a prompt is about Rust (or the project has a Cargo.toml), add one line telling Claude to load the rust-code skill. Runs nothing in your project.",
+      "description": "When a prompt is about Rust (or the project has a Cargo.toml), add one line telling Claude to load the rust-pillars skill. Runs nothing in your project.",
       "default": true
     }
   }

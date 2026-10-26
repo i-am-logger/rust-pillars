@@ -21,7 +21,7 @@
 #   sh eval-harness/plugin-eval.sh --probe NAME CMDFILE [options...]
 #   sh eval-harness/plugin-eval.sh --prune
 #
-# --prune removes what older commits left under $TMPDIR/rust-code-plugin-eval
+# --prune removes what older commits left under $TMPDIR/rust-pillars-plugin-eval
 # (exports, prebuilt targets of about 1.1 GB each, vendorings and their GC
 # roots) that HEAD's export does not use; run it when no suite is running.
 #
@@ -70,9 +70,9 @@ fi
 EVAL_JOB_CAP=${PE_JOB_CAP:-$(pe_job_cap "$(pe_ncpu)" "$(pe_jobs "$@")")}
 export EVAL_JOB_CAP
 
-mkdir -p "${TMPDIR:-/tmp}/rust-code-plugin-eval"
+mkdir -p "${TMPDIR:-/tmp}/rust-pillars-plugin-eval"
 # The physical path: cargo and the sandbox see /private/tmp, not /tmp.
-base=$(cd "${TMPDIR:-/tmp}/rust-code-plugin-eval" && pwd -P)
+base=$(cd "${TMPDIR:-/tmp}/rust-pillars-plugin-eval" && pwd -P)
 out=$base/$sha
 export_dir=$out/root
 # The cases' reference solutions, beside the export rather than in it: the

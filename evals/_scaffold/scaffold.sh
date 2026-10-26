@@ -1,6 +1,6 @@
 #!/bin/sh
 # Builds one eval case's working copy in the current, empty directory: the
-# rust-code workspace as a project made from rust-template has it -- crates,
+# rust-pillars workspace as a project made from rust-template has it -- crates,
 # gates, config, the docs skeleton -- without the plugin, its evals or its
 # research (whose pinned sources include BeautifulRust's skill text), then the
 # case's fixture on top. Every case's scaffold.sh calls this, and so does
@@ -16,7 +16,7 @@ root=$(cd "$case_dir/../.." && pwd)
 base=$root/evals/_scaffold
 if [ ! -f "$root/.claude-plugin/plugin.json" ] ||
   { [ "$case_dir" != "$base" ] && [ ! -f "$case_dir/prompt.md" ]; }; then
-  echo "scaffold: $case_dir is not a case of a rust-code checkout" >&2
+  echo "scaffold: $case_dir is not a case of a rust-pillars checkout" >&2
   exit 1
 fi
 if [ -n "$(ls -A .)" ]; then
@@ -49,7 +49,7 @@ rm -f .github/pull_request_template.md
 find docs/research/sources -type f -exec rm {} +
 printf '# Pinned research sources.\n' >docs/research/sources/MANIFEST.toml
 find docs/research/notes -type f ! -name TEMPLATE.md -exec rm {} +
-grep -v 'a-rust-code-evidence' docs/README.md >docs/README.md.new
+grep -v 'a-rust-pillars-evidence' docs/README.md >docs/README.md.new
 mv docs/README.md.new docs/README.md
 
 if [ "$case_dir" != "$base" ] && [ -d "$case_dir/fixture" ]; then

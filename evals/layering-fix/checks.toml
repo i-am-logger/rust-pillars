@@ -1,4 +1,4 @@
-# layering-fix (pillar 3): someone added `log` to rust-code-core, called
+# layering-fix (pillar 3): someone added `log` to rust-pillars-core, called
 # `log::debug!` inside `Machine::handle`, and replaced the dropped-effects
 # counter in `Refusals` with a debug line. `cargo xtask layers` fails (core may
 # depend on the domain only, and on no external crate). The fix takes `log` out
@@ -25,8 +25,8 @@ on_base = "fail"
 name = "core-has-no-log-dependency"
 run = '''
 d=target/evalchk/tree; rm -rf "$d"; mkdir -p "$d" || exit 1
-cargo tree -q -p rust-code-core -e normal,build --all-features --target all --prefix none > "$d/tree" || exit 1
-grep -q '^rust-code-core v' "$d/tree" || exit 1
+cargo tree -q -p rust-pillars-core -e normal,build --all-features --target all --prefix none > "$d/tree" || exit 1
+grep -q '^rust-pillars-core v' "$d/tree" || exit 1
 ! grep -Eq '^log v' "$d/tree"
 '''
 expect = "pass"
@@ -46,12 +46,12 @@ on_base = "fail"
 [[check]]
 name = "core-reports-how-many-effects-were-dropped"
 run = '''
-t=crates/rust-code-core/tests/evalchk_refusals.rs
+t=crates/rust-pillars-core/tests/evalchk_refusals.rs
 trap 'rm -f "$t"' EXIT
 cat > "$t" <<'EOF' || exit 1
 //! Hidden eval test: what a full queue drops is visible in `refused()`.
 
-use rust_code_core::{Elapsed, Event, Machine, Wire};
+use rust_pillars_core::{Elapsed, Event, Machine, Wire};
 
 const CAP: usize = 1024;
 
@@ -90,7 +90,7 @@ fn a_queue_filled_exactly_reports_nothing() {
     assert_eq!(debug, format!("{:?}", fresh().refused()));
 }
 EOF
-cargo test -q -p rust-code-core --test evalchk_refusals
+cargo test -q -p rust-pillars-core --test evalchk_refusals
 '''
 expect = "pass"
 on_base = "fail"
@@ -103,8 +103,8 @@ on_base = "fail"
 [[check]]
 name = "bin-is-quiet-when-nothing-is-dropped"
 run = '''
-cargo build -q -p rust-code || exit 1
-b="$PWD/target/debug/rust-code"
+cargo build -q -p rust-pillars || exit 1
+b="$PWD/target/debug/rust-pillars"
 d=target/evalchk/quiet; rm -rf "$d"; mkdir -p "$d" || exit 1
 printf 'one two\nthree\n' > "$d/in"
 RUST_LOG=warn timeout 60 "$b" < "$d/in" > "$d/out" 2> "$d/err" || exit 1
@@ -142,8 +142,8 @@ on_base = "pass"
 [[check]]
 name = "no-std-builds"
 run = '''
-cargo build -q --no-default-features --target x86_64-unknown-none -p rust-code-domain -p rust-code-core &&
-cargo build -q --no-default-features --target thumbv7em-none-eabihf -p rust-code-domain -p rust-code-core
+cargo build -q --no-default-features --target x86_64-unknown-none -p rust-pillars-domain -p rust-pillars-core &&
+cargo build -q --no-default-features --target thumbv7em-none-eabihf -p rust-pillars-domain -p rust-pillars-core
 '''
 expect = "pass"
 on_base = "pass"
@@ -162,7 +162,7 @@ run = '''
 R=$EVAL_ROOT
 test -f "$R/Cargo.toml" || exit 1
 for f in layers.toml budgets.toml deny.toml ignores.toml .cargo/config.toml \
-         clippy.toml crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+         clippy.toml crates/rust-pillars-domain/clippy.toml crates/rust-pillars-core/clippy.toml; do
   cmp -s "$f" "$R/$f" || exit 1
 done
 lints() { sed -n '/^\[workspace\.lints/,/^\[profile/p' "$1"; }
@@ -181,8 +181,8 @@ on_base = "pass"
 [[check]]
 name = "core-keeps-workspace-lints"
 run = '''
-grep -A3 '^\[lints\]' crates/rust-code-core/Cargo.toml | grep -Eq '^workspace *= *true' &&
-! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-core/src
+grep -A3 '^\[lints\]' crates/rust-pillars-core/Cargo.toml | grep -Eq '^workspace *= *true' &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-pillars-core/src
 '''
 expect = "pass"
 on_base = "pass"
@@ -195,9 +195,9 @@ name = "fixture-overlays-match-base"
 run = '''
 r=$EVAL_ROOT
 f=$r/evals/layering-fix/fixture
-test "$(diff "$r/crates/rust-code-core/Cargo.toml" "$f/crates/rust-code-core/Cargo.toml" | grep '^[<>]')" = '> log.workspace = true' &&
-test "$(cksum < "$r/crates/rust-code-core/src/machine.rs")" = "3630043939 7636" &&
-test "$(cksum < "$r/crates/rust-code-core/tests/chunk_invariance.rs")" = "1019410075 3911"
+test "$(diff "$r/crates/rust-pillars-core/Cargo.toml" "$f/crates/rust-pillars-core/Cargo.toml" | grep '^[<>]')" = '> log.workspace = true' &&
+test "$(cksum < "$r/crates/rust-pillars-core/src/machine.rs")" = "1454226477 7639" &&
+test "$(cksum < "$r/crates/rust-pillars-core/tests/chunk_invariance.rs")" = "1970058874 3914"
 '''
 expect = "pass"
 on_base = "pass"

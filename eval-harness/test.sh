@@ -293,7 +293,7 @@ fakerun() {
 }
 mkdir -p "$scratch/ftmp"
 fakerun
-fbase=$(cd "$scratch/ftmp" && pwd -P)/rust-code-plugin-eval
+fbase=$(cd "$scratch/ftmp" && pwd -P)/rust-pillars-plugin-eval
 fsha=$(g2 rev-parse --short HEAD)
 same "the first export vendors once" 1 "$(grep -c . "$calls")"
 same "the harness's recorded results stay out of the export" "no" \
@@ -376,21 +376,21 @@ chmod +x "$scratch/bin/claude"
 
 # An export that is already built, so the script goes straight to the run.
 sha=$(git -C "$repo" rev-parse --short HEAD)
-mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/own-dont-leak" \
-  "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/layering-fix" \
-  "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/_scaffold"
-touch "$scratch/tmp/rust-code-plugin-eval/$sha/.ready" "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/_scaffold/devenv.env"
+mkdir -p "$scratch/tmp/rust-pillars-plugin-eval/$sha/root/evals/own-dont-leak" \
+  "$scratch/tmp/rust-pillars-plugin-eval/$sha/root/evals/layering-fix" \
+  "$scratch/tmp/rust-pillars-plugin-eval/$sha/root/evals/_scaffold"
+touch "$scratch/tmp/rust-pillars-plugin-eval/$sha/.ready" "$scratch/tmp/rust-pillars-plugin-eval/$sha/root/evals/_scaffold/devenv.env"
 for c in own-dont-leak layering-fix; do
-  mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/$c/graders"
-  printf -- '---\ntype: llm\n---\nPASS if done.\n' >"$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/$c/graders/g.md"
+  mkdir -p "$scratch/tmp/rust-pillars-plugin-eval/$sha/root/evals/$c/graders"
+  printf -- '---\ntype: llm\n---\nPASS if done.\n' >"$scratch/tmp/rust-pillars-plugin-eval/$sha/root/evals/$c/graders/g.md"
 done
 # Results an older script let the runner write inside the plugin root.
-mkdir -p "$scratch/tmp/rust-code-plugin-eval/$sha/root/evals/results/old" \
-  "$scratch/tmp/rust-code-plugin-eval/$sha/root/graders-solution/results/old"
-echo '{"evidence": "the solution"}' >"$scratch/tmp/rust-code-plugin-eval/$sha/root/graders-solution/results/old/aggregate-result.json"
-echo basekey >"$scratch/tmp/rust-code-plugin-eval/$sha/base-key"
+mkdir -p "$scratch/tmp/rust-pillars-plugin-eval/$sha/root/evals/results/old" \
+  "$scratch/tmp/rust-pillars-plugin-eval/$sha/root/graders-solution/results/old"
+echo '{"evidence": "the solution"}' >"$scratch/tmp/rust-pillars-plugin-eval/$sha/root/graders-solution/results/old/aggregate-result.json"
+echo basekey >"$scratch/tmp/rust-pillars-plugin-eval/$sha/base-key"
 mkdir -p "$scratch/vendored"
-echo "$scratch/vendored" >"$scratch/tmp/rust-code-plugin-eval/vendor-$(pe_vendor_key "$repo" HEAD).store"
+echo "$scratch/vendored" >"$scratch/tmp/rust-pillars-plugin-eval/vendor-$(pe_vendor_key "$repo" HEAD).store"
 
 # pe ARGS...: plugin-eval.sh against that export, the stand-in claude and a
 # run root of the test's own.
@@ -404,7 +404,7 @@ run() {
   pe "$@" | sed -n 's/^arg=//p' | tr '\n' ' ' | sed -e 's/ $//' -e 's|--output-dir [^ ]*|--output-dir DIR|'
 }
 
-eroot=$(cd "$scratch/tmp/rust-code-plugin-eval" && pwd -P)/$sha/root
+eroot=$(cd "$scratch/tmp/rust-pillars-plugin-eval" && pwd -P)/$sha/root
 # outdirs ARGS...: for each --output-dir the runner gets for ARGS, "in" if it
 # is under the plugin root, else "out".
 outdirs() {
@@ -496,7 +496,7 @@ same "a suite run ends what a dead session left running" gone "$(alive suite)"
 
 # A shared directory as exports of several commits leave it, in a TMPDIR of
 # the test's own (never the real one).
-pb=$scratch/ptmp/rust-code-plugin-eval
+pb=$scratch/ptmp/rust-pillars-plugin-eval
 vk=$(pe_vendor_key "$repo" HEAD)
 keep=1111111111111111 old=2222222222222222 old2=3333333333333333 old3=4444444444444444
 mkdir -p "$pb/$sha/root/evals/_scaffold" "$pb/.target-$keep.AAAAAA/target" "$pb/.target-$old.BBBBBB/target" \

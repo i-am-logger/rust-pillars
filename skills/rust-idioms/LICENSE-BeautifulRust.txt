@@ -1,6 +1,6 @@
 The rust-idioms skill adapts rules from BeautifulRust
 (https://github.com/morganlinton/BeautifulRust, commit 6b3a96c), used under
-the MIT License below. rust-code itself is licensed CC-BY-NC-SA-4.0.
+the MIT License below. rust-pillars itself is licensed CC-BY-NC-SA-4.0.
 
 MIT License
 

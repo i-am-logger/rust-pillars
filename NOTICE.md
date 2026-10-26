@@ -2,13 +2,13 @@
 
 Copyright (c) 2026 i-am-logger
 
-Every path and link in this file is relative to the root of the rust-code
-repository, <https://github.com/i-am-logger/rust-code>. A skill zip from
+Every path and link in this file is relative to the root of the rust-pillars
+repository, <https://github.com/i-am-logger/rust-pillars>. A skill zip from
 `dist:package` carries this file and [LICENSE](LICENSE) in the skill's
 folder, but not the other files named here; in the `rust-idioms` zip,
 BeautifulRust's licence is `LICENSE-BeautifulRust.txt` beside `SKILL.md`.
 
-rust-code is licensed under the Creative Commons
+rust-pillars is licensed under the Creative Commons
 Attribution-NonCommercial-ShareAlike 4.0 International License
 (CC-BY-NC-SA-4.0). [LICENSE](LICENSE) is that licence's legal code, verbatim
 from <https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.txt>.

@@ -620,27 +620,27 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6f6ff9a378485b298a5286656da665ba74413d36db0979633275d2e708145d4"
 
 [[package]]
-name = "rust-code"
+name = "rust-pillars"
 version = "0.1.0"
 dependencies = [
  "clap",
  "env_logger",
  "log",
- "rust-code-core",
+ "rust-pillars-core",
  "thiserror",
 ]
 
 [[package]]
-name = "rust-code-core"
+name = "rust-pillars-core"
 version = "0.1.0"
 dependencies = [
  "dhat",
  "proptest",
- "rust-code-domain",
+ "rust-pillars-domain",
 ]
 
 [[package]]
-name = "rust-code-domain"
+name = "rust-pillars-domain"
 version = "0.1.0"
 dependencies = [
  "proptest",

@@ -1,4 +1,4 @@
-# no-std-port (pillar 5): the fixture adds crates/rust-code-checksum, an
+# no-std-port (pillar 5): the fixture adds crates/rust-pillars-checksum, an
 # Adler-32 crate given the role "domain" in layers.toml (its seams declared in
 # budgets.toml), but written against std: `use std::io::Read`, a
 # `read_all<R: Read>` that buffers into a Vec, and `String` errors. It builds
@@ -14,13 +14,13 @@
 
 [[check]]
 name = "checksum-builds-bare-x86_64"
-run = "cargo build -q -p rust-code-checksum --no-default-features --target x86_64-unknown-none"
+run = "cargo build -q -p rust-pillars-checksum --no-default-features --target x86_64-unknown-none"
 expect = "pass"
 on_base = "fail"
 
 [[check]]
 name = "checksum-builds-bare-thumbv7em"
-run = "cargo build -q -p rust-code-checksum --no-default-features --target thumbv7em-none-eabihf"
+run = "cargo build -q -p rust-pillars-checksum --no-default-features --target thumbv7em-none-eabihf"
 expect = "pass"
 on_base = "fail"
 
@@ -50,7 +50,7 @@ grep -rhE --include='*.rs' \
   -e 'u8::MIN\s*\.\.' \
   -e '0(_?u8)?\s*\.\.=\s*255' \
   -e '0(_?u(16|32|64|size))?\s*\.\.\s*256' \
-  crates/rust-code-checksum | grep -vE '^[[:space:]]*//' | grep -q .
+  crates/rust-pillars-checksum | grep -vE '^[[:space:]]*//' | grep -q .
 '''
 expect = "pass"
 on_base = "fail"
@@ -60,7 +60,7 @@ on_base = "fail"
 # the budgets would not see.
 [[check]]
 name = "no-io-in-checksum-crate"
-run = "! grep -rqE 'std::io|io::(Read|Stdin|stdin)' crates/rust-code-checksum/src"
+run = "! grep -rqE 'std::io|io::(Read|Stdin|stdin)' crates/rust-pillars-checksum/src"
 expect = "pass"
 on_base = "fail"
 
@@ -76,9 +76,9 @@ on_base = "fail"
 name = "bin-checksum-of-wikipedia"
 run = '''
 d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
-cargo build -q -p rust-code || exit 1
+cargo build -q -p rust-pillars || exit 1
 printf Wikipedia > "$d/in"
-timeout 120 cargo run -q -p rust-code -- --checksum < "$d/in" > "$d/out" || exit 1
+timeout 120 cargo run -q -p rust-pillars -- --checksum < "$d/in" > "$d/out" || exit 1
 grep -qx 11e60398 "$d/out"
 '''
 expect = "pass"
@@ -88,8 +88,8 @@ on_base = "pass"
 name = "bin-checksum-of-nothing"
 run = '''
 d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
-cargo build -q -p rust-code || exit 1
-timeout 120 cargo run -q -p rust-code -- --checksum < /dev/null > "$d/out" || exit 1
+cargo build -q -p rust-pillars || exit 1
+timeout 120 cargo run -q -p rust-pillars -- --checksum < /dev/null > "$d/out" || exit 1
 grep -qx 00000001 "$d/out"
 '''
 expect = "pass"
@@ -101,11 +101,11 @@ on_base = "pass"
 name = "bin-checksum-of-a-megabyte"
 run = '''
 d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
-cargo build -q -p rust-code || exit 1
+cargo build -q -p rust-pillars || exit 1
 head -c 1000000 /dev/zero | tr '\000' '\377' > "$d/in"
-timeout 120 cargo run -q -p rust-code -- --checksum < "$d/in" > "$d/out" || exit 1
+timeout 120 cargo run -q -p rust-pillars -- --checksum < "$d/in" > "$d/out" || exit 1
 grep -qx 3843e1be "$d/out" || exit 1
-dd if="$d/in" bs=1000 2>/dev/null | timeout 120 cargo run -q -p rust-code -- --checksum > "$d/out2" || exit 1
+dd if="$d/in" bs=1000 2>/dev/null | timeout 120 cargo run -q -p rust-pillars -- --checksum > "$d/out2" || exit 1
 grep -qx 3843e1be "$d/out2"
 '''
 expect = "pass"
@@ -116,8 +116,8 @@ on_base = "pass"
 name = "bin-depends-on-checksum-crate"
 run = '''
 d=target/evalchk/$$; rm -rf "$d"; mkdir -p "$d" || exit 1
-cargo tree -q -p rust-code -e normal --prefix none > "$d/tree" || exit 1
-grep -q '^rust-code-checksum v' "$d/tree"
+cargo tree -q -p rust-pillars -e normal --prefix none > "$d/tree" || exit 1
+grep -q '^rust-pillars-checksum v' "$d/tree"
 '''
 expect = "pass"
 on_base = "pass"
@@ -145,8 +145,8 @@ on_base = "pass"
 [[check]]
 name = "other-domain-and-core-still-build-bare"
 run = '''
-cargo build -q --no-default-features --target x86_64-unknown-none -p rust-code-domain -p rust-code-core &&
-cargo build -q --no-default-features --target thumbv7em-none-eabihf -p rust-code-domain -p rust-code-core
+cargo build -q --no-default-features --target x86_64-unknown-none -p rust-pillars-domain -p rust-pillars-core &&
+cargo build -q --no-default-features --target thumbv7em-none-eabihf -p rust-pillars-domain -p rust-pillars-core
 '''
 expect = "pass"
 on_base = "pass"
@@ -175,8 +175,8 @@ cmp -s clippy.toml "$r/clippy.toml" &&
 cmp -s deny.toml "$r/deny.toml" &&
 cmp -s ignores.toml "$r/ignores.toml" &&
 cmp -s .cargo/config.toml "$r/.cargo/config.toml" &&
-cmp -s crates/rust-code-domain/clippy.toml "$r/crates/rust-code-domain/clippy.toml" &&
-cmp -s crates/rust-code-core/clippy.toml "$r/crates/rust-code-core/clippy.toml" &&
+cmp -s crates/rust-pillars-domain/clippy.toml "$r/crates/rust-pillars-domain/clippy.toml" &&
+cmp -s crates/rust-pillars-core/clippy.toml "$r/crates/rust-pillars-core/clippy.toml" &&
 test "$(sed -n '/^\[workspace\.lints/,/^\[profile/p' Cargo.toml | cksum)" = "$(sed -n '/^\[workspace\.lints/,/^\[profile/p' "$r/Cargo.toml" | cksum)"
 '''
 expect = "pass"
@@ -192,11 +192,11 @@ name = "fixture-overlays-match-base"
 run = '''
 r=$EVAL_ROOT
 f=$r/evals/no-std-port/fixture
-test "$(diff "$r/layers.toml" "$f/layers.toml" | grep '^[<>]')" = '> rust-code-checksum = "domain"' &&
+test "$(diff "$r/layers.toml" "$f/layers.toml" | grep '^[<>]')" = '> rust-pillars-checksum = "domain"' &&
 test -z "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^<')" &&
-test -n "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^> \[crates.rust-code-checksum\]')" &&
-test "$(diff "$r/crates/rust-code/Cargo.toml" "$f/crates/rust-code/Cargo.toml" | grep '^[<>]')" = '> rust-code-checksum = { path = "../rust-code-checksum" }' &&
-test "$(cksum < "$r/crates/rust-code/src/main.rs")" = "1658020495 4935"
+test -n "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^> \[crates.rust-pillars-checksum\]')" &&
+test "$(diff "$r/crates/rust-pillars/Cargo.toml" "$f/crates/rust-pillars/Cargo.toml" | grep '^[<>]')" = '> rust-pillars-checksum = { path = "../rust-pillars-checksum" }' &&
+test "$(cksum < "$r/crates/rust-pillars/src/main.rs")" = "848397690 4938"
 '''
 expect = "pass"
 on_base = "pass"
@@ -211,8 +211,8 @@ on_base = "pass"
 [[check]]
 name = "checksum-keeps-workspace-lints"
 run = '''
-grep -A3 '^\[lints\]' crates/rust-code-checksum/Cargo.toml | grep -Eq '^workspace *= *true' &&
-! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-checksum/src
+grep -A3 '^\[lints\]' crates/rust-pillars-checksum/Cargo.toml | grep -Eq '^workspace *= *true' &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-pillars-checksum/src
 '''
 expect = "pass"
 on_base = "pass"

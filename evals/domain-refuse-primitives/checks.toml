@@ -3,7 +3,7 @@
 # domain to exact counts (seam = 8, primitive_api = 0, bool_param_or_field = 0),
 # so a `new(i16)`, `From<i16>`, `of(i16)` or `get() -> i16` fails it unless a
 # budget is raised -- and every budget, lint and gate source is pinned below.
-# The base domain lists exactly 10 tests (`cargo nextest list -p rust-code-domain`).
+# The base domain lists exactly 10 tests (`cargo nextest list -p rust-pillars-domain`).
 #
 # The working copy is <root>/target/eval/<case>/<slot>, so the live workspace
 # the base was copied from is $EVAL_ROOT; the gate files are compared with it
@@ -15,20 +15,20 @@
 
 [[check]]
 name = "the domain defines a Heat enum"
-run = "grep -rqE 'pub +enum +Heat\\b' crates/rust-code-domain/src"
+run = "grep -rqE 'pub +enum +Heat\\b' crates/rust-pillars-domain/src"
 expect = "pass"
 on_base = "fail"
 
 # Comment lines are dropped first, so a `// i16` note does not count.
 [[check]]
 name = "the reading is a signed 16-bit value in the domain"
-run = "grep -rhiE '\\bi16\\b' crates/rust-code-domain/src | grep -vE '^[[:space:]]*//' | grep -q ."
+run = "grep -rhiE '\\bi16\\b' crates/rust-pillars-domain/src | grep -vE '^[[:space:]]*//' | grep -q ."
 expect = "pass"
 on_base = "fail"
 
 [[check]]
 name = "the domain gained tests"
-run = "n=$(cargo nextest list -p rust-code-domain --message-format oneline 2>/dev/null | grep -c '^rust-code-domain') && test \"$n\" -gt 10"
+run = "n=$(cargo nextest list -p rust-pillars-domain --message-format oneline 2>/dev/null | grep -c '^rust-pillars-domain') && test \"$n\" -gt 10"
 expect = "pass"
 on_base = "fail"
 
@@ -39,16 +39,16 @@ on_base = "fail"
 [[check]]
 name = "the tests pin the decision: no mutant of the Heat code survives"
 run = '''
-files=$(grep -rlE 'enum +Heat\b|-> *Heat\b' crates/rust-code-domain/src) || exit 1
+files=$(grep -rlE 'enum +Heat\b|-> *Heat\b' crates/rust-pillars-domain/src) || exit 1
 args=""
 for f in $files; do args="$args --file $f"; done
 export TMPDIR="$PWD/target/evalchk/mutants-tmp"
 rm -rf "$TMPDIR" && mkdir -p "$TMPDIR" || exit 1
-n=$(cargo mutants --no-config --list -p rust-code-domain $args | grep -c .) || exit 1
+n=$(cargo mutants --no-config --list -p rust-pillars-domain $args | grep -c .) || exit 1
 test "$n" -gt 0 || exit 1
 PROPTEST_CASES=256 PROPTEST_RNG_SEED=1 timeout 1200 cargo mutants --no-config \
   --test-tool=nextest --test-workspace=true --output target/evalchk \
-  -p rust-code-domain $args
+  -p rust-pillars-domain $args
 '''
 expect = "pass"
 on_base = "fail"
@@ -99,7 +99,7 @@ on_base = "pass"
 
 [[check]]
 name = "core and binary left alone"
-run = "! grep -rqE '\\bHeat\\b' crates/rust-code-core/src crates/rust-code/src"
+run = "! grep -rqE '\\bHeat\\b' crates/rust-pillars-core/src crates/rust-pillars/src"
 expect = "pass"
 on_base = "pass"
 
@@ -111,7 +111,7 @@ run = '''
 R=$EVAL_ROOT
 test -f "$R/Cargo.toml" || exit 1
 for f in layers.toml budgets.toml clippy.toml deny.toml ignores.toml .cargo/config.toml \
-         crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+         crates/rust-pillars-domain/clippy.toml crates/rust-pillars-core/clippy.toml; do
   cmp -s "$f" "$R/$f" || exit 1
 done
 '''
@@ -130,8 +130,8 @@ on_base = "pass"
 [[check]]
 name = "the domain still inherits the workspace lints, with no suppression"
 run = '''
-grep -A3 '^\[lints\]' crates/rust-code-domain/Cargo.toml | grep -Eq '^workspace *= *true' &&
-! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-domain/src
+grep -A3 '^\[lints\]' crates/rust-pillars-domain/Cargo.toml | grep -Eq '^workspace *= *true' &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-pillars-domain/src
 '''
 expect = "pass"
 on_base = "pass"

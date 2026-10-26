@@ -5,7 +5,7 @@ numbers in `MEASUREMENTS.md`, decisions in `docs/decisions.md`; this file is
 loaded into every session whole, so it holds rules only and has a byte budget
 (`budgets.toml`, checked by `cargo xtask docs`).
 
-The rust-code plugin's skills carry the reasoning: `rust-domain`,
+The rust-pillars plugin's skills carry the reasoning: `rust-domain`,
 `rust-architecture`, `rust-idioms`, `rust-research`, `rust-measure`, `rust-qa`.
 
 ## The pillars are gates
@@ -16,14 +16,14 @@ its own that says why.
 
 1. **Type system.** No raw primitive in a domain or core public API outside
    a named seam (`budgets.toml`); no `bool` parameter or field; no public
-   newtype field. Illegal programs are `crates/rust-code-domain/tests/ui/fail`
+   newtype field. Illegal programs are `crates/rust-pillars-domain/tests/ui/fail`
    cases, each with its passing twin.
 2. **Event-driven.** The core takes `Event`s and queues `Effect`s for the host
    to poll; no callbacks, no clock, no I/O. Time arrives as an event.
 3. **Layering.** `layers.toml` gives every crate a role and says what it may
    depend on. Features are additive.
 4. **Zero-copy.** Borrow input; no allocation per event
-   (`crates/rust-code-core/tests/alloc.rs`);
+   (`crates/rust-pillars-core/tests/alloc.rs`);
    no `Box::leak`/`mem::forget` -- own, don't leak.
 5. **no_std.** Domain and core build for bare-metal targets (`test:bare`).
 6. **No unsafe.** `unsafe_code` is forbidden workspace-wide; the only escape

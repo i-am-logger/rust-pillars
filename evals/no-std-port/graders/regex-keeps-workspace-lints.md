@@ -5,6 +5,6 @@ flags: m
 match: contains
 target:
   source: file
-  path: crates/rust-code-checksum/Cargo.toml
+  path: crates/rust-pillars-checksum/Cargo.toml
 ---
 The checksum crate's manifest keeps `[lints] workspace = true`.

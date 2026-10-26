@@ -4,7 +4,7 @@ Load this when running QA on a change: as the builder handing work over, as
 the refuter, or when triaging a verdict.
 
 Status: the process is specified here; the versioned driver
-`.claude/workflows/lanes.js` in rust-template ships the process as a workflow. rust-code versions it in the repo and makes
+`.claude/workflows/lanes.js` in rust-template ships the process as a workflow. rust-pillars versions it in the repo and makes
 the judge pluggable (an LLM subagent, a named judge, or a human).
 
 ## 1. Three roles

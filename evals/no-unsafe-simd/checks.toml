@@ -16,8 +16,8 @@ on_base = "fail"
 [[check]]
 name = "no unsafe code in the scan crate"
 run = '''
-test -f crates/rust-code-scan/src/lib.rs &&
-! grep -rqE '\bunsafe\s*[{(]|\bunsafe\s+(fn|impl|trait|extern)\b' crates/rust-code-scan/src
+test -f crates/rust-pillars-scan/src/lib.rs &&
+! grep -rqE '\bunsafe\s*[{(]|\bunsafe\s+(fn|impl|trait|extern)\b' crates/rust-pillars-scan/src
 '''
 expect = "pass"
 on_base = "fail"
@@ -43,7 +43,7 @@ name = "the tests catch a planted wrong first_newline"
 # first_newline against a byte-by-byte search over many inputs does. The
 # sources are restored afterwards, whatever happened.
 run = '''
-files=$(grep -rlE 'pub (const )?fn first_newline\s*\(' crates/rust-code-scan/src) || exit 1
+files=$(grep -rlE 'pub (const )?fn first_newline\s*\(' crates/rust-pillars-scan/src) || exit 1
 mkdir -p target/plant || exit 1
 n=0
 for f in $files; do
@@ -68,11 +68,11 @@ pub fn first_newline(haystack: &[u8]) -> Option<usize> {
 }
 PLANT
 done
-cargo build -q -p rust-code-scan
+cargo build -q -p rust-pillars-scan
 built=$?
 caught=0
 if [ "$built" -eq 0 ]; then
-  timeout 900 cargo test -q -p rust-code-scan </dev/null >/dev/null 2>&1
+  timeout 900 cargo test -q -p rust-pillars-scan </dev/null >/dev/null 2>&1
   caught=$?
   # A run cut off by the timeout is not a catch.
   [ "$caught" -eq 124 ] && caught=0
@@ -91,7 +91,7 @@ on_base = "fail"
 
 [[check]]
 name = "first_newline keeps its signature"
-run = '''grep -rqE 'pub (const )?fn first_newline\s*\(\s*\w+\s*:\s*&\s*\[u8\]\s*\)\s*->\s*Option<usize>' crates/rust-code-scan/src'''
+run = '''grep -rqE 'pub (const )?fn first_newline\s*\(\s*\w+\s*:\s*&\s*\[u8\]\s*\)\s*->\s*Option<usize>' crates/rust-pillars-scan/src'''
 expect = "pass"
 on_base = "pass"
 
@@ -115,13 +115,13 @@ on_base = "pass"
 
 [[check]]
 name = "the scan crate builds bare for x86_64-unknown-none"
-run = "cargo build -p rust-code-scan --no-default-features --target x86_64-unknown-none"
+run = "cargo build -p rust-pillars-scan --no-default-features --target x86_64-unknown-none"
 expect = "pass"
 on_base = "pass"
 
 [[check]]
 name = "the scan crate builds bare for thumbv7em-none-eabihf"
-run = "cargo build -p rust-code-scan --no-default-features --target thumbv7em-none-eabihf"
+run = "cargo build -p rust-pillars-scan --no-default-features --target thumbv7em-none-eabihf"
 expect = "pass"
 on_base = "pass"
 
@@ -164,11 +164,11 @@ name = "the other gate files and the gates' source are unchanged"
 run = '''
 R=$EVAL_ROOT
 test -f "$R/Cargo.toml" || exit 1
-for f in ignores.toml .cargo/config.toml crates/rust-code-domain/clippy.toml crates/rust-code-core/clippy.toml; do
+for f in ignores.toml .cargo/config.toml crates/rust-pillars-domain/clippy.toml crates/rust-pillars-core/clippy.toml; do
   cmp -s "$f" "$R/$f" || exit 1
 done
-cmp -s crates/rust-code-scan/clippy.toml "$R/evals/no-unsafe-simd/fixture/crates/rust-code-scan/clippy.toml" &&
-! grep -rqE '#!?\[(allow|expect)\(' crates/rust-code-scan/src &&
+cmp -s crates/rust-pillars-scan/clippy.toml "$R/evals/no-unsafe-simd/fixture/crates/rust-pillars-scan/clippy.toml" &&
+! grep -rqE '#!?\[(allow|expect)\(' crates/rust-pillars-scan/src &&
 diff -r -x eval.rs xtask "$R/xtask"
 '''
 expect = "pass"
@@ -183,9 +183,9 @@ name = "fixture overlays match the base"
 run = '''
 r=$EVAL_ROOT
 f=$r/evals/no-unsafe-simd/fixture
-test "$(diff "$r/layers.toml" "$f/layers.toml" | grep '^[<>]')" = '> rust-code-scan = "core"' &&
+test "$(diff "$r/layers.toml" "$f/layers.toml" | grep '^[<>]')" = '> rust-pillars-scan = "core"' &&
 test -z "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^<')" &&
-test -n "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^> \[crates.rust-code-scan\]')"
+test -n "$(diff "$r/budgets.toml" "$f/budgets.toml" | grep '^> \[crates.rust-pillars-scan\]')"
 '''
 expect = "pass"
 on_base = "pass"
@@ -202,15 +202,15 @@ on_base = "pass"
 [[check]]
 name = "first_newline is still faster than a byte loop (release)"
 run = '''
-f=crates/rust-code-scan/tests/zz_eval_speed.rs
-test -d crates/rust-code-scan/tests || exit 1
+f=crates/rust-pillars-scan/tests/zz_eval_speed.rs
+test -d crates/rust-pillars-scan/tests || exit 1
 cat > "$f" <<'RS'
 //! Written and removed by the eval check: the scan must beat a byte loop.
 
 use std::hint::black_box;
 use std::time::Instant;
 
-use rust_code_scan::first_newline;
+use rust_pillars_scan::first_newline;
 
 fn naive(haystack: &[u8]) -> Option<usize> {
     haystack.iter().position(|&b| b == b'\n')
@@ -237,7 +237,7 @@ fn eval_first_newline_beats_a_byte_loop() {
     assert!(fast * 10 < slow * 6, "first_newline {fast} ns vs byte loop {slow} ns");
 }
 RS
-timeout 900 cargo test -q --release -p rust-code-scan --test zz_eval_speed </dev/null
+timeout 900 cargo test -q --release -p rust-pillars-scan --test zz_eval_speed </dev/null
 s=$?
 rm -f "$f"
 exit $s

@@ -154,7 +154,7 @@ RUSTFLAGS="-Zsanitizer=address" cargo +nightly test -Zbuild-std \
 - Miri cannot execute foreign calls: separate the pure-Rust `unsafe` (Miri)
   from the FFI calls (sanitizers on a real host).
 - CONFORMING with BeautifulRust's "Miri for unsafe"; narrower in scope
-  because rust-code forbids unsafe everywhere else.
+  because rust-pillars forbids unsafe everywhere else.
 
 ## 4. loom for cross-thread hand-offs
 `test:loom` (planned). The core is single-threaded and sans-IO; threads

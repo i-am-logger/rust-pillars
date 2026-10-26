@@ -36,7 +36,7 @@ that is exactly the divergence this setup exists to prevent.
 The evals are not part of `dev-ci`: every run makes real model calls on your
 Claude account. The Rust harness (`devenv tasks run eval:run`) runs `claude`
 with `--permission-mode bypassPermissions` and no sandbox, so it refuses to
-start unless `RUST_CODE_EVAL_UNSANDBOXED=1` is set. Set it only on a tree you
+start unless `RUST_PILLARS_EVAL_UNSANDBOXED=1` is set. Set it only on a tree you
 trust -- not on a branch whose `evals/` you have not read. See
 [eval-harness/README.md](eval-harness/README.md).
 
@@ -59,7 +59,7 @@ There is one version: the workspace version in `Cargo.toml`.
 `.claude-plugin/plugin.json` must carry the same version, and a check fails
 when the two differ, so the release PR changes both. release-plz opens that
 `chore: release` PR: it bumps the version and writes `CHANGELOG.md`. Merging
-it tags `vX.Y.Z` from the `rust-code` package and creates a GitHub release.
+it tags `vX.Y.Z` from the `rust-pillars` package and creates a GitHub release.
 Nothing is published to crates.io: the plugin ships as this repository. Do
 not change the version outside a release PR.
 

@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: '\[crates\.rust-code-domain\]\nseam = 8\n#[^\n]*\nas_cast = 2\n\n\[crates\.rust-code-core\]'
+pattern: '\[crates\.rust-pillars-domain\]\nseam = 8\n#[^\n]*\nas_cast = 2\n\n\[crates\.rust-pillars-core\]'
 match: contains
 target:
   source: file

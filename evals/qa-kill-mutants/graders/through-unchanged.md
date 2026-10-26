@@ -4,6 +4,6 @@ pattern: 'pub fn through\(done: BytePos, total: BytePos\) -> Self \{\s*if done\.
 match: contains
 target:
   source: file
-  path: crates/rust-code-domain/src/percent.rs
+  path: crates/rust-pillars-domain/src/percent.rs
 ---
 The body of `Percent::through` still has its original clamp and arithmetic, statement for statement.

@@ -2,7 +2,7 @@
 type: llm
 focus:
   source: file
-  path: crates/rust-code-scan/src/lib.rs
+  path: crates/rust-pillars-scan/src/lib.rs
 ---
 Judge this file, the scan crate's `lib.rs`, on its contents alone.
 

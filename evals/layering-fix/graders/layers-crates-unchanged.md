@@ -1,6 +1,6 @@
 ---
 type: regex
-pattern: '\[crates\]\nrust-code-domain = "domain"\nrust-code-core = "core"\nrust-code = "bin"\nxtask = "tool"\n\n'
+pattern: '\[crates\]\nrust-pillars-domain = "domain"\nrust-pillars-core = "core"\nrust-pillars = "bin"\nxtask = "tool"\n\n'
 match: contains
 target:
   source: file

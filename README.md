@@ -1,7 +1,7 @@
-# rust-code
+# rust-pillars
 
-[![CI](https://img.shields.io/github/actions/workflow/status/i-am-logger/rust-code/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/i-am-logger/rust-code/actions/workflows/ci.yml)
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/i-am-logger/rust-code/badge)](https://scorecard.dev/viewer/?uri=github.com/i-am-logger/rust-code)
+[![CI](https://img.shields.io/github/actions/workflow/status/i-am-logger/rust-pillars/ci.yml?branch=master&label=CI&logo=githubactions&logoColor=white)](https://github.com/i-am-logger/rust-pillars/actions/workflows/ci.yml)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/i-am-logger/rust-pillars/badge)](https://scorecard.dev/viewer/?uri=github.com/i-am-logger/rust-pillars)
 [![Nix](https://img.shields.io/badge/Nix-2b2b2b?logo=nixos&logoColor=white)](https://nixos.org)
 [![devenv](https://img.shields.io/badge/devenv-2b2b2b?logo=nixos&logoColor=white)](https://devenv.sh)
 [![License: CC BY-NC-SA 4.0](https://img.shields.io/badge/CC%20BY--NC--SA%204.0-2b2b2b?logo=creativecommons&logoColor=white)](LICENSE)
@@ -38,14 +38,14 @@ Two halves, versioned separately:
 **Claude Code**, from the marketplace this repository is:
 
 ```bash
-claude plugin marketplace add i-am-logger/rust-code
-claude plugin install rust-code@rust-code
+claude plugin marketplace add i-am-logger/rust-pillars
+claude plugin install rust-pillars@rust-pillars
 # or, inside a session:
-/plugin marketplace add i-am-logger/rust-code
-/plugin install rust-code@rust-code
+/plugin marketplace add i-am-logger/rust-pillars
+/plugin install rust-pillars@rust-pillars
 ```
 
-From a local checkout: `claude --plugin-dir /path/to/rust-code`.
+From a local checkout: `claude --plugin-dir /path/to/rust-pillars`.
 
 **Loading the skills.** A skill's description leaves loading to the model,
 and on small tasks it skips it: with Sonnet, one run per condition (evidence
@@ -53,13 +53,13 @@ of the direction, not a rate), writing a whole crate loaded no skill. So the
 plugin adds one line to any prompt about Rust (it mentions Rust, cargo, a
 crate, a `.rs` file, the borrow checker, lifetimes, clippy or rustfmt, or the
 project has a `Cargo.toml`) telling Claude to load the entry skill; with it,
-the same task loaded `rust-code:rust-code` first. A one-line question it can
-answer outright may still be answered without the skills. The hook reads the
+the same task loaded the entry skill first. A one-line question it can answer
+outright may still be answered without the skills. The hook reads the
 prompt and checks for a `Cargo.toml`; it runs nothing in your project. Turn
 it off with `--config nudge=false`.
 
 **Opt-in gates while you work.** Install with `--config gate_on_edit=true`
-(or set the option later with `claude plugin configure rust-code`), and after
+(or set the option later with `claude plugin configure rust-pillars`), and after
 every edit to a `.rs` file inside the open project the plugin looks upward
 from that file, no higher than the project's root, for a `layers.toml`
 beside an `xtask/` directory, runs `cargo xtask budgets` and
@@ -74,38 +74,38 @@ default, so once the option is on it applies in every project you open
 
 **claude.ai**: upload the whole plugin as a zip at Customize > Plugins, or
 any one skill as a zip at Customize > Skills. `devenv tasks run dist:package`
-builds them: `target/dist/rust-code-plugin.zip` and one zip per skill under
+builds them: `target/dist/rust-pillars-plugin.zip` and one zip per skill under
 `target/dist/skills/`. Every skill stands alone: no link leaves its folder,
 and its frontmatter uses only the keys claude.ai accepts (`test:plugin` holds
 both).
 
 ## Use
 
-The `rust-code` skill fires on any Rust work and routes to the specialist the
+The `rust-pillars` skill fires on any Rust work and routes to the specialist the
 task needs; each specialist loads its references only when it is used. Call
 any of them directly:
 
 | Invoke | Fires on its own when |
 |---|---|
-| `/rust-code:rust-code` | any Rust work: writing, reviewing, debugging, testing, explaining |
-| `/rust-code:rust-domain` | modelling quantities, ids, lifecycles, events and effects as types |
-| `/rust-code:rust-architecture` | crates and dependencies, a core state machine, ownership, `no_std`, `unsafe`, SIMD, caches |
-| `/rust-code:rust-idioms` | naming, signatures, traits, errors, docs, concurrency, refactoring |
-| `/rust-code:rust-measure` | a claim about speed, size or startup; a benchmark; embedding data |
-| `/rust-code:rust-qa` | tests, properties, oracles, mutation testing, gates |
-| `/rust-code:rust-research` | choosing against a spec; citing a source; a decision record |
+| `/rust-pillars:rust-pillars` | any Rust work: writing, reviewing, debugging, testing, explaining |
+| `/rust-pillars:rust-domain` | modelling quantities, ids, lifecycles, events and effects as types |
+| `/rust-pillars:rust-architecture` | crates and dependencies, a core state machine, ownership, `no_std`, `unsafe`, SIMD, caches |
+| `/rust-pillars:rust-idioms` | naming, signatures, traits, errors, docs, concurrency, refactoring |
+| `/rust-pillars:rust-measure` | a claim about speed, size or startup; a benchmark; embedding data |
+| `/rust-pillars:rust-qa` | tests, properties, oracles, mutation testing, gates |
+| `/rust-pillars:rust-research` | choosing against a spec; citing a source; a decision record |
 
 | Command or agent | Does |
 |---|---|
-| `/rust-code:gate [gate]` | runs every gate (or one) and reports what fails, by pillar |
-| `/rust-code:adopt [--ratchet]` | brings the gates into an existing workspace: roles, then `cargo xtask init` |
-| `@agent-rust-code:refuter` | a closed-brief refuter: tries to show a change is wrong, returns its verdict as JSON |
+| `/rust-pillars:gate [gate]` | runs every gate (or one) and reports what fails, by pillar |
+| `/rust-pillars:adopt [--ratchet]` | brings the gates into an existing workspace: roles, then `cargo xtask init` |
+| `@agent-rust-pillars:refuter` | a closed-brief refuter: tries to show a change is wrong, returns its verdict as JSON |
 
-Both commands run the open project's own code: `/rust-code:gate` its build,
-xtask and tests (`devenv test`, `cargo xtask`), `/rust-code:adopt`
+Both commands run the open project's own code: `/rust-pillars:gate` its build,
+xtask and tests (`devenv test`, `cargo xtask`), `/rust-pillars:adopt`
 `cargo metadata` and `cargo xtask`. Each pre-approves only a few scoped shell
 commands while it runs, and every edit or other command prompts;
-[SECURITY.md](SECURITY.md) lists each grant. `/rust-code:adopt` copies files
+[SECURITY.md](SECURITY.md) lists each grant. `/rust-pillars:adopt` copies files
 from rust-template, which is licensed CC BY-NC-SA 4.0 (NonCommercial,
 ShareAlike): it says so and asks before it copies anything.
 
@@ -132,18 +132,18 @@ names the planted fault.
 Both are Claude Code plugins for writing Rust. Side by side, against the
 BeautifulRust copy pinned at commit 6b3a96c:
 
-| | BeautifulRust | rust-code |
+| | BeautifulRust | rust-pillars |
 |---|---|---|
-| Fires on any Rust work | one skill | the `rust-code` entry skill, which routes to six specialists |
+| Fires on any Rust work | one skill | the `rust-pillars` entry skill, which routes to six specialists |
 | Install from a marketplace, invoke by slash command | yes | yes |
 | claude.ai upload | a zipped skill folder | the whole plugin, or any one skill on its own (`dist:package`) |
 | Evals under `claude plugin eval` | 3 cases, graded by a model | 10 cases with scaffolds and transcript graders, **plus** executable checks that build, lint, test and gate what was written, each case proven to fail on an untouched project and pass with a reference solution |
 | Rules enforced | none: prose | every rule is a gate, here and on rust-template's `feat/pillars` branch, and every gate is seen failing for its reason |
 | Getting loaded | its description only | its descriptions, plus a nudge on any Rust prompt (one run per condition: it turned a crate-writing task that loaded no skill into one that loaded the entry skill first) |
 | In-session enforcement | none | opt-in hook runs the gates after each `.rs` edit |
-| Commands, agents | none | `/rust-code:gate`, `/rust-code:adopt`, a refuter agent |
+| Commands, agents | none | `/rust-pillars:gate`, `/rust-pillars:adopt`, a refuter agent |
 | Code in the skills | examples | every Rust block compiles and runs (`cargo xtask snippets`) |
-| Context cost | ~160 tokens always-on, ~7.3k every time it fires (unmeasured: bytes / 4 over the pinned SKILL.md's 650-byte frontmatter and 504-line body) | ~1,034 always-on; ~1.6k for the entry skill, plus only the specialist a task needs (~3.6k-7k) (the tool's estimates: `claude --plugin-dir . plugin details rust-code`, claude 2.1.303) |
+| Context cost | ~160 tokens always-on, ~7.3k every time it fires (unmeasured: bytes / 4 over the pinned SKILL.md's 650-byte frontmatter and 504-line body) | ~1,034 always-on; ~1.6k for the entry skill, plus only the specialist a task needs (~3.6k-7k) (the tool's estimates: `claude --plugin-dir . plugin details rust-pillars`, claude 2.1.303) |
 
 It costs more context up front -- one description per skill and command --
 and less when it works, because no task loads all of it. The idioms are
@@ -152,7 +152,7 @@ departure written down: performance-first design for domain and core,
 payload-free errors in a `no_std` core, all primitives refused rather than
 only `bool`, `unsafe` forbidden rather than justified. The full comparison,
 with sources pinned by hash, is
-[the evidence note](docs/research/notes/a-rust-code-evidence.md).
+[the evidence note](docs/research/notes/a-rust-pillars-evidence.md).
 
 ## Evals
 
@@ -168,7 +168,7 @@ iterating (the smoke cases, one run, never reported) and
 arms). Every run makes real model calls on your Claude account. The Rust
 harness (`devenv tasks run eval:run`) runs `claude` with
 `--permission-mode bypassPermissions` and no sandbox, so it refuses to start
-unless `RUST_CODE_EVAL_UNSANDBOXED=1` is set: run it only on a tree you
+unless `RUST_PILLARS_EVAL_UNSANDBOXED=1` is set: run it only on a tree you
 trust. Runner options, reuse and what was measured are in
 [eval-harness/README.md](eval-harness/README.md).
 
@@ -186,7 +186,7 @@ One version for the repository: the workspace version in `Cargo.toml`, which
 [release-plz](https://release-plz.dev) opens a `chore: release` PR from
 [Conventional Commits](https://www.conventionalcommits.org/) that bumps the
 version and writes [CHANGELOG.md](CHANGELOG.md); merging it tags `vX.Y.Z` from
-the `rust-code` package and creates a GitHub release. Nothing is published to crates.io -- the plugin
+the `rust-pillars` package and creates a GitHub release. Nothing is published to crates.io -- the plugin
 ships as this repository. [CONTRIBUTING.md](CONTRIBUTING.md#releases) has the
 details.
 

@@ -1,0 +1,25 @@
+[package]
+name = "rust-pillars-core"
+description = "The machine: events in, effects out, no I/O (role: core)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+# Not on crates.io: the repository releases as a git tag (release-plz.toml).
+publish = false
+
+[features]
+default = []
+alloc = ["rust-pillars-domain/alloc"]
+
+[dependencies]
+rust-pillars-domain.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+dhat.workspace = true
+
+[lints]
+workspace = true

@@ -2,7 +2,7 @@
 type: llm
 focus:
   source: file
-  path: crates/rust-code-domain/src/thermostat.rs
+  path: crates/rust-pillars-domain/src/thermostat.rs
 ---
 This file is the domain crate's new thermostat module. Judge it from its contents alone. If the file is missing or empty, every item fails.
 

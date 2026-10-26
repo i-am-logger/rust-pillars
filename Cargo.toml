@@ -5,7 +5,7 @@
 resolver = "3"
 members = ["crates/*", "xtask"]
 # `cargo run` / `cargo build` with no `-p` build the binary, not the workspace.
-default-members = ["crates/rust-code"]
+default-members = ["crates/rust-pillars"]
 
 [workspace.package]
 version = "0.1.0"
@@ -16,17 +16,17 @@ edition = "2024"
 rust-version = "1.85"
 authors = ["i-am-logger"]
 license = "CC-BY-NC-SA-4.0"
-repository = "https://github.com/i-am-logger/rust-code"
+repository = "https://github.com/i-am-logger/rust-pillars"
 
 # Read by devenv.nix for the shell banner: a virtual workspace has no
 # [package] of its own to read a name from.
 [workspace.metadata.project]
-name = "rust-code"
-description = "A Rust project built on the rust-code pillars"
+name = "rust-pillars"
+description = "A Rust project built on six enforced pillars"
 
 [workspace.dependencies]
-rust-code-domain = { path = "crates/rust-code-domain", version = "0.1.0" }
-rust-code-core = { path = "crates/rust-code-core", version = "0.1.0" }
+rust-pillars-domain = { path = "crates/rust-pillars-domain", version = "0.1.0" }
+rust-pillars-core = { path = "crates/rust-pillars-core", version = "0.1.0" }
 
 # The only external crate domain and core may use (layers.toml): derive-only,
 # no default features, so it costs no std and no unsafe in our code.

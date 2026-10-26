@@ -12,7 +12,7 @@ Produced by `cargo xtask bench` (pillar M, the `rust-measure` skill).
 
 Measured. Run: commit none (the bench printed an empty commit: the working
 copy is not a git repository; both arms are the same tree, differing only in
-`default_value_t` of `--chunk` in `crates/rust-code/src/main.rs`, 64 * 1024
+`default_value_t` of `--chunk` in `crates/rust-pillars/src/main.rs`, 64 * 1024
 vs 4 * 1024); host Darwin 27.0.0 arm64 (Apple M5 Max, Mac17,6), as the bench
 printed it; toolchain rustc 1.94.1 (e408947bf 2026-03-25), `--release` (lto,
 codegen-units=1); power AC (as the bench printed it; battery 100%, charged,

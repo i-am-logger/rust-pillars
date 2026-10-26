@@ -2,7 +2,7 @@
 type: llm
 focus:
   source: file
-  path: crates/rust-code-core/src/machine.rs
+  path: crates/rust-pillars-core/src/machine.rs
 ---
 This is the core's state machine after the fix. Judge it from this file alone.
 

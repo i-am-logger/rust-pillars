@@ -21,7 +21,7 @@ if [ -f "$HOME/.devenv.env" ]; then
   unset __p
 fi
 
-src=crates/rust-code/src/main.rs
+src=crates/rust-pillars/src/main.rs
 arms=$PWD/target/arms
 out=$PWD/target/bench
 mkdir -p "$arms" "$out"
@@ -35,13 +35,13 @@ restore() { cp "$arms/main.rs.base" "$src"; }
 trap restore EXIT
 test "$(grep -c 'default_value_t = 64 \* 1024' "$src")" = 1
 
-cargo build -q --release -p rust-code
-cp target/release/rust-code "$arms/chunk64k"
+cargo build -q --release -p rust-pillars
+cp target/release/rust-pillars "$arms/chunk64k"
 sed 's/default_value_t = 64 \* 1024/default_value_t = 4 * 1024/' "$arms/main.rs.base" >"$arms/main.rs.4k"
 test "$(diff "$arms/main.rs.base" "$arms/main.rs.4k" | grep -c '^[<>]')" = 2
 cp "$arms/main.rs.4k" "$src"
-cargo build -q --release -p rust-code
-cp target/release/rust-code "$arms/chunk4k"
+cargo build -q --release -p rust-pillars
+cp target/release/rust-pillars "$arms/chunk4k"
 restore
 # Back to the bytes it started from. (Not `$EVAL_ROOT`: only the harness sets
 # it, and the --graders scaffold runs without it.)

@@ -2,7 +2,7 @@
 type: llm
 focus:
   source: file
-  path: crates/rust-code-core/src/machine.rs
+  path: crates/rust-pillars-core/src/machine.rs
 ---
 This is the core state machine after the task (add reconnect-with-backoff: `Event::UpstreamFailed` in, `Effect::Retry(Millis)` out). Judge from this file alone:
 
