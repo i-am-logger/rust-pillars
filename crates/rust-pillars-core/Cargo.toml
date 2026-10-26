@@ -23,3 +23,9 @@ dhat.workspace = true
 
 [lints]
 workspace = true
+
+# dhat counts every thread, and libtest's own waiting thread allocates:
+# alloc.rs runs without the harness (see its header).
+[[test]]
+name = "alloc"
+harness = false
