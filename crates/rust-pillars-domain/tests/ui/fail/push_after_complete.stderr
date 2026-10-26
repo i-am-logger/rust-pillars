@@ -4,4 +4,5 @@ error[E0599]: no method named `push` found for struct `rust_pillars_domain::Line
 5 |     let _ = line.push(ByteClass::Other);
   |                  ^^^^ method not found in `rust_pillars_domain::Line<rust_pillars_domain::Complete>`
   |
-  = note: the method was found for `rust_pillars_domain::Line<Building>`
+  = note: the method was found for
+          - `rust_pillars_domain::Line<Building>`
